@@ -13,27 +13,6 @@ class Img:
 
     #Convention: Img (time, y (top to bottom), x)
 
-    def __init__(self, img: np.ndarray, imgType: IMG_TYPE):
-        self.img = None
-        self.imgDiff = None
-        self.imgDiffMaxTime = None
-        self.imgDiffMaxSpatial = None
-        self.imgConv = None
-
-        match imgType:
-            case IMG_TYPE.IMG:
-                self.img = img
-                self.ImgProvided()
-            case IMG_TYPE.IMG_DIFF:
-                self.imgDiff = img
-                self.ImgDiffProvided()
-            case IMG_TYPE.IMG_DIFF_MAX_TIME:
-                self.imgDiffMaxTime = img
-            case IMG_TYPE.IMG_DIFF_MAX_SPATIAL:
-                self.imgDiffMaxSpatial = img
-            case _:
-                pass
-
     def __init__(self):
         self.img = None
         self.imgDiff = None
@@ -41,35 +20,20 @@ class Img:
         self.imgDiffMaxSpatial = None
         self.imgConv = None
 
-    def CheckImg(self):
-        if (self.img is None or not isinstance(self.img, np.ndarray)):
+    def SetIMG(self, img:np.ndarray):
+        if (len(img.shape) != 3):
             return False
-        if (len(self.img.shape) != 3):
-            return False
-        return True
-    
-    def CheckImgDiff(self):
-        if (self.imgDiff is None or not isinstance(self.imgDiff, np.ndarray)):
-            return False
-        if (len(self.imgDiff.shape) != 3):
-            return False
-        return True
-        
-    def ImgProvided(self):
-        if self.CheckImg() == False: return
+        self.img = img
         self.CalcDiff()
         self.CalcDiffMax()
-    
-    def ImgDiffProvided(self):
-        if self.CheckImgDiff() == False: return
-        self.CalcDiffMax()
+        return True
     
     def CalcDiff(self):
-        if not self.CheckImg(): return
+        if self.img is None: return
         self.imgDiff = np.diff(self.img, axis=0)
     
     def CalcDiffMax(self):
-        if not self.CheckImgDiff(): return
+        if self.imgDiff is None: return
         self.imgDiffMaxTime = np.max(self.imgDiff, axis=0)
         self.imgDiffMaxSpatial = np.max(self.imgDiff, axis=(1,2))
 
