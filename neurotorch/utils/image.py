@@ -3,19 +3,16 @@ from scipy.ndimage import convolve
 import threading
 from enum import Enum
 
-class IMG_TYPE(Enum):
-    IMG = 1
-    IMG_DIFF = 2
-    IMG_DIFF_MAX_TIME = 3
-    IMG_DIFF_MAX_SPATIAL = 4
-
 class Img:
 
     #Convention: Img (time, y (top to bottom), x)
 
     def __init__(self):
         self.img = None
+        self.imgMean = None
+        self.imgMedian = None
         self.imgDiff = None
+        self.imgDiff_Stats = None
         self.imgDiffMaxTime = None
         self.imgDiffMaxSpatial = None
         self.imgConv = None
@@ -24,6 +21,8 @@ class Img:
         if (len(img.shape) != 3):
             return False
         self.img = img
+        self.imgMean = np.mean(self.img, axis=0)
+        self.imgMedian = np.mean(self.img, axis=0)
         self.CalcDiff()
         self.CalcDiffMax()
         return True
@@ -31,6 +30,7 @@ class Img:
     def CalcDiff(self):
         if self.img is None: return
         self.imgDiff = np.diff(self.img, axis=0)
+        self.imgDiff_Stats = {"AbsMin": max(0, np.min(self.imgDiff)), "Max": np.max(self.imgDiff)}
     
     def CalcDiffMax(self):
         if self.imgDiff is None: return
