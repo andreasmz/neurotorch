@@ -17,6 +17,7 @@ class ImageJHandler:
         self.imageJReady = False
         self.ij_load = False
         self.OvalRoi = None
+        self.RM = None
 
     def LoadImage(self):
         if self._gui.ij is None:
@@ -67,6 +68,13 @@ class ImageJHandler:
         
         self.ijthread = threading.Thread(target=self._StartImageJ)
         self.ijthread.start()
+
+    def OpenRoiManager(self):
+        self._gui.ij.py.run_macro("roiManager('show all');")
+        if self.RM is None:
+            self.RM = self._gui.ij.RoiManager.getRoiManager()
+        #if (self.RM is None):
+        #    messagebox.showwarning("Neurotorch", "Attention: Is the ROI Manager in ImageJ opened? If not, open it now or ImageJ will prompt out an error message refusing to open the ROIManager until restart of Neurotorch")
 
     def _StartImageJ(self):
         if (self.imageJReady or not self.ij_load):

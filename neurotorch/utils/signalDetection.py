@@ -16,12 +16,12 @@ class Signal():
         if (algorithm == "diffMax"):
             self.signal = np.max(self.IMG.imgDiff, axis=(1,2))
         elif (algorithm == "diffStd"):
-            self.signal = np.std(self.IMG.imgDiff, axis=(1,2))
+            self.signal = np.std(np.clip(self.IMG.imgDiff,a_min=0, a_max=None), axis=(1,2))
         else:
             self.signal = None
             self.peaks = None
             return
-        self.peaks, _ = find_peaks(self.signal, prominence=prominenceFactor*np.max(self.signal))
+        self.peaks, _ = find_peaks(self.signal, prominence=prominenceFactor*(np.max(self.signal)-np.min(self.signal)))
 
     def Clear(self):
         self.signal = None
