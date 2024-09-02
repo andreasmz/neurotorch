@@ -39,7 +39,12 @@ class Tab3():
 
         self.frameROIS = tk.LabelFrame(self.frame, text="ROIs")
         self.frameROIS.grid(row=2, column=0, sticky="news")
-        self.treeROIs = ttk.Treeview(self.frameROIS)
+        self.treeROIs = ttk.Treeview(self.frameROIS, columns=("Location", "Radius"))
+        self.treeROIs.heading('Location', text="Center (X,Y)")
+        self.treeROIs.heading('Radius', text='Radius [px]')
+        self.treeROIs.column("#0", minwidth=0, width=50)
+        self.treeROIs.column("Location", minwidth=0, width=50)
+        self.treeROIs.column("Radius", minwidth=0, width=50)
         self.treeROIs.pack(fill="both", padx=10)
 
         self.frameImg = ttk.LabelFrame(self.frame, text="Image")
@@ -100,11 +105,16 @@ class Tab3():
         self.ax1.set_axis_on()
         self.ax2.set_axis_on()
         self.ax3.set_axis_on()
-        for synapse in self.detection.synapses:
-            self.treeROIs.insert('', 'end', text=synapse.LocationStr())
+        for i in range(len(self.detection.synapses)):
+            synapse = self.detection.synapses[i]
+            synapse.tvindex = self.treeROIs.insert('', 'end', text=f"ROI {i+1}", values=([synapse.LocationStr(), synapse.radius]))
             color = "red"
             c = Circle(synapse.location, synapse.radius, color=color, fill=False)
             self.ax1.add_patch(c)
+        if self.detection.AX2Image() is not None:
+            self.ax2.set_title(self.detection.ax2Title)
+            self.ax2.imshow(self.detection.AX2Image())
+        self.figure1.tight_layout()
         self.canvas1.draw()
             
     def Detect(self):
@@ -115,7 +125,6 @@ class Tab3():
         self.Update()
 
     def AlgoChanged(self):
-        print("Algo Update")
         if (self.frameAlgoOptions is not None):
             self.frameAlgoOptions.grid_forget()
         match self.radioAlgoVar.get():
