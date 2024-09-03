@@ -34,7 +34,7 @@ class Synapse:
 
 
     def GetUniqueName(self):
-        return f"({self.LocationStr()}, r={self.radius}, f={self.FramesStr}"
+        return f"({self.LocationStr()}, r={self.radius}, f={self.FramesStr()}"
 
 class DetectionAlgorithm:
 

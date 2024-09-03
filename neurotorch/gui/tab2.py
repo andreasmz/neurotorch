@@ -12,6 +12,7 @@ class Tab2():
         self._gui = gui
         self.root = gui.root
         self.frameSlider = None
+        self.ax1_imshow = None
         self.Init()
 
     def Init(self):
@@ -64,8 +65,13 @@ class Tab2():
         self.ax1_axbtnUp.set_axis_off()
         self.ax1_axbtnDown.set_axis_off()
         
-        self.canvas1 = FigureCanvasTkAgg(self.figure1, self.frame)
-        self.canvas1.get_tk_widget().grid(row=0, column=1, rowspan=2, sticky="news")
+        self.frameCanvas1 = tk.Frame(self.frame)
+        self.frameCanvas1.grid(row=0, column=1, rowspan=2, sticky="news")
+        self.canvas1 = FigureCanvasTkAgg(self.figure1, self.frameCanvas1)
+        #self.canvas1.get_tk_widget().grid(row=0, column=1, rowspan=2, sticky="news")
+        self.canvtoolbar1 = NavigationToolbar2Tk(self.canvas1,self.frameCanvas1)
+        self.canvtoolbar1.update()
+        self.canvas1.get_tk_widget().pack(fill="both", expand=True)
         self.canvas1.draw()
 
 
@@ -75,6 +81,9 @@ class Tab2():
         self.Update()
 
     def Update(self, newImage=False):
+        if newImage:
+            self.ax1.clear()
+            self.ax1_imshow = None
         self.axSignal.clear()
         self.axSignal.set_ylabel("Strength")
         self.axSignal.set_xlabel("Frame")
@@ -102,14 +111,16 @@ class Tab2():
         self.canvasSignal.draw()
 
     def _UpdateFrameSlider(self, val):
-        self.ax1.clear()
+        if (self.ax1_imshow is not None):
+            self.ax1_imshow.remove()
+            self.ax1_imshow = None
         if self.frameSlider is None or self._gui.IMG.imgDiff is None:
             return
         frame = self.frameSlider.val
         if (self.checkNormalizeImgVar.get() == 1):
-            self.ax1.imshow(self._gui.IMG.imgDiff[frame,:,:], vmin=self._gui.IMG.imgDiff_Stats["AbsMin"], vmax=self._gui.IMG.imgDiff_Stats["Max"])
+            self.ax1_imshow = self.ax1.imshow(self._gui.IMG.imgDiff[frame,:,:], vmin=self._gui.IMG.imgDiff_Stats["AbsMin"], vmax=self._gui.IMG.imgDiff_Stats["Max"])
         else:
-            self.ax1.imshow(self._gui.IMG.imgDiff[frame,:,:])
+            self.ax1_imshow = self.ax1.imshow(self._gui.IMG.imgDiff[frame,:,:])
         self.canvas1.draw()
 
     def _AlgoChanged(self, val=0):

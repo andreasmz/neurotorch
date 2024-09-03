@@ -28,6 +28,17 @@ def API_IMG():
 
 def API_ROI_IMG():
     return window.GUI.ROI_IMG
+
+class API:
+    def Peaks():
+        if window.GUI.signal is None or window.GUI.signal.peaks is None:
+            return []
+        return window.GUI.signal.peaks
+    
+    def DetectedSynapses():
+        if window.GUI.tab3.detection is None or window.GUI.tab3.detection.synapses is None:
+            return {}
+        return window.GUI.tab3.detection.synapses
     
 if __name__ == "__main__":
     Start()
