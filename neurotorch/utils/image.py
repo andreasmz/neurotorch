@@ -15,12 +15,22 @@ class Img:
         self.imgDiff_Stats = None
         self.imgDiffMaxTime = None
         self.imgDiffMaxSpatial = None
+        self.imgDiffStdTime = None
         self.imgConv = None
 
     def SetIMG(self, img:np.ndarray):
         if (len(img.shape) != 3):
             return False
-        self.img = img
+        match (img.dtype):
+            case "uint8":
+                self.img = img.astype("int8")
+            case "uint16":
+                self.img = img.astype("int16")
+            case "uint32":
+                self.img = img.astype("int32")   
+            case _:
+                self.img = img
+        
         self.imgMean = np.mean(self.img, axis=0)
         self.imgMedian = np.mean(self.img, axis=0)
         self.CalcDiff()
@@ -36,6 +46,7 @@ class Img:
         if self.imgDiff is None: return
         self.imgDiffMaxTime = np.max(self.imgDiff, axis=0)
         self.imgDiffMaxSpatial = np.max(self.imgDiff, axis=(1,2))
+        self.imgDiffStdTime = np.std(self.imgDiff, axis=0)
 
     # Point (X, Y)
     def GetImgConv_At(self, point, radius: int) -> (np.ndarray, int):

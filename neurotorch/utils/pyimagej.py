@@ -18,6 +18,16 @@ class ImageJHandler:
         self.ij_load = False
         self.OvalRoi = None
         self.RM = None
+        self.menubar = None
+
+    def MenubarImageJH(self, menubar):
+        self.menubar = menubar
+        self.menuImageJ = tk.Menu(self.menubar,tearoff=0)
+        self.menubar.add_cascade(label="ImageJ",menu=self.menuImageJ)
+        self.menuImageJ.add_command(label="Start ImageJ", state="normal", command=self.StartImageJ)
+        self.menuImageJ.add_command(label="Read Image from ImageJ", state="disabled", command=self.LoadImage)
+        self.menuImageJ.add_separator()
+        self.menuImageJ.add_command(label="DiffImg --> ImageJ", state="disabled", command=self.ImageJImport_ImgDiff)
 
     def LoadImage(self):
         if self._gui.ij is None:
@@ -34,7 +44,7 @@ class ImageJHandler:
             self._gui.lblStatusInfo["text"] = "Your image has an invalid shape"
             return
 
-        _size = round(sys.getsizeof(self.IMG)/(1024**2),2)
+        _size = round(sys.getsizeof(self.IMG.img)/(1024**2),2)
         self._gui.lblImgInfo["text"] = f"Image: {self.IMG.img.shape}, dtype={self.IMG.img.dtype}, size = {_size} MB"
         self._gui.NewImageProvided()
 
@@ -51,7 +61,7 @@ class ImageJHandler:
             return
 
         self._gui.lblProgMain["text"] = "Starting ImageJ..."
-        self._gui.menuImageJ.entryconfig("Start ImageJ", state="disabled")
+        self.menuImageJ.entryconfig("Start ImageJ", state="disabled")
 
         self.ij_load = True
         def _ProgStartingImgJ_Step():
@@ -88,5 +98,5 @@ class ImageJHandler:
         self._ImageJReady()
 
     def _ImageJReady(self):
-        self._gui.menuImageJ.entryconfig("Read Image from ImageJ", state="normal")
-        self._gui.menuImageJ.entryconfig("DiffImg --> ImageJ", state="normal")
+        self.menuImageJ.entryconfig("Read Image from ImageJ", state="normal")
+        self.menuImageJ.entryconfig("DiffImg --> ImageJ", state="normal")

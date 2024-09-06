@@ -1,9 +1,9 @@
-import os
+import os, sys
 import json
 
 class _UserSettings():
     def __init__(self) -> None:
-        self.ParentPath = os.path.abspath(os.path.join(os.path.join(__file__, os.pardir), os.pardir))
+        self.ParentPath = os.path.abspath(os.path.dirname(sys.argv[0]))
         self.UserPath = os.path.join(self.ParentPath, "user")
         self.Settings = None
         self.ParseSettings()

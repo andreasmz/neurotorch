@@ -23,8 +23,10 @@ class Tab1():
         self.radioDisplayVar = tk.StringVar(value="imgMean")
         self.radioDisplay1 = tk.Radiobutton(self.frameDisplay, variable=self.radioDisplayVar, indicatoron=False, command=self.Update, text="Image Mean", value="imgMean")
         self.radioDisplay2 = tk.Radiobutton(self.frameDisplay, variable=self.radioDisplayVar, indicatoron=False, command=self.Update, text="Derivative Maximum", value="diffMax")
+        self.radioDisplay3 = tk.Radiobutton(self.frameDisplay, variable=self.radioDisplayVar, indicatoron=False, command=self.Update, text="Derivative Std", value="diffStd")
         self.radioDisplay1.grid(row=0, column=0)
         self.radioDisplay2.grid(row=0, column=1)
+        self.radioDisplay3.grid(row=0, column=2)
         self.frameDisplay.pack()
 
         self.tabMain = ttk.Notebook(self.tab)
@@ -79,6 +81,9 @@ class Tab1():
             case "diffMax":
                 self.ax2D.set_axis_on()
                 self.imshow2D = self.ax2D.imshow(self._gui.IMG.imgDiffMaxTime)
+            case "diffStd":
+                self.ax2D.set_axis_on()
+                self.imshow2D = self.ax2D.imshow(self._gui.IMG.imgDiffStdTime)
             case _:
                 self.ax2D.set_axis_off()
 
@@ -90,6 +95,8 @@ class Tab1():
                 self.imshow3D = self.ax3D.plot_surface(X,Y, self._gui.IMG.imgMean, cmap=cm.coolwarm)
             case "diffMax":
                 self.imshow3D = self.ax3D.plot_surface(X,Y, self._gui.IMG.imgDiffMaxTime, cmap=cm.coolwarm)
+            case "diffStd":
+                self.imshow3D = self.ax3D.plot_surface(X,Y, self._gui.IMG.imgDiffStdTime, cmap=cm.coolwarm)
             case _:
                 pass
         

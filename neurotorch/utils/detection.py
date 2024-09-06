@@ -1,5 +1,5 @@
 import numpy as np
-import skimage as ski
+from skimage import measure
 import math
 import tkinter as tk
 
@@ -69,8 +69,8 @@ class Tresholding(DetectionAlgorithm):
         if img is None:
             return False
         self.imgThresholded = (img >= threshold).astype(int)
-        self.imgLabeled = ski.measure.label(self.imgThresholded, connectivity=2)
-        self.imgRegProps = ski.measure.regionprops(self.imgLabeled)
+        self.imgLabeled = measure.label(self.imgThresholded, connectivity=2)
+        self.imgRegProps = measure.regionprops(self.imgLabeled)
         self.synapses = []
         for i in range(len(self.imgRegProps)):
             if(self.imgRegProps[i].area >= minArea):
@@ -138,8 +138,8 @@ class ROIImage:
 
 
     def LabelImg(self, radius: int, minROISize: float):
-        self.imgLabeled = ski.measure.label(self.imgThresholded, connectivity=2)
-        self.imgRegProps = ski.measure.regionprops(self.imgLabeled)
+        self.imgLabeled = measure.label(self.imgThresholded, connectivity=2)
+        self.imgRegProps = measure.regionprops(self.imgLabeled)
         self.rois = []
         for i in range(len(self.imgRegProps)):
             if(self.imgRegProps[i].area >= math.pi*(radius**2)*minROISize):
