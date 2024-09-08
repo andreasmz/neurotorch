@@ -3,7 +3,7 @@ import json
 
 class _UserSettings():
     def __init__(self) -> None:
-        self.ParentPath = os.path.abspath(os.path.dirname(sys.argv[0]))
+        self.ParentPath = os.path.abspath(os.path.join(os.path.join(__file__, os.pardir), os.pardir))
         self.UserPath = os.path.join(self.ParentPath, "user")
         self.Settings = None
         self.ParseSettings()
@@ -12,7 +12,7 @@ class _UserSettings():
         self.Settings = None
         _settingsFile = os.path.join(self.UserPath, "settings.json")
         if not os.path.isfile(_settingsFile):
-            print("settings.json not found")
+            print("settings.json not found. The search path was", _settingsFile)
             return
         try:
             with open(_settingsFile) as f:

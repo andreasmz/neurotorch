@@ -28,16 +28,15 @@ class _GUI:
         self.ij = None
         self.ijH = None
         self.signal = Signal(self.IMG)
+        self.edition = None
 
     def GUI(self, edition:Edition=Edition.NEUROTORCH):
         import neurotorch.gui.tab1 as tab1
         import neurotorch.gui.tab2 as tab2
         import neurotorch.gui.tab3 as tab3
+        self.edition = edition
         self.root = tk.Tk()
-        if (edition == Edition.NEUROTORCH_LIGHT):
-            self.root.title("NeuroTorch Light")
-        else:
-            self.root.title("NeuroTorch")
+        self.SetWindowTitle("")
         self.root.iconbitmap(os.path.join(*[settings.UserSettings.ParentPath, "media", "neurotorch_logo.ico"]))
         self.root.geometry("600x600")
 
@@ -79,6 +78,7 @@ class _GUI:
         self.root.mainloop()
 
     def NewImageProvided(self):
+        self.SetWindowTitle(self.IMG.name)
         self.signal.DetectSignal(self.tab2.radioAlgoVar.get(), self.tab2.sliderProminenceFactorVar.get())
         self.tab1.Update(True)
         self.tab2.Update(True)
@@ -91,6 +91,7 @@ class _GUI:
     def OpenFile(self):
         image_path = filedialog.askopenfilename(parent=self.root, title="Open a Image File", 
                 filetypes=(("TIF File", "*.tif"), ("All files", "*.*")))
+        file_name = os.path.splitext(os.path.basename(image_path))[0]
         if image_path is None or image_path == "":
             return
         try:
@@ -105,7 +106,7 @@ class _GUI:
         if len(imgNP.shape) != 3:
             messagebox.showerror("Neurotorch", "The image must contain 3 dimensions: Time, Y, X. This is with your image not the case")
             return
-        self.IMG.SetIMG(imgNP)
+        self.IMG.SetIMG(imgNP, file_name)
         self.NewImageProvided()
 
     def _Debug_Load(self):
@@ -114,10 +115,16 @@ class _GUI:
             self.root.bell()
             return
         with open(savePath, 'rb') as intp:
-            self.IMG.SetIMG(pickle.load(intp))
+            self.IMG.SetIMG(pickle.load(intp), name= "img.dump")
         _size = round(sys.getsizeof(self.IMG.img)/(1024**2),2)
         self.lblImgInfo["text"] = f"Image: {self.IMG.img.shape}, dtype={self.IMG.img.dtype}, size = {_size} MB"
         self.NewImageProvided()
+
+    def SetWindowTitle(self, text:str=""):
+        if (self.edition == Edition.NEUROTORCH_LIGHT):
+            self.root.title(f"NeuroTorch Light {text}")
+        else:
+            self.root.title(f"NeuroTorch {text}")
 
 
 GUI = _GUI()

@@ -1,13 +1,15 @@
 import neurotorch.gui.window as window
 import neurotorch.utils.detection as detection
+from neurotorch.gui.components import EntryPopup
 
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 import matplotlib.widgets as PltWidget
 from matplotlib.patches import Circle
 import numpy as np
+import pandas as pd
 
 class Tab3():
     def __init__(self, gui: window._GUI):
@@ -15,6 +17,7 @@ class Tab3():
         self.root = gui.root
         self.detection = None
         self.roiPatches = {}
+        self.treeROIs_entryPopup = None
         self.Init()
 
     def Init(self):
@@ -48,9 +51,22 @@ class Tab3():
         self.treeROIs.column("Location", minwidth=0, width=50)
         self.treeROIs.column("Radius", minwidth=0, width=50)
         self.treeROIs.bind("<<TreeviewSelect>>", self.TreeViewClick)
+        self.treeROIs.bind("<Double-1>", self.TreeRois_onDoubleClick)
         self.treeROIs.pack(fill="both", padx=10)
-        self.btnExportROIsImageJ = tk.Button(self.frameROIS, text="Export to ImageJ", command=self.ExportROIsImageJ)
-        self.btnExportROIsImageJ.pack(anchor=tk.E)
+
+        self.frameROIsTools = tk.Frame(self.frameROIS)
+        self.frameROIsTools.pack(expand=True, fill="x")
+        self.btnAddROI = tk.Button(self.frameROIsTools, text="Add ROI", command=self.BtnAddROI_Click)
+        self.btnAddROI.grid(row=0, column=0)
+        self.btnRemoveROI = tk.Button(self.frameROIsTools, text="Remove ROI", command=self.BtnRemoveROI_Click)
+        self.btnRemoveROI.grid(row=0, column=1)
+
+        self.frameBtnsExport = tk.Frame(self.frameROIS)
+        self.frameBtnsExport.pack(expand=True, fill="x")
+        self.btnExportROIsImageJ = tk.Button(self.frameBtnsExport, text="Export to ImageJ", command=self.ExportROIsImageJ)
+        self.btnExportROIsImageJ.grid(row=0, column=0)
+        self.btnExportCSVMultiM = tk.Button(self.frameBtnsExport, text="Export CSV (Multi Measure)", command=self.ExportCSVMultiM)
+        self.btnExportCSVMultiM.grid(row=0, column=1)
 
         self.frameImg = ttk.LabelFrame(self.frame, text="Image")
         self.frameImg.grid(row=3, column=0, sticky="new")
@@ -76,7 +92,7 @@ class Tab3():
         self.canvas1.get_tk_widget().pack(expand=True, fill="both", side=tk.LEFT)
         self.canvas1.draw()
 
-        tk.Grid.rowconfigure(self.frame, 2, weight=1)
+        tk.Grid.rowconfigure(self.frame, 3, weight=1)
 
         self.AlgoChanged()
 
@@ -99,6 +115,11 @@ class Tab3():
         self.ax3.set_axis_off()
         self.roiPatches = {}
         self.treeROIs.delete(*self.treeROIs.get_children())
+        self.frameROIS["text"] = "ROIs"
+        try: 
+            self.treeROIs_entryPopup.destroy()
+        except AttributeError:
+            pass
         if (self._gui.IMG.imgDiff is None):
             self.canvas1.draw()
             return
@@ -109,13 +130,7 @@ class Tab3():
         self.ax1.set_axis_on()
         self.ax2.set_axis_on()
         self.ax3.set_axis_off()
-        for i in range(len(self.detection.synapses)):
-            synapse = self.detection.synapses[i]
-            synapse.tvindex = self.treeROIs.insert('', 'end', text=f"ROI {i+1}", values=([synapse.LocationStr(), synapse.radius]))
-            color = "red"
-            c = Circle(synapse.location, synapse.radius, color=color, fill=False)
-            self.ax1.add_patch(c)
-            self.roiPatches[synapse.tvindex] = c
+        self.UpdateROIs(draw = False)
         if self.detection.AX2Image() is not None:
             self.ax2.set_title(self.detection.ax2Title)
             self.ax2.imshow(self.detection.AX2Image())
@@ -145,7 +160,62 @@ class Tab3():
             self.frameAlgoOptions.grid(row=1, column=0, sticky="news")
         self.Update()
 
+    def UpdateROIs(self, draw = True):
+        [p.remove() for p in reversed(self.ax1.patches)]
+        self.roiPatches = {}
+        self.treeROIs.delete(*self.treeROIs.get_children())
+        try: 
+            self.treeROIs_entryPopup.destroy()
+        except AttributeError:
+            pass
+
+        if self.detection.modified == True:
+            self.frameROIS["text"] = "ROIs*"
+        else:
+            self.frameROIS["text"] = "ROIs"
+
+        if self.detection.synapses is None:
+            
+            if draw: self.canvas1.draw()
+            return
+        
+        for i in range(len(self.detection.synapses)):
+            synapse = self.detection.synapses[i]
+            synapse.tvindex = self.treeROIs.insert('', 'end', text=f"ROI {i+1}", values=([synapse.LocationStr(), synapse.radius]))
+            c = Circle(synapse.location, synapse.radius, color="red", fill=False)
+            self.ax1.add_patch(c)
+            self.roiPatches[synapse.tvindex] = c
+        if draw: self.canvas1.draw()
+
+    def BtnAddROI_Click(self):
+        if (self.detection is None):
+            self.root.bell()
+            return
+        self.detection.modified = True
+        if (self.detection.synapses is None):
+            self.detection.synapses = []
+        self.detection.synapses.append(detection.Synapse().SetLocation(0,0).SetRadius(6))
+        self.UpdateROIs()
+
+    def BtnRemoveROI_Click(self):
+        if (self.detection is None):
+            self.root.bell()
+            return
+        if len(self.treeROIs.selection()) != 1:
+            self.root.bell()
+            return
+        selection = self.treeROIs.selection()[0]
+        self.detection.modified = True
+        for i in range(len(self.detection.synapses)):
+            synapse = self.detection.synapses[i]
+            if synapse.tvindex == selection:
+                self.detection.synapses.remove(synapse)
+                break
+        self.UpdateROIs()
+
     def TreeViewClick(self, event):
+        if (self._gui.IMG.img is None):
+            return
         if self.detection.synapses is None:
             return
         if len(self.treeROIs.selection()) != 1:
@@ -158,8 +228,7 @@ class Tab3():
         for i in range(len(self.detection.synapses)):
             synapse = self.detection.synapses[i]
             if synapse.tvindex == selection:
-                _imgmask, _n = self._gui.IMG.GetImgConv_At(synapse.location, synapse.radius)
-                _signal = np.sum(_imgmask, axis=(1,2))/_n
+                _signal = np.mean(self._gui.IMG.GetImgROIAt(synapse.location, synapse.radius), axis=0)
                 self.ax3.plot(_signal)
         for name,c in self.roiPatches.items():
             if name == selection:
@@ -172,7 +241,7 @@ class Tab3():
         if self._gui.ij is None:
             messagebox.showerror("Neurotorch", "Please first start ImageJ")
             return
-        if self.detection.synapses is None or len(self.detection.synapses) == 0:
+        if self.detection is None or self.detection.synapses is None or len(self.detection.synapses) == 0:
             self.root.bell()
             return
         self._gui.ijH.OpenRoiManager()
@@ -181,3 +250,64 @@ class Tab3():
             roi = self._gui.ijH.OvalRoi(synapse.location[0]-synapse.radius, synapse.location[1]-synapse.radius, 2*synapse.radius, 2*synapse.radius)
             roi.setName(f"ROI {i+1} {synapse.LocationStr()}")
             self._gui.ijH.RM.addRoi(roi)
+
+    def ExportCSVMultiM(self):
+        if self.detection.synapses is None or len(self.detection.synapses) == 0 or self._gui.IMG.img is None:
+            self.root.bell()
+            return
+        data = pd.DataFrame()
+
+        for i in  range(len(self.detection.synapses)):
+            synapse = self.detection.synapses[i]
+            _signal = np.mean(self._gui.IMG.GetImgROIAt(synapse.location, synapse.radius), axis=0)
+            name = f"ROI {i+1} {synapse.LocationStr().replace(",","")}"
+            data[name] = _signal
+        data = data.round(4)
+        data.index += 1
+        f = filedialog.asksaveasfile(mode='w', title="Save Multi Measure", filetypes=(("CSV", "*.csv"), ("All files", "*.*")), defaultextension=".csv")
+        if f is None:
+            return
+        data.to_csv(path_or_buf=f, lineterminator="\n")
+        
+        
+    def TreeRois_onDoubleClick(self, event):
+        try: 
+            self.treeROIs_entryPopup.destroy()
+        except AttributeError:
+            pass
+        rowid = self.treeROIs.identify_row(event.y)
+        column = self.treeROIs.identify_column(event.x)
+        if not rowid or column not in ["#1", "#2"]:
+            return
+        
+        x,y,width,height = self.treeROIs.bbox(rowid, column)
+        pady = height // 2
+
+        if (column == "#1"):
+            text = self.treeROIs.item(rowid, 'values')[0]
+        elif (column == "#2"):
+            text = self.treeROIs.item(rowid, 'values')[1]
+        else:
+            return
+        self.treeROIs_entryPopup = EntryPopup(self.treeROIs, self.TreeRois_EntryChanged, rowid, column, text)
+        self.treeROIs_entryPopup.place(x=x, y=y+pady, width=width, height=height, anchor=tk.W)
+        
+    def TreeRois_EntryChanged(self, event):
+        rowID = event["RowID"]
+        for i in range(len(self.detection.synapses)):
+            synapse = self.detection.synapses[i]
+            if synapse.tvindex == rowID:
+                if event["Column"] == "#1":
+                    mval = event["NewVal"].replace("(","").replace(")","").replace(" ", "")
+                    mvals = mval.split(",")
+                    if len(mvals) != 2 or not mvals[0].isdigit() or not mvals[1].isdigit(): return
+                    x = int(mvals[0])
+                    y = int(mvals[1])
+                    synapse.SetLocation(x,y)
+                    break
+                elif event["Column"] == "#2":
+                    if not event["NewVal"].isdigit(): return
+                    synapse.SetRadius(int(event["NewVal"]))
+                    break
+        self.detection.modified = True
+        self.UpdateROIs()

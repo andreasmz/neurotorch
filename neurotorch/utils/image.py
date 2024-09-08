@@ -17,8 +17,9 @@ class Img:
         self.imgDiffMaxSpatial = None
         self.imgDiffStdTime = None
         self.imgConv = None
+        self.name = None
 
-    def SetIMG(self, img:np.ndarray):
+    def SetIMG(self, img:np.ndarray, name:str=""):
         if (len(img.shape) != 3):
             return False
         match (img.dtype):
@@ -33,12 +34,15 @@ class Img:
         
         self.imgMean = np.mean(self.img, axis=0)
         self.imgMedian = np.mean(self.img, axis=0)
+        self.name = name
         self.CalcDiff()
         self.CalcDiffMax()
         return True
     
     def CalcDiff(self):
         if self.img is None: return
+        if self.img.shape[0] <= 1:
+            return
         self.imgDiff = np.diff(self.img, axis=0)
         self.imgDiff_Stats = {"AbsMin": max(0, np.min(self.imgDiff)), "Max": np.max(self.imgDiff)}
     
@@ -49,12 +53,17 @@ class Img:
         self.imgDiffStdTime = np.std(self.imgDiff, axis=0)
 
     # Point (X, Y)
-    def GetImgConv_At(self, point, radius: int) -> (np.ndarray, int):
-        mask, n = self._Circle_FullMask(point, radius)
-        _ret = np.empty(shape=self.img.shape)
-        for t in range(self.img.shape[0]):
-            _ret[t] = np.multiply(self.img[t], mask)
-        return (_ret, n)
+    def GetImgROIAt(self, point, radius) -> np.ndarray:
+        xmax = self.img.shape[2]
+        ymax = self.img.shape[1]
+        return np.array([self.img[:,y,x] for x in range(point[0]-radius,point[0]+2*radius+1) for y in range(point[1]-radius,point[1]+2*radius+1)
+                     if ((x-point[0])**2+(y-point[1])**2)<radius**2+2**(1/2) and x >= 0 and y >= 0 and x < xmax and y < ymax])
+
+        #mask, n = self._Circle_FullMask(point, radius)
+        #_ret = np.empty(shape=self.img.shape)
+        #for t in range(self.img.shape[0]):
+        #    _ret[t] = np.multiply(self.img[t], mask)
+        #return (_ret, n)
 
     def _CircleMask(self, radius: int) -> (np.ndarray, int):
         x = np.arange(-radius, +radius+1)

@@ -40,10 +40,11 @@ class DetectionAlgorithm:
 
     def __init__(self):
         self.synapses = None
+        self.modified = False
         self.ax2Title = ""
 
     def Detect(self, IMG: Img):
-        pass
+        self.modified = False
 
     def OptionsFrame(self, master):
         self.optionsFrame = tk.LabelFrame(master, text="Options")
@@ -62,6 +63,7 @@ class Tresholding(DetectionAlgorithm):
         self.ax2Title = "Thresholded Image"
 
     def Detect(self, img: np.ndarray):
+        super().Detect(img)
         threshold = self.varThreshold.get()
         radius = self.varROIRadius.get()
         minROISize = self.varROIMinSize.get()/100
