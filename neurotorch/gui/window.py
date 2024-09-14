@@ -15,6 +15,7 @@ matplotlib.use('TkAgg')
 import neurotorch.gui.settings as settings
 from neurotorch.utils.image import Img
 from neurotorch.utils.signalDetection import Signal
+from neurotorch.utils import version
 
 class Edition(Enum):
     NEUROTORCH = 1
@@ -52,6 +53,7 @@ class _GUI:
             self.ijH = ImageJHandler(self)
             self.ijH.MenubarImageJH(self.menubar)
         
+        self.menubar.add_command(label="Neurotorch", command=self.MenuNeurotorch_Click)
 
         self.statusFrame = tk.Frame(self.root)
         self.statusFrame.pack(side=tk.BOTTOM, fill="x", expand=False)
@@ -88,6 +90,12 @@ class _GUI:
         self.tab2.Update()
         self.tab3.Update()
 
+    def SetWindowTitle(self, text:str=""):
+        if (self.edition == Edition.NEUROTORCH_LIGHT):
+            self.root.title(f"NeuroTorch Light {text}")
+        else:
+            self.root.title(f"NeuroTorch {text}")
+
     def OpenFile(self):
         image_path = filedialog.askopenfilename(parent=self.root, title="Open a Image File", 
                 filetypes=(("TIF File", "*.tif"), ("All files", "*.*")))
@@ -109,6 +117,9 @@ class _GUI:
         self.IMG.SetIMG(imgNP, file_name)
         self.NewImageProvided()
 
+    def MenuNeurotorch_Click(self):
+        messagebox.showinfo("Neurotorch", f"© Andreas Brilka 2024\nYou are running Neurotorch {version.VERSION}")
+
     def _Debug_Load(self):
         savePath = os.path.join(settings.UserSettings.UserPath, "img.dump")
         if not os.path.exists(savePath):
@@ -119,12 +130,6 @@ class _GUI:
         _size = round(sys.getsizeof(self.IMG.img)/(1024**2),2)
         self.lblImgInfo["text"] = f"Image: {self.IMG.img.shape}, dtype={self.IMG.img.dtype}, size = {_size} MB"
         self.NewImageProvided()
-
-    def SetWindowTitle(self, text:str=""):
-        if (self.edition == Edition.NEUROTORCH_LIGHT):
-            self.root.title(f"NeuroTorch Light {text}")
-        else:
-            self.root.title(f"NeuroTorch {text}")
 
 
 GUI = _GUI()

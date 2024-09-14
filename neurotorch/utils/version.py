@@ -1,0 +1,2 @@
+VERSION = "1.0.0"
+VERSION_INT = 100 #Example: 3.6.7 --> 367

@@ -40,6 +40,12 @@ class API:
             return {}
         return window.GUI.tab3.detection.synapses
     
+    def Img():
+        return window.GUI.IMG.img
+    
+    def ImgDiff():
+        return window.GUI.IMG.imgDiff
+    
 if __name__ == "__main__":
     Start()
 
