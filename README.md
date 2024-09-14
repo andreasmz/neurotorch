@@ -1,5 +1,6 @@
 # Neurotorch
 ![Neurotorch Logo](https://github.com/andreasmz/neurotorch/blob/main/doc/neurotorch_logo.jpg)
+
 Neurotorch is a simple program to analyze microscopic images containing tagged neuron images, for example with bind to Glutamate release. It provides various tools containing the following
 * Signal finding: Detect the frames where neurons fire
 * ROI finding: Auto-detect ROIs (Regions of Interest)
