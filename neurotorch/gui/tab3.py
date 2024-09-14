@@ -124,10 +124,10 @@ class Tab3():
             self.canvas1.draw()
             return
         self.ax1.imshow(self._gui.IMG.imgDiffMaxTime)
+        self.ax1.set_axis_on()
         if self.detection.synapses is None:
             self.canvas1.draw()
             return
-        self.ax1.set_axis_on()
         self.ax2.set_axis_on()
         self.ax3.set_axis_off()
         self.UpdateROIs(draw = False)

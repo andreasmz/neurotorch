@@ -24,9 +24,13 @@ class Tab1():
         self.radioDisplay1 = tk.Radiobutton(self.frameDisplay, variable=self.radioDisplayVar, indicatoron=False, command=self.Update, text="Image Mean", value="imgMean")
         self.radioDisplay2 = tk.Radiobutton(self.frameDisplay, variable=self.radioDisplayVar, indicatoron=False, command=self.Update, text="Derivative Maximum", value="diffMax")
         self.radioDisplay3 = tk.Radiobutton(self.frameDisplay, variable=self.radioDisplayVar, indicatoron=False, command=self.Update, text="Derivative Std", value="diffStd")
+        self.radioDisplay4 = tk.Radiobutton(self.frameDisplay, variable=self.radioDisplayVar, indicatoron=False, command=self.Update, text="2nd Derivative Maximum", value="diff2Max")
+        self.radioDisplay5 = tk.Radiobutton(self.frameDisplay, variable=self.radioDisplayVar, indicatoron=False, command=self.Update, text="2nd Derivative Std", value="diff2Std")
         self.radioDisplay1.grid(row=0, column=0)
         self.radioDisplay2.grid(row=0, column=1)
         self.radioDisplay3.grid(row=0, column=2)
+        self.radioDisplay4.grid(row=0, column=3)
+        self.radioDisplay5.grid(row=0, column=4)
         self.frameDisplay.pack()
 
         self.tabMain = ttk.Notebook(self.tab)
@@ -84,6 +88,12 @@ class Tab1():
             case "diffStd":
                 self.ax2D.set_axis_on()
                 self.imshow2D = self.ax2D.imshow(self._gui.IMG.imgDiffStdTime)
+            case "diff2Max":
+                self.ax2D.set_axis_on()
+                self.imshow2D = self.ax2D.imshow(self._gui.IMG.imgDiff2MaxTime)
+            case "diff2Std":
+                self.ax2D.set_axis_on()
+                self.imshow2D = self.ax2D.imshow(self._gui.IMG.imgDiff2StdTime)
             case _:
                 self.ax2D.set_axis_off()
 
@@ -97,6 +107,10 @@ class Tab1():
                 self.imshow3D = self.ax3D.plot_surface(X,Y, self._gui.IMG.imgDiffMaxTime, cmap=cm.coolwarm)
             case "diffStd":
                 self.imshow3D = self.ax3D.plot_surface(X,Y, self._gui.IMG.imgDiffStdTime, cmap=cm.coolwarm)
+            case "diff2Max":
+                self.imshow3D = self.ax3D.plot_surface(X,Y, self._gui.IMG.imgDiff2MaxTime, cmap=cm.coolwarm)
+            case "diff2Std":
+                self.imshow3D = self.ax3D.plot_surface(X,Y, self._gui.IMG.imgDiff2StdTime, cmap=cm.coolwarm)
             case _:
                 pass
         

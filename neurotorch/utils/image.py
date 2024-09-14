@@ -11,11 +11,18 @@ class Img:
         self.img = None
         self.imgMean = None
         self.imgMedian = None
+
         self.imgDiff = None
         self.imgDiff_Stats = None
         self.imgDiffMaxTime = None
         self.imgDiffMaxSpatial = None
         self.imgDiffStdTime = None
+
+        self.imgDiff2 = None
+        self.imgDiff2_Stats = None
+        self.imgDiff2MaxTime = None
+        self.imgDiff2StdTime = None
+
         self.imgConv = None
         self.name = None
 
@@ -44,13 +51,18 @@ class Img:
         if self.img.shape[0] <= 1:
             return
         self.imgDiff = np.diff(self.img, axis=0)
+        self.imgDiff2 = np.diff(self.img, axis=0, n=2)
         self.imgDiff_Stats = {"AbsMin": max(0, np.min(self.imgDiff)), "Max": np.max(self.imgDiff)}
+        self.imgDiff2_Stats = {"AbsMin": max(0, np.min(self.imgDiff2)), "Max": np.max(self.imgDiff2)}
     
     def CalcDiffMax(self):
         if self.imgDiff is None: return
         self.imgDiffMaxTime = np.max(self.imgDiff, axis=0)
         self.imgDiffMaxSpatial = np.max(self.imgDiff, axis=(1,2))
         self.imgDiffStdTime = np.std(self.imgDiff, axis=0)
+
+        self.imgDiff2MaxTime = np.max(self.imgDiff2, axis=0)
+        self.imgDiff2StdTime = np.std(self.imgDiff2, axis=0)
 
     # Point (X, Y)
     def GetImgROIAt(self, point, radius) -> np.ndarray:
