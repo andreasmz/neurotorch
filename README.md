@@ -1,8 +1,8 @@
 # Neurotorch
-Neurotorch is a simple program to analyze microscopic images containing various neurons. It provides various tools containing the following
-* Signal finding: Detect frames in a video, where neurons fire
+![Neurotorch Logo](https://github.com/andreasmz/neurotorch/blob/main/doc/neurotorch_logo.jpg)
+Neurotorch is a simple program to analyze microscopic images containing tagged neuron images, for example with bind to Glutamate release. It provides various tools containing the following
+* Signal finding: Detect the frames where neurons fire
 * ROI finding: Auto-detect ROIs (Regions of Interest)
 * Synapse analysing: Use the detected ROIs and analyze each signal frame independently
 
-Neurotorch can be run as a standalone program with an conda enviorenment having PyImageJ installed. If ImageJ connectivity is not needed, Neurotorch Light can be used lacking support for ImageJ but
-beeing compiled in a stand alone File (currently Windows only). It also can be used as an API (for example in Jupyter Notebooks) by simply import the module
+Neurotorch is able to connect to a local ImageJ installation, but can also be run as standalone program. Image Files can be accessed from ImageJ or opened directly in Neurotorch. ROIs and the Diff Image can be back exported to ImageJ, while the measurement of the ROIs can be saved as CSV directly in Neurotorch. Also, Neurotorch can be imported as an regular module giving access to it's API for example from Jupyter Notebooks.

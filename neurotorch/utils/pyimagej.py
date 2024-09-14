@@ -101,8 +101,7 @@ class ImageJHandler:
 
     def OpenRoiManager(self):
         self._gui.ij.py.run_macro("roiManager('show all');")
-        if self.RM is None:
-            self.RM = self._gui.ij.RoiManager.getRoiManager()
+        self.RM = self._gui.ij.RoiManager.getRoiManager()
         #if (self.RM is None):
         #    messagebox.showwarning("Neurotorch", "Attention: Is the ROI Manager in ImageJ opened? If not, open it now or ImageJ will prompt out an error message refusing to open the ROIManager until restart of Neurotorch")
 
