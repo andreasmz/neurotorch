@@ -16,6 +16,7 @@ import neurotorch.gui.settings as settings
 from neurotorch.utils.image import Img
 from neurotorch.utils.signalDetection import Signal
 from neurotorch.utils import version
+import neurotorch.utils.update as Update
 
 class Edition(Enum):
     NEUROTORCH = 1
@@ -53,7 +54,9 @@ class _GUI:
             self.ijH = ImageJHandler(self)
             self.ijH.MenubarImageJH(self.menubar)
         
-        self.menubar.add_command(label="Neurotorch", command=self.MenuNeurotorch_Click)
+        self.menuNeurotorch = tk.Menu(self.menubar,tearoff=0)
+        self.menubar.add_cascade(label="Neurotorch",menu=self.menuNeurotorch)
+        self.menuNeurotorch.add_command(label="About", command=self.MenuNeurotorchAbout_Click)
 
         self.statusFrame = tk.Frame(self.root)
         self.statusFrame.pack(side=tk.BOTTOM, fill="x", expand=False)
@@ -117,8 +120,15 @@ class _GUI:
         self.IMG.SetIMG(imgNP, file_name)
         self.NewImageProvided()
 
-    def MenuNeurotorch_Click(self):
-        messagebox.showinfo("Neurotorch", f"© Andreas Brilka 2024\nYou are running Neurotorch {version.VERSION}")
+    def MenuNeurotorchAbout_Click(self):
+        Update.Updater.CheckForUpdate()
+        _strUpdate = ""
+        if Update.Updater.version_github is not None:
+            if version.VERSION == Update.Updater.version_github:
+                _strUpdate = " (newest version)"
+            else:
+                _strUpdate = f" (version {_strUpdate} available)"
+        messagebox.showinfo("Neurotorch", f"© Andreas Brilka 2024\nYou are running Neurotorch {version.VERSION}{_strUpdate}")
 
     def _Debug_Load(self):
         savePath = os.path.join(settings.UserSettings.UserPath, "img.dump")
