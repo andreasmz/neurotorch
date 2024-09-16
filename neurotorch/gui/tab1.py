@@ -34,6 +34,7 @@ class Tab1():
         self.frameDisplay.pack()
 
         self.tabMain = ttk.Notebook(self.tab)
+        self.tabMain.bind('<<NotebookTabChanged>>',self.Update)
         self.tab2D = ttk.Frame(self.tabMain)
         self.tab3D = ttk.Frame(self.tabMain)
         self.tabMain.add(self.tab2D, text="2D")
@@ -81,40 +82,44 @@ class Tab1():
         match (_selected):
             case "imgMean":
                 self.ax2D.set_axis_on()
-                self.imshow2D = self.ax2D.imshow(self._gui.IMG.imgMean)
+                self.imshow2D = self.ax2D.imshow(self._gui.IMG.imgMean, cmap="Greys_r")
             case "diffMax":
                 self.ax2D.set_axis_on()
-                self.imshow2D = self.ax2D.imshow(self._gui.IMG.imgDiffMaxTime)
+                self.imshow2D = self.ax2D.imshow(self._gui.IMG.imgDiffMaxTime, cmap="inferno")
             case "diffStd":
                 self.ax2D.set_axis_on()
-                self.imshow2D = self.ax2D.imshow(self._gui.IMG.imgDiffStdTime)
+                self.imshow2D = self.ax2D.imshow(self._gui.IMG.imgDiffStdTime, cmap="inferno")
             case "diff2Max":
                 self.ax2D.set_axis_on()
-                self.imshow2D = self.ax2D.imshow(self._gui.IMG.imgDiff2MaxTime)
+                self.imshow2D = self.ax2D.imshow(self._gui.IMG.imgDiff2MaxTime, cmap="inferno")
             case "diff2Std":
                 self.ax2D.set_axis_on()
-                self.imshow2D = self.ax2D.imshow(self._gui.IMG.imgDiff2StdTime)
+                self.imshow2D = self.ax2D.imshow(self._gui.IMG.imgDiff2StdTime, cmap="inferno")
             case _:
                 self.ax2D.set_axis_off()
+
+        if (self.tabMain.tab(self.tabMain.select(), "text") == "2D"):
+            self.canvas2D.draw()
+            return
+        if self.tabMain.tab(self.tabMain.select(), "text") != "3D":
+            print("Assertion Error: The tabMain value is not 2D or 3D")
 
         X = np.arange(0,self._gui.IMG.imgDiff.shape[2])
         Y = np.arange(0,self._gui.IMG.imgDiff.shape[1])
         X, Y = np.meshgrid(X, Y)
         match (_selected):
             case "imgMean":
-                self.imshow3D = self.ax3D.plot_surface(X,Y, self._gui.IMG.imgMean, cmap=cm.coolwarm)
+                self.imshow3D = self.ax3D.plot_surface(X,Y, self._gui.IMG.imgMean, cmap="Greys_r")
             case "diffMax":
-                self.imshow3D = self.ax3D.plot_surface(X,Y, self._gui.IMG.imgDiffMaxTime, cmap=cm.coolwarm)
+                self.imshow3D = self.ax3D.plot_surface(X,Y, self._gui.IMG.imgDiffMaxTime, cmap="inferno")
             case "diffStd":
-                self.imshow3D = self.ax3D.plot_surface(X,Y, self._gui.IMG.imgDiffStdTime, cmap=cm.coolwarm)
+                self.imshow3D = self.ax3D.plot_surface(X,Y, self._gui.IMG.imgDiffStdTime, cmap="inferno")
             case "diff2Max":
-                self.imshow3D = self.ax3D.plot_surface(X,Y, self._gui.IMG.imgDiff2MaxTime, cmap=cm.coolwarm)
+                self.imshow3D = self.ax3D.plot_surface(X,Y, self._gui.IMG.imgDiff2MaxTime, cmap="inferno")
             case "diff2Std":
-                self.imshow3D = self.ax3D.plot_surface(X,Y, self._gui.IMG.imgDiff2StdTime, cmap=cm.coolwarm)
+                self.imshow3D = self.ax3D.plot_surface(X,Y, self._gui.IMG.imgDiff2StdTime, cmap="inferno")
             case _:
                 pass
         
         self.canvas2D.draw()
         self.canvas3D.draw()
-
-    

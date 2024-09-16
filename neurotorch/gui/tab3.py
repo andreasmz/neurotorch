@@ -34,7 +34,7 @@ class Tab3():
         self.radioAlgo1 = tk.Radiobutton(self.frameOptions, variable=self.radioAlgoVar, indicatoron=False, text="Threshold", value="threshold", command=self.AlgoChanged)
         self.radioAlgo2 = tk.Radiobutton(self.frameOptions, variable=self.radioAlgoVar, indicatoron=False, text="Advanced Maximum Mask", value="amm", command=self.AlgoChanged)
         self.radioAlgo1.grid(row=1, column=0)
-        self.radioAlgo2.grid(row=1, column=1)
+        #self.radioAlgo2.grid(row=1, column=1)
         self.btnDetect = tk.Button(self.frameOptions, text="Detect", command=self.Detect)
         self.btnDetect.grid(row=2, column=0)
 
@@ -104,7 +104,7 @@ class Tab3():
         self.axImg.set_title("Img Mean")
         self.axImg.set_axis_off()
         if self._gui.IMG.imgMean is not None:
-            self.axImg.imshow(self._gui.IMG.imgMean)
+            self.axImg.imshow(self._gui.IMG.imgMean, cmap="Greys_r")
         self.canvasImg.draw()
 
         self.ax1.clear()
@@ -123,7 +123,7 @@ class Tab3():
         if (self._gui.IMG.imgDiff is None):
             self.canvas1.draw()
             return
-        self.ax1.imshow(self._gui.IMG.imgDiffMaxTime)
+        self.ax1.imshow(self._gui.IMG.imgDiffMaxTime, cmap="inferno")
         self.ax1.set_axis_on()
         if self.detection.synapses is None:
             self.canvas1.draw()

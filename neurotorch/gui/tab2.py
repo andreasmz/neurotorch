@@ -38,6 +38,9 @@ class Tab2():
         self.checkNormalizeImgVar = tk.IntVar(value=1)
         self.checkNormalizeImg = tk.Checkbutton(self.frameOptions, text="Normalize", variable=self.checkNormalizeImgVar, command=self._IntSliderChanged)
         self.checkNormalizeImg.pack(anchor=tk.W)
+        self.checkShownOriginalImgVar = tk.IntVar(value=0)
+        self.checkShownOriginalImg = tk.Checkbutton(self.frameOptions, text="Show originmal image", variable=self.checkShownOriginalImgVar, command=self._IntSliderChanged)
+        self.checkShownOriginalImg.pack(anchor=tk.W)
         self.frameProminence = tk.Frame(self.frameOptions)
         self.frameProminence.pack(anchor=tk.W)
         tk.Label(self.frameProminence, text="Peak Prominence:").pack(side=tk.LEFT)
@@ -95,10 +98,14 @@ class Tab2():
         if self._gui.signal.signal is not None:
             self.axSignal.plot(self._gui.signal.signal)
             self.axSignal.scatter(self._gui.signal.peaks, self._gui.signal.signal[self._gui.signal.peaks], c="orange")
+            _valstep = 1
+            _min = 1
             if (self.checkSnapPeaksVar.get() == 1 and len(self._gui.signal.peaks) > 0):
-                self.frameSlider = PltWidget.Slider(self.ax1_slider1, 'Frame', 0, len(self._gui.signal.signal)-1, valstep=self._gui.signal.peaks)
-            else:
-                self.frameSlider = PltWidget.Slider(self.ax1_slider1, 'Frame', 0, len(self._gui.signal.signal)-1, valstep=1)
+                _valstep =self._gui.signal.peaks + 1
+            if (self.checkShownOriginalImgVar.get() == 1):
+                _min = 0
+
+            self.frameSlider = PltWidget.Slider(self.ax1_slider1, 'Frame', _min, self._gui.IMG.img.shape[0]-1, valstep=_valstep)
             self.frameSlider.on_changed(self._UpdateFrameSlider)
             self.ax1_btnDown = PltWidget.Button(self.ax1_axbtnDown, '<-')
             self.ax1_btnUp = PltWidget.Button(self.ax1_axbtnUp, '->')
@@ -117,11 +124,32 @@ class Tab2():
         if self.frameSlider is None or self._gui.IMG.imgDiff is None:
             return
         frame = self.frameSlider.val
-        if (self.checkNormalizeImgVar.get() == 1):
-            self.ax1_imshow = self.ax1.imshow(self._gui.IMG.imgDiff[frame,:,:], vmin=self._gui.IMG.imgDiff_Stats["AbsMin"], vmax=self._gui.IMG.imgDiff_Stats["Max"])
+        self.frameSlider.valtext.set_text(f"{frame} / {self._gui.IMG.img.shape[0]-1}")
+        if (self.checkShownOriginalImgVar.get() == 1):
+            _img = self._gui.IMG.img[frame,:,:]
+            _vmin = self._gui.IMG.img_Stats["ClipMin"]
+            _vmax = self._gui.IMG.img_Stats["Max"]
+            _cmap = "Greys_r"
+            _title = ""
         else:
-            self.ax1_imshow = self.ax1.imshow(self._gui.IMG.imgDiff[frame,:,:])
+            frame -= 1
+            _img = self._gui.IMG.imgDiff[frame,:,:]
+            _vmin = self._gui.IMG.imgDiff_Stats["ClipMin"]
+            _vmax = self._gui.IMG.imgDiff_Stats["Max"]
+            _cmap = "inferno"
+            _title = "Diff Image"
+
+        if (self.checkNormalizeImgVar.get() == 0):
+            _vmin = None
+            _vmax = None
+        self.ax1_imshow = self.ax1.imshow(_img, vmin=_vmin, vmax=_vmax, cmap=_cmap)
+        self.ax1.set_title(_title)
         self.canvas1.draw()
+
+        #if (self.checkNormalizeImgVar.get() == 1):
+        #    self.ax1_imshow = self.ax1.imshow(self._gui.IMG.imgDiff[frame,:,:], vmin=self._gui.IMG.imgDiff_Stats["ClipMin"], vmax=self._gui.IMG.imgDiff_Stats["Max"], cmap="Greys_r")
+        #else:
+        #    self.ax1_imshow = self.ax1.imshow(self._gui.IMG.imgDiff[frame,:,:])  
 
     def _AlgoChanged(self, val=0):
         if (self._gui.IMG.imgDiff is None):
@@ -134,7 +162,9 @@ class Tab2():
         self.Update()
 
     def _BtnDown(self, event):
-        self.frameSlider.set_val(self.frameSlider.val - 1)
+        newval = min(self.frameSlider.valmax, max(self.frameSlider.valmin, self.frameSlider.val - 1))
+        self.frameSlider.set_val(newval)
     
     def _BtnUp(self, event):
-        self.frameSlider.set_val(self.frameSlider.val + 1)
+        newval = min(self.frameSlider.valmax, max(self.frameSlider.valmin, self.frameSlider.val + 1))
+        self.frameSlider.set_val(newval)

@@ -11,6 +11,7 @@ class Img:
         self.img = None
         self.imgMean = None
         self.imgMedian = None
+        self.img_Stats = None
 
         self.imgDiff = None
         self.imgDiff_Stats = None
@@ -42,6 +43,7 @@ class Img:
         self.imgMean = np.mean(self.img, axis=0)
         self.imgMedian = np.mean(self.img, axis=0)
         self.name = name
+        self.img_Stats = {"ClipMin": max(0, np.min(self.img)), "Max": np.max(self.img)}
         self.CalcDiff()
         self.CalcDiffMax()
         return True
@@ -52,8 +54,8 @@ class Img:
             return
         self.imgDiff = np.diff(self.img, axis=0)
         self.imgDiff2 = np.diff(self.img, axis=0, n=2)
-        self.imgDiff_Stats = {"AbsMin": max(0, np.min(self.imgDiff)), "Max": np.max(self.imgDiff)}
-        self.imgDiff2_Stats = {"AbsMin": max(0, np.min(self.imgDiff2)), "Max": np.max(self.imgDiff2)}
+        self.imgDiff_Stats = {"ClipMin": max(0, np.min(self.imgDiff)), "Max": np.max(self.imgDiff)}
+        self.imgDiff2_Stats = {"ClipMin": max(0, np.min(self.imgDiff2)), "Max": np.max(self.imgDiff2)}
     
     def CalcDiffMax(self):
         if self.imgDiff is None: return
