@@ -21,13 +21,17 @@ class _Updater:
         try:
             response = requests.get("https://raw.githubusercontent.com/andreasmz/neurotorch/main/neurotorch/VERSION.txt")
             if (response.status_code != 200):
-                return
+                return False
             self.version_github = response.text
         except Exception as ex:
             print(ex)
             return False
+        return True
 
     def DownloadUpdate(self):
+        if not self.CheckForUpdate():
+            messagebox.showerror("Neurotorch", "The update server is not available")
+            return
         try:
             self.fs = fsspec.filesystem("github", org="andreasmz", repo="neurotorch", branch="main")
             if (len(settings.UserSettings.SuperParentPath) < 10):
@@ -38,10 +42,14 @@ class _Updater:
             destination = Path(settings.UserSettings.SuperParentPath) / "neurotorch_update"
             print(f"Download Update to {destination}")
             destination.mkdir(exist_ok=True)
-            self.fs.get(self.fs.ls("neurotorch"), destination.as_posix(), recursive=True)
+            self.fs.get("neurotorch", destination.as_posix(), recursive=True)
             print("Update finished")
         except Exception as ex:
             print(ex)
             messagebox.showerror("Neurotorch", "The updater failed for unkown reason")
+            return
+        messagebox.showwarning("Neurotorch", f"Neurotorch version {self.version_github} was installed into {destination}.\n\n1. Close the application\n2. Rename 'neurotorch/neurotorch' to 'neurotorch/neurotorch_old'\n3. Rename 'neurotorch_update' to 'neurotorch'\nto install the update\n4. If all works, delete 'neurotorch/neurotorch_old'")
+        if (not messagebox.askyesno("Neurotorch", "Did you followed all steps?")):
+            messagebox.showwarning("Neurotorch", f"Neurotorch version {self.version_github} was installed into {destination}.\n\n1. Close the application\n2. Rename 'neurotorch/neurotorch' to 'neurotorch/neurotorch_old'\n3. Rename 'neurotorch_update' to 'neurotorch'\nto install the update\n4. If all works, delete 'neurotorch/neurotorch_old'")
 
 Updater = _Updater()
