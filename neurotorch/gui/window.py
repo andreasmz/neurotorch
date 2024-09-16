@@ -142,9 +142,9 @@ class _GUI:
         if _local_version == _github_version:
             messagebox.showinfo("Neurotorch", f"You are running the newest version")
             return
-        if not messagebox.askyesnocancel("Neurotorch", f"Version {_github_version} is available for download (You have {_local_version}). Do you want to update?"):
+        if not messagebox.askyesno("Neurotorch", f"Version {_github_version} is available for download (You have {_local_version}). Do you want to update?"):
             return
-        messagebox.showinfo("Installing")
+        Update.Updater.DownloadUpdate()
 
     def _Debug_Load(self):
         savePath = os.path.join(settings.UserSettings.UserPath, "img.dump")
