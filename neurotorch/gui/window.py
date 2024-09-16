@@ -15,7 +15,6 @@ matplotlib.use('TkAgg')
 import neurotorch.gui.settings as settings
 from neurotorch.utils.image import Img
 from neurotorch.utils.signalDetection import Signal
-from neurotorch.utils import version
 import neurotorch.utils.update as Update
 
 class Edition(Enum):
@@ -57,6 +56,7 @@ class _GUI:
         self.menuNeurotorch = tk.Menu(self.menubar,tearoff=0)
         self.menubar.add_cascade(label="Neurotorch",menu=self.menuNeurotorch)
         self.menuNeurotorch.add_command(label="About", command=self.MenuNeurotorchAbout_Click)
+        self.menuNeurotorch.add_command(label="Update", command=self.MenuNeurotorchUpdate_Click)
 
         self.statusFrame = tk.Frame(self.root)
         self.statusFrame.pack(side=tk.BOTTOM, fill="x", expand=False)
@@ -123,12 +123,28 @@ class _GUI:
     def MenuNeurotorchAbout_Click(self):
         Update.Updater.CheckForUpdate()
         _strUpdate = ""
-        if Update.Updater.version_github is not None:
-            if version.VERSION == Update.Updater.version_github:
+        _github_version = Update.Updater.version_github
+        _local_version = Update.Updater.version
+        if _github_version is not None:
+            if _local_version == _github_version:
                 _strUpdate = " (newest version)"
             else:
-                _strUpdate = f" (version {_strUpdate} available)"
-        messagebox.showinfo("Neurotorch", f"© Andreas Brilka 2024\nYou are running Neurotorch {version.VERSION}{_strUpdate}")
+                _strUpdate = f" (version {_github_version} available for download)"
+        messagebox.showinfo("Neurotorch", f"© Andreas Brilka 2024\nYou are running Neurotorch {_local_version}{_strUpdate}")
+
+    def MenuNeurotorchUpdate_Click(self):
+        Update.Updater.CheckForUpdate()
+        _github_version = Update.Updater.version_github
+        _local_version = Update.Updater.version
+        if _github_version is None:
+            messagebox.showerror("Neurotorch", f"The server can't be contacted to check for an update. Please try again later")
+            return
+        if _local_version == _github_version:
+            messagebox.showinfo("Neurotorch", f"You are running the newest version")
+            return
+        if not messagebox.askyesnocancel("Neurotorch", f"Version {_github_version} is available for download (You have {_local_version}). Do you want to update?"):
+            return
+        messagebox.showinfo("Installing")
 
     def _Debug_Load(self):
         savePath = os.path.join(settings.UserSettings.UserPath, "img.dump")

@@ -1,2 +1,0 @@
-VERSION = "24.9.1"
-VERSION_INT = 240901 #Example: 24.9.1 --> 240901
