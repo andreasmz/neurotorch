@@ -1,4 +1,5 @@
 import neurotorch.gui.window as window
+import neurotorch.utils.resourcemanager as rsm
 
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -21,17 +22,27 @@ class Tab2():
 
         self.frame = tk.Frame(self.tab)
         self.frame.pack(side=tk.LEFT, fill="both", expand=True)
+
+        self.frameInfo = ttk.LabelFrame(self.frame, text = "Info")
+        self.frameInfo.grid(row=0, column=0, sticky="news")
+        self.lblTabInfo = tk.Label(self.frameInfo, text=rsm.Get("tab2_description"), wraplength=400, justify="left")
+        self.lblTabInfo.pack(anchor=tk.E, expand=True, fill="x")
+
         self.frameOptions = ttk.LabelFrame(self.frame, text="Options")
-        self.frameOptions.grid(row=0, column=0, sticky="news")
+        self.frameOptions.grid(row=1, column=0, sticky="news")
         self.frameAlgorithm = tk.Frame(self.frameOptions)
         self.frameAlgorithm.pack(anchor=tk.W)
-        self.lblAlgorithm = tk.Label(self.frameAlgorithm, text="Algorithm:")
+        self.frameAlgorithmPick = tk.Frame(self.frameAlgorithm)
+        self.frameAlgorithmPick.pack(anchor=tk.W)
+        self.lblAlgorithm = tk.Label(self.frameAlgorithmPick, text="Algorithm:")
         self.lblAlgorithm.pack(side=tk.LEFT)
         self.radioAlgoVar = tk.StringVar(value="diffMax")
-        self.radioAlgo1 = tk.Radiobutton(self.frameAlgorithm, variable=self.radioAlgoVar, indicatoron=False, text="DiffMax", value="diffMax", command=self._AlgoChanged)
-        self.radioAlgo2 = tk.Radiobutton(self.frameAlgorithm, variable=self.radioAlgoVar, indicatoron=False, text="DiffStd", value="diffStd", command=self._AlgoChanged)
+        self.radioAlgo1 = tk.Radiobutton(self.frameAlgorithmPick, variable=self.radioAlgoVar, indicatoron=False, text="DiffMax", value="diffMax", command=self._AlgoChanged)
+        self.radioAlgo2 = tk.Radiobutton(self.frameAlgorithmPick, variable=self.radioAlgoVar, indicatoron=False, text="DiffStd", value="diffStd", command=self._AlgoChanged)
         self.radioAlgo1.pack(side=tk.LEFT)
         self.radioAlgo2.pack(side=tk.LEFT)
+        self.lblAlgoInfo = tk.Label(self.frameAlgorithm, text=rsm.Get("tab2_algorithms").Get("DiffMax"), wraplength=400, justify="left")
+        self.lblAlgoInfo.pack(anchor=tk.W)
         self.checkSnapPeaksVar = tk.IntVar(value=1)
         self.checkSnapPeaks = tk.Checkbutton(self.frameOptions, text="Snap frames to peaks", variable=self.checkSnapPeaksVar, command=self._IntSliderChanged)
         self.checkSnapPeaks.pack(anchor=tk.W)
@@ -39,7 +50,7 @@ class Tab2():
         self.checkNormalizeImg = tk.Checkbutton(self.frameOptions, text="Normalize", variable=self.checkNormalizeImgVar, command=self._IntSliderChanged)
         self.checkNormalizeImg.pack(anchor=tk.W)
         self.checkShownOriginalImgVar = tk.IntVar(value=0)
-        self.checkShownOriginalImg = tk.Checkbutton(self.frameOptions, text="Show originmal image", variable=self.checkShownOriginalImgVar, command=self._IntSliderChanged)
+        self.checkShownOriginalImg = tk.Checkbutton(self.frameOptions, text="Show original image", variable=self.checkShownOriginalImgVar, command=self._IntSliderChanged)
         self.checkShownOriginalImg.pack(anchor=tk.W)
         self.frameProminence = tk.Frame(self.frameOptions)
         self.frameProminence.pack(anchor=tk.W)
@@ -49,7 +60,7 @@ class Tab2():
         self.sliderProminenceFactor.pack(side=tk.LEFT)
 
         self.frameSignal = ttk.LabelFrame(self.frame, text="Image")
-        self.frameSignal.grid(row=1, column=0, sticky="new")
+        self.frameSignal.grid(row=2, column=0, sticky="new")
         self.figureSignal = plt.Figure(figsize=(3.7,3.7), dpi=100)
         self.axSignal = self.figureSignal.add_subplot()  
         self.canvasSignal = FigureCanvasTkAgg(self.figureSignal, self.frameSignal)
@@ -69,7 +80,7 @@ class Tab2():
         self.ax1_axbtnDown.set_axis_off()
         
         self.frameCanvas1 = tk.Frame(self.frame)
-        self.frameCanvas1.grid(row=0, column=1, rowspan=2, sticky="news")
+        self.frameCanvas1.grid(row=0, column=1, rowspan=3, sticky="news")
         self.canvas1 = FigureCanvasTkAgg(self.figure1, self.frameCanvas1)
         #self.canvas1.get_tk_widget().grid(row=0, column=1, rowspan=2, sticky="news")
         self.canvtoolbar1 = NavigationToolbar2Tk(self.canvas1,self.frameCanvas1)
@@ -79,7 +90,7 @@ class Tab2():
 
 
         tk.Grid.columnconfigure(self.frame, 1, weight=1)
-        tk.Grid.rowconfigure(self.frame, 1, weight=1)
+        tk.Grid.rowconfigure(self.frame, 2, weight=1)
 
         self.Update()
 
@@ -152,6 +163,13 @@ class Tab2():
         #    self.ax1_imshow = self.ax1.imshow(self._gui.IMG.imgDiff[frame,:,:])  
 
     def _AlgoChanged(self, val=0):
+        match(self.radioAlgoVar.get()):
+            case "diffMax":
+                self.lblAlgoInfo["text"] = rsm.Get("tab2_algorithms").Get("DiffMax")
+            case "diffStd":
+                self.lblAlgoInfo["text"] = rsm.Get("tab2_algorithms").Get("DiffStd")
+            case _:
+                self.lblAlgoInfo["text"] = ""
         if (self._gui.IMG.imgDiff is None):
             return
         self._gui.signal.DetectSignal(self.radioAlgoVar.get(), self.sliderProminenceFactorVar.get())

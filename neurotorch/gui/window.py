@@ -16,6 +16,7 @@ import neurotorch.gui.settings as settings
 from neurotorch.utils.image import Img
 from neurotorch.utils.signalDetection import Signal
 import neurotorch.utils.update as Update
+import neurotorch.external.trace_selector_connector as ts_con
 
 class Edition(Enum):
     NEUROTORCH = 1
@@ -46,7 +47,12 @@ class _GUI:
         self.menuFile = tk.Menu(self.menubar,tearoff=0)
         self.menubar.add_cascade(label="File",menu=self.menuFile)
         self.menuFile.add_command(label="Open", command=self.OpenFile)
-        self.menuFile.add_command(label="Open Dump", command=self._Debug_Load)
+        self.menuFile.add_command(label="Open noisy image", command=self._OpenFile_DenoiseClick)
+
+        self.menuImage = tk.Menu(self.menubar,tearoff=0)
+        self.menubar.add_cascade(label="Image", menu=self.menuImage)
+        self.menuImage.add_command(label="Diff Gaussian Filter σ=2", command=self.DiffGaussianFilter)
+        self.menuImage.add_command(label="Start Trace Selector", command=self.StartTraceSelector_Click)
 
         if (edition == Edition.NEUROTORCH):
             from neurotorch.utils.pyimagej import ImageJHandler
@@ -99,7 +105,7 @@ class _GUI:
         else:
             self.root.title(f"NeuroTorch {text}")
 
-    def OpenFile(self):
+    def OpenFile(self, denoise=False):
         image_path = filedialog.askopenfilename(parent=self.root, title="Open a Image File", 
                 filetypes=(("TIF File", "*.tif"), ("All files", "*.*")))
         file_name = os.path.splitext(os.path.basename(image_path))[0]
@@ -117,7 +123,15 @@ class _GUI:
         if len(imgNP.shape) != 3:
             messagebox.showerror("Neurotorch", "The image must contain 3 dimensions: Time, Y, X. This is with your image not the case")
             return
-        self.IMG.SetIMG(imgNP, file_name)
+        self.IMG.SetIMG(imgNP, file_name, denoise)
+        self.NewImageProvided()
+
+    def DiffGaussianFilter(self):
+        if self.IMG.img is None:
+            self.root.bell()
+            return
+        self.IMG.CalcDiff(denoise=True)
+        self.IMG.CalcDiffMax()
         self.NewImageProvided()
 
     def MenuNeurotorchAbout_Click(self):
@@ -145,6 +159,13 @@ class _GUI:
         if not messagebox.askyesno("Neurotorch", f"Version {_github_version} is available for download (You have {_local_version}). Do you want to update?"):
             return
         Update.Updater.DownloadUpdate()
+
+    def StartTraceSelector_Click(self):
+        if messagebox.askokcancel("Neurotorch", "This is currently an experimental feature. Are you sure you want to continue?"):
+            ts_con.StartTraceSelector()
+
+    def _OpenFile_DenoiseClick(self):
+        self.OpenFile(denoise=True)
 
     def _Debug_Load(self):
         savePath = os.path.join(settings.UserSettings.UserPath, "img.dump")

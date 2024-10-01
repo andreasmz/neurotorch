@@ -7,6 +7,7 @@ if __name__ == "__main__":
 
 import neurotorch.gui.window as window
 import neurotorch.gui.settings as settings
+import neurotorch.utils.resourcemanager as rsm
 import threading
 
 def Start():

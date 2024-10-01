@@ -1,6 +1,7 @@
 import neurotorch.gui.window as window
 import neurotorch.utils.detection as detection
-from neurotorch.gui.components import EntryPopup
+from neurotorch.gui.components import EntryPopup, VirtualFile
+import neurotorch.external.trace_selector_connector as ts_con
 
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
@@ -10,6 +11,7 @@ import matplotlib.widgets as PltWidget
 from matplotlib.patches import Circle
 import numpy as np
 import pandas as pd
+from io import StringIO
 
 class Tab3():
     def __init__(self, gui: window._GUI):
@@ -67,6 +69,8 @@ class Tab3():
         self.btnExportROIsImageJ.grid(row=0, column=0)
         self.btnExportCSVMultiM = tk.Button(self.frameBtnsExport, text="Export CSV (Multi Measure)", command=self.ExportCSVMultiM)
         self.btnExportCSVMultiM.grid(row=0, column=1)
+        self.btnOpenInTraceSelector = tk.Button(self.frameBtnsExport, text="Open in Trace Selector", command=self.OpenInTraceSelector)
+        self.btnOpenInTraceSelector.grid(row=1, column=0)
 
         self.frameImg = ttk.LabelFrame(self.frame, text="Image")
         self.frameImg.grid(row=3, column=0, sticky="new")
@@ -251,10 +255,10 @@ class Tab3():
             roi.setName(f"ROI {i+1} {synapse.LocationStr()}")
             self._gui.ijH.RM.addRoi(roi)
 
-    def ExportCSVMultiM(self):
+    def ExportCSVMultiM(self, toStream = False):
         if self.detection.synapses is None or len(self.detection.synapses) == 0 or self._gui.IMG.img is None:
             self.root.bell()
-            return
+            return None
         data = pd.DataFrame()
 
         for i in  range(len(self.detection.synapses)):
@@ -264,11 +268,24 @@ class Tab3():
             data[name] = _signal
         data = data.round(4)
         data.index += 1
+        if toStream:
+            _buffer = VirtualFile()
+            data.to_csv(_buffer, lineterminator="\n")
+            return _buffer
         f = filedialog.asksaveasfile(mode='w', title="Save Multi Measure", filetypes=(("CSV", "*.csv"), ("All files", "*.*")), defaultextension=".csv")
         if f is None:
-            return
+            return None
         data.to_csv(path_or_buf=f, lineterminator="\n")
         
+    def OpenInTraceSelector(self):
+        if ts_con.ts_mainWindow is None:
+            messagebox.showerror("Neurotorch", "Please first start Trace Selector")
+            return
+        _buffer = self.ExportCSVMultiM(toStream=True)
+        if (_buffer is None):
+            self.root.bell()
+            return
+        ts_con.OpenStream(_buffer)
         
     def TreeRois_onDoubleClick(self, event):
         try: 

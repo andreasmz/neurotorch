@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
+from io import StringIO
 
 class EntryPopup(ttk.Entry):
     def __init__(self, tv, callback, rowid, column, val, **kw):
@@ -34,3 +35,7 @@ class EntryPopup(ttk.Entry):
         self.selection_range(0, 'end')
         return 'break'
 
+
+class VirtualFile(StringIO):
+    def endswith(self, value, start=None, end=None):
+        return "_virtualFile.csv".endswith(value, start, end)

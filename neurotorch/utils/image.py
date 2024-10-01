@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.ndimage import convolve
+from scipy.ndimage import convolve, gaussian_filter
 import threading
 from enum import Enum
 
@@ -27,7 +27,7 @@ class Img:
         self.imgConv = None
         self.name = None
 
-    def SetIMG(self, img:np.ndarray, name:str=""):
+    def SetIMG(self, img:np.ndarray, name:str="", denoise=False):
         if (len(img.shape) != 3):
             return False
         match (img.dtype):
@@ -44,16 +44,20 @@ class Img:
         self.imgMedian = np.mean(self.img, axis=0)
         self.name = name
         self.img_Stats = {"ClipMin": max(0, np.min(self.img)), "Max": np.max(self.img)}
-        self.CalcDiff()
+        self.CalcDiff(denoise=denoise)
         self.CalcDiffMax()
         return True
     
-    def CalcDiff(self):
+    def CalcDiff(self, denoise=False):
         if self.img is None: return
         if self.img.shape[0] <= 1:
             return
+        
         self.imgDiff = np.diff(self.img, axis=0)
         self.imgDiff2 = np.diff(self.img, axis=0, n=2)
+        if denoise:
+            self.imgDiff = gaussian_filter(self.imgDiff, sigma=2, axes=(1,2))
+            self.imgDiff2 = gaussian_filter(self.imgDiff2, sigma=2, axes=(1,2))  
         self.imgDiff_Stats = {"ClipMin": max(0, np.min(self.imgDiff)), "Max": np.max(self.imgDiff)}
         self.imgDiff2_Stats = {"ClipMin": max(0, np.min(self.imgDiff2)), "Max": np.max(self.imgDiff2)}
     
