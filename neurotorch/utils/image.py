@@ -70,6 +70,7 @@ class Img:
         self.imgDiff2MaxTime = np.max(self.imgDiff2, axis=0)
         self.imgDiff2StdTime = np.std(self.imgDiff2, axis=0)
 
+"""
     # Point (X, Y)
     def GetImgROIAt(self, point, radius) -> np.ndarray:
         xmax = self.img.shape[2]
@@ -106,3 +107,5 @@ class Img:
         if not self.ImgProvided(): return
         t1 = threading.Thread(target=self._ConvTask, args=(radius))
         t1.start()
+
+"""

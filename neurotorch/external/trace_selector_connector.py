@@ -14,8 +14,12 @@ class VirtualFile(StringIO):
         return "_virtualFile.csv".endswith(value, start, end)
 
 def _StartTraceSelector():
-    global MainWindow, gui_settings, ModelZoo, QApplication
+    #global MainWindow, gui_settings, ModelZoo, QApplication
     global ts_modelzoo, ts_settings, ts_app, ts_mainWindow
+    from trace_selector.gui.gui import MainWindow
+    from trace_selector.utils.configuration import gui_settings
+    from trace_selector.detection.model_zoo import ModelZoo
+    from PyQt6.QtWidgets import QApplication
     if ts_modelzoo is None or ts_settings is None:
         modelzoo_folder = os.path.join(*[ntsettings.UserSettings.ParentPath, "external", "synapse_selector_modelzoo"])
         ts_modelzoo = ModelZoo(modelzoo_folder)
@@ -49,7 +53,8 @@ def StartTraceSelector():
     except ModuleNotFoundError as ex:
         messagebox.showerror("Neurotorch", "Trace Selector seems to be not installed. Try to run the following commands in the Anaconda prompt (replace the conda enviorenment name if necessary)\n\tconda activate pyimagej\n\tpip install trace_selector --ignore-requires-python")
     try:
-        ts_thread = threading.Thread(target=_StartTraceSelector)
+        ts_thread = multiprocessing.Process(target=_StartTraceSelector)
+        #ts_thread = threading.Thread(target=_StartTraceSelector)
         ts_thread.start()
     except Exception as ex:
         print("An error happended running Trace Selector:", repr(ex))

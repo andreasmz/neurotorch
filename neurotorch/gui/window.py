@@ -64,6 +64,11 @@ class _GUI:
         self.menuNeurotorch.add_command(label="About", command=self.MenuNeurotorchAbout_Click)
         self.menuNeurotorch.add_command(label="Update", command=self.MenuNeurotorchUpdate_Click)
 
+        self.menuDebug = tk.Menu(self.menubar,tearoff=0)
+        self.menubar.add_cascade(label="Debug", menu=self.menuDebug)
+        self.menuDebug.add_command(label="Save diffImg peak frames", command=self._Debug_Save_ImgPeaks)
+        self.menuDebug.add_command(label="Load diffImg peak frames", command=self._Debug_Load_ImgPeaks)
+
         self.statusFrame = tk.Frame(self.root)
         self.statusFrame.pack(side=tk.BOTTOM, fill="x", expand=False)
         self.varProgMain = tk.DoubleVar()
@@ -167,7 +172,7 @@ class _GUI:
     def _OpenFile_DenoiseClick(self):
         self.OpenFile(denoise=True)
 
-    def _Debug_Load(self):
+    def _Debug_Load_Img(self):
         savePath = os.path.join(settings.UserSettings.UserPath, "img.dump")
         if not os.path.exists(savePath):
             self.root.bell()
@@ -177,6 +182,38 @@ class _GUI:
         _size = round(sys.getsizeof(self.IMG.img)/(1024**2),2)
         self.lblImgInfo["text"] = f"Image: {self.IMG.img.shape}, dtype={self.IMG.img.dtype}, size = {_size} MB"
         self.NewImageProvided()
+
+    def _Debug_Load_ImgPeaks(self):
+        savePath = os.path.join(settings.UserSettings.UserPath, "img_peaks.dump")
+        if not os.path.exists(savePath):
+            self.root.bell()
+            return
+        with open(savePath, 'rb') as intp:
+            self.IMG.SetIMG(pickle.load(intp), name= "img_peaks.dump")
+        _size = round(sys.getsizeof(self.IMG.img)/(1024**2),2)
+        self.lblImgInfo["text"] = f"Image: {self.IMG.img.shape}, dtype={self.IMG.img.dtype}, size = {_size} MB"
+        self.NewImageProvided()
+
+    def _Debug_Save_ImgPeaks(self):
+        if self.IMG.img is None or self.IMG.imgDiff is None or self.signal.peaks is None or len(self.signal.peaks) == 0:
+            self.root.bell()
+            return
+        _peaksExtended = []
+        for p in self.signal.peaks:
+            if p != 0 and p < (self.IMG.img.shape[0] - 1):
+                if len(_peaksExtended) == 0:
+                    _peaksExtended.extend([int(p-1),int(p),int(p+1)])
+                else:
+                    _peaksExtended.extend([int(p),int(p+1)])
+            else:
+                print(f"Skipped peak {p} as it is to near to the edge")
+        _peaksExtended.extend([int(p+2)])
+        if not messagebox.askyesnocancel("Neurotorch", "Do you want to save the current diffImg Peak Frames in a Dump?"):
+            return
+        print("Exported frames", _peaksExtended)
+        savePath = os.path.join(settings.UserSettings.UserPath, "img_peaks.dump")
+        with open(savePath, 'wb') as intp:
+            pickle.dump(self.IMG.img[_peaksExtended, :, :], intp, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 GUI = _GUI()
