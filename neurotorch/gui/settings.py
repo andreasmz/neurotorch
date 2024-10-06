@@ -6,6 +6,8 @@ class _UserSettings():
         self.ParentPath = os.path.abspath(os.path.join(os.path.join(__file__, os.pardir), os.pardir))
         self.SuperParentPath = os.path.abspath(os.path.join(self.ParentPath, os.pardir))
         self.UserPath = os.path.join(self.ParentPath, "user")
+        self.MediaPath = os.path.join(self.ParentPath, "media")
+        self.ResourcesPath = os.path.join(self.ParentPath, "resources")
         self.Settings = None
         self.ParseSettings()
 

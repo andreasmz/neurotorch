@@ -10,12 +10,14 @@ class Img:
     def __init__(self):
         self.img = None
         self.imgMean = None
+        self.imgStd = None
         self.imgMedian = None
         self.img_Stats = None
 
         self.imgDiff = None
         self.imgDiff_Stats = None
         self.imgDiffMaxTime = None
+        self.imgDiffMaxTime_Stats = None
         self.imgDiffMaxSpatial = None
         self.imgDiffStdTime = None
 
@@ -41,6 +43,7 @@ class Img:
                 self.img = img
         
         self.imgMean = np.mean(self.img, axis=0)
+        self.imgStd = np.std(self.img, axis=0)
         self.imgMedian = np.mean(self.img, axis=0)
         self.name = name
         self.img_Stats = {"ClipMin": max(0, np.min(self.img)), "Max": np.max(self.img)}
@@ -66,6 +69,12 @@ class Img:
         self.imgDiffMaxTime = np.max(self.imgDiff, axis=0)
         self.imgDiffMaxSpatial = np.max(self.imgDiff, axis=(1,2))
         self.imgDiffStdTime = np.std(self.imgDiff, axis=0)
+
+        self.imgDiffMaxTime_Stats = {"Min": np.min(self.imgDiffMaxTime), 
+                                     "Max": np.max(self.imgDiffMaxTime),
+                                     "Std": np.std(self.imgDiffMaxTime),
+                                     "Median": np.median(self.imgDiffMaxTime),
+                                     "Mean": np.mean(self.imgDiffMaxTime)}
 
         self.imgDiff2MaxTime = np.max(self.imgDiff2, axis=0)
         self.imgDiff2StdTime = np.std(self.imgDiff2, axis=0)

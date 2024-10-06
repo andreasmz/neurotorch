@@ -21,16 +21,18 @@ class Tab1():
 
         self.frameDisplay = tk.Frame(self.tab)
         self.radioDisplayVar = tk.StringVar(value="imgMean")
-        self.radioDisplay1 = tk.Radiobutton(self.frameDisplay, variable=self.radioDisplayVar, indicatoron=False, command=self.Update, text="Image Mean", value="imgMean")
-        self.radioDisplay2 = tk.Radiobutton(self.frameDisplay, variable=self.radioDisplayVar, indicatoron=False, command=self.Update, text="Derivative Maximum", value="diffMax")
-        self.radioDisplay3 = tk.Radiobutton(self.frameDisplay, variable=self.radioDisplayVar, indicatoron=False, command=self.Update, text="Derivative Std", value="diffStd")
+        self.radioDisplay1 = tk.Radiobutton(self.frameDisplay, variable=self.radioDisplayVar, indicatoron=False, command=self.Update, text="Image mean (imgMean)", value="imgMean")
+        self.radioDisplay1b = tk.Radiobutton(self.frameDisplay, variable=self.radioDisplayVar, indicatoron=False, command=self.Update, text="Image standard deviation (imgStd)", value="imgStd")
+        self.radioDisplay2 = tk.Radiobutton(self.frameDisplay, variable=self.radioDisplayVar, indicatoron=False, command=self.Update, text="Difference Image Maximum (diffImgMax)", value="diffMax")
+        self.radioDisplay3 = tk.Radiobutton(self.frameDisplay, variable=self.radioDisplayVar, indicatoron=False, command=self.Update, text="Difference Image Std (diffImgStd)", value="diffStd")
         self.radioDisplay4 = tk.Radiobutton(self.frameDisplay, variable=self.radioDisplayVar, indicatoron=False, command=self.Update, text="2nd Derivative Maximum", value="diff2Max")
         self.radioDisplay5 = tk.Radiobutton(self.frameDisplay, variable=self.radioDisplayVar, indicatoron=False, command=self.Update, text="2nd Derivative Std", value="diff2Std")
         self.radioDisplay1.grid(row=0, column=0)
-        self.radioDisplay2.grid(row=0, column=1)
-        self.radioDisplay3.grid(row=0, column=2)
-        self.radioDisplay4.grid(row=0, column=3)
-        self.radioDisplay5.grid(row=0, column=4)
+        self.radioDisplay1b.grid(row=0, column=1)
+        self.radioDisplay2.grid(row=0, column=2)
+        self.radioDisplay3.grid(row=0, column=3)
+        self.radioDisplay4.grid(row=0, column=4)
+        self.radioDisplay5.grid(row=0, column=5)
         self.frameDisplay.pack()
 
         self.tabMain = ttk.Notebook(self.tab)
@@ -83,6 +85,9 @@ class Tab1():
             case "imgMean":
                 self.ax2D.set_axis_on()
                 self.imshow2D = self.ax2D.imshow(self._gui.IMG.imgMean, cmap="Greys_r")
+            case "imgStd":
+                self.ax2D.set_axis_on()
+                self.imshow2D = self.ax2D.imshow(self._gui.IMG.imgStd, cmap="Greys_r")
             case "diffMax":
                 self.ax2D.set_axis_on()
                 self.imshow2D = self.ax2D.imshow(self._gui.IMG.imgDiffMaxTime, cmap="inferno")
@@ -110,6 +115,8 @@ class Tab1():
         match (_selected):
             case "imgMean":
                 self.imshow3D = self.ax3D.plot_surface(X,Y, self._gui.IMG.imgMean, cmap="Greys_r")
+            case "imgStd":
+                self.imshow3D = self.ax3D.plot_surface(X,Y, self._gui.IMG.imgStd, cmap="Greys_r")
             case "diffMax":
                 self.imshow3D = self.ax3D.plot_surface(X,Y, self._gui.IMG.imgDiffMaxTime, cmap="inferno")
             case "diffStd":

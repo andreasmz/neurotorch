@@ -151,6 +151,9 @@ class DetectionAlgorithm:
     
     def AX2Image(self):
         return None
+    
+    def InitTreeview(self, tv: ttk.Treeview):
+        pass
 
 
 class Tresholding(DetectionAlgorithm):
@@ -293,8 +296,8 @@ class APD(DetectionAlgorithm):
         self.varUpperThreshold = IntStringVar(master, tk.IntVar(value=40)).SetStringVarBounds(0,1000)
         self.varMinArea = IntStringVar(master, tk.IntVar(value=20)).SetStringVarBounds(0,1000)
         self.varMinArea.SetCallback(self._UpdateMinAreaText)
-        self.scaleLowerThreshold = ttk.Scale(self.optionsFrame, from_=1, to=100, variable=self.varLowerThreshold.IntVar)
-        self.scaleUpperThreshold = ttk.Scale(self.optionsFrame, from_=1, to=100, variable=self.varUpperThreshold.IntVar)
+        self.scaleLowerThreshold = ttk.Scale(self.optionsFrame, from_=1, to=200, variable=self.varLowerThreshold.IntVar)
+        self.scaleUpperThreshold = ttk.Scale(self.optionsFrame, from_=1, to=200, variable=self.varUpperThreshold.IntVar)
         self.scaleMinArea = ttk.Scale(self.optionsFrame, from_=0, to=500, variable=self.varMinArea.IntVar)
         self.numLowerThreshold = tk.Spinbox(self.optionsFrame, width=6, textvariable=self.varLowerThreshold.StringVar, from_=0, to=1000)
         self.numUpperThreshold = tk.Spinbox(self.optionsFrame, width=6, textvariable=self.varUpperThreshold.StringVar, from_=0, to=1000)
@@ -314,8 +317,10 @@ class APD(DetectionAlgorithm):
     def OptionsFrame_Update(self):
         if self.imgObj is None:
             return
-        if self.imgObj.imgDiffMaxTime is not None:
-            self.lblImgStats = tk.Label(self.optionsFrame, text=f"DiffImage Stats: range = [{np.min(self.imgObj.imgDiffMaxTime)}, {np.max(self.imgObj.imgDiffMaxTime)}], std = {np.round(np.std(self.imgObj.imgDiffMaxTime), 2)}")
+        if self.imgObj.imgDiffMaxTime is not None and self.imgObj.imgDiffMaxTime_Stats is not None:
+            _t = f"DiffImage Stats: range = [{np.min(self.imgObj.imgDiffMaxTime)}, {np.max(self.imgObj.imgDiffMaxTime)}], "
+            _t = _t + f"median = {np.round(self.imgObj.imgDiffMaxTime_Stats["Median"], 2)} ± {np.round(self.imgObj.imgDiffMaxTime_Stats["Std"], 2)}"
+            self.lblImgStats = tk.Label(self.optionsFrame, text=_t)
             self.lblImgStats.grid(row=0, column=0, columnspan=3)
     
     def _UpdateMinAreaText(self):

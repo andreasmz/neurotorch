@@ -33,6 +33,7 @@ class _GUI:
         self.edition = None
 
     def GUI(self, edition:Edition=Edition.NEUROTORCH):
+        import neurotorch.gui.tabWelcome as tabWelcome
         import neurotorch.gui.tab1 as tab1
         import neurotorch.gui.tab2 as tab2
         import neurotorch.gui.tab3 as tab3
@@ -82,6 +83,7 @@ class _GUI:
         self.lblStatusInfo.pack(side=tk.LEFT, padx=(10, 10))
 
         self.tabMain = ttk.Notebook(self.root)
+        self.tabWelcome = tabWelcome.TabWelcome(self)
         self.tab1 = tab1.Tab1(self)
         self.tab2 = tab2.Tab2(self)
         self.tab3 = tab3.Tab3(self)
