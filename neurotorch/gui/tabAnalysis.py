@@ -1,5 +1,5 @@
 import neurotorch.gui.window as window
-import neurotorch.utils.detection as detection
+import neurotorch.utils.synapse_detection as detection
 from neurotorch.gui.components import EntryPopup, VirtualFile
 import neurotorch.external.trace_selector_connector as ts_con
 

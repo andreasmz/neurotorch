@@ -5,6 +5,7 @@ from enum import Enum
 import pickle
 import numpy as np
 from PIL import Image, ImageSequence, UnidentifiedImageError
+import pims
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
@@ -31,6 +32,7 @@ class _GUI:
         self.ijH = None
         self.signal = Signal(self.IMG)
         self.edition = None
+        self.pimsObj = None
 
     def GUI(self, edition:Edition=Edition.NEUROTORCH):
         import neurotorch.gui.tabWelcome as tabWelcome
@@ -89,6 +91,7 @@ class _GUI:
         self.tab3 = tab3.Tab3(self)
         self.tab4 = ttk.Frame(self.tabMain)
         self.tabMain.add(self.tab4, text="Synapse Analysis")
+        self.tabMain.select(self.tab1.tab)
 
         self.tabMain.pack(expand=1, fill="both")
 
@@ -97,6 +100,11 @@ class _GUI:
 
     def NewImageProvided(self):
         self.SetWindowTitle(self.IMG.name)
+        if self.IMG.img is not None:
+            _size = round(sys.getsizeof(self.IMG.img)/(1024**2),2)
+            self.lblImgInfo["text"] = f"Image: {self.IMG.img.shape}, dtype={self.IMG.img.dtype}, size = {_size} MB"
+        else:
+            self.lblImgInfo["text"] = "No image selected"
         self.signal.DetectSignal(self.tab2.radioAlgoVar.get(), self.tab2.sliderProminenceFactorVar.get())
         self.tab1.Update(True)
         self.tab2.Update(True)
@@ -114,22 +122,44 @@ class _GUI:
 
     def OpenFile(self, denoise=False):
         image_path = filedialog.askopenfilename(parent=self.root, title="Open a Image File", 
-                filetypes=(("TIF File", "*.tif"), ("All files", "*.*")))
+                filetypes=(("All compatible files", "*.tif *.tiff *.nd2"), ("TIF File", "*.tif *.tiff"), ("ND2 Files (NIS Elements)", "*.nd2"), ("All files", "*.*")) )
         file_name = os.path.splitext(os.path.basename(image_path))[0]
         if image_path is None or image_path == "":
             return
+        """if image_path.lower().endswith(".tif") or image_path.lower().endswith(".tiff"):
+            try:
+                img = Image.open(image_path)
+            except FileNotFoundError:
+                self.root.bell()
+                return
+            except UnidentifiedImageError:
+                messagebox.showerror("Neurotorch", "The file provided is not a supported image")
+                return
+            imgNP = np.array([np.array(frame) for frame in ImageSequence.Iterator(img)])    
+        elif image_path.lower().endswith(".nd2"):
+            try:
+                pimsImg = pims.open(image_path)
+            except FileNotFoundError:
+                self.root.bell()
+                return
+            except Exception:
+                messagebox.showerror("Neurotorch", "The nd2 file can't be opened")
+                return
+            imgNP = np.array(pimsImg)"""
         try:
-            img = Image.open(image_path)
+            _pimsImg = pims.open(image_path)
         except FileNotFoundError:
             self.root.bell()
             return
-        except UnidentifiedImageError:
-            messagebox.showerror("Neurotorch", "The file provided is not a supported image")
+        except Exception:
+            messagebox.showerror("Neurotorch", "The given image file is not supported")
             return
-        imgNP = np.array([np.array(frame) for frame in ImageSequence.Iterator(img)])    
+        imgNP = np.array([np.array(_pimsImg[i]) for i in range(_pimsImg.shape[0])])    
+        #imgNP = np.array(_pimsImg)
         if len(imgNP.shape) != 3:
             messagebox.showerror("Neurotorch", "The image must contain 3 dimensions: Time, Y, X. This is with your image not the case")
             return
+        self.pimsObj = _pimsImg
         self.IMG.SetIMG(imgNP, file_name, denoise)
         self.NewImageProvided()
 
@@ -181,8 +211,6 @@ class _GUI:
             return
         with open(savePath, 'rb') as intp:
             self.IMG.SetIMG(pickle.load(intp), name= "img.dump")
-        _size = round(sys.getsizeof(self.IMG.img)/(1024**2),2)
-        self.lblImgInfo["text"] = f"Image: {self.IMG.img.shape}, dtype={self.IMG.img.dtype}, size = {_size} MB"
         self.NewImageProvided()
 
     def _Debug_Load_ImgPeaks(self):
@@ -192,8 +220,6 @@ class _GUI:
             return
         with open(savePath, 'rb') as intp:
             self.IMG.SetIMG(pickle.load(intp), name= "img_peaks.dump")
-        _size = round(sys.getsizeof(self.IMG.img)/(1024**2),2)
-        self.lblImgInfo["text"] = f"Image: {self.IMG.img.shape}, dtype={self.IMG.img.dtype}, size = {_size} MB"
         self.NewImageProvided()
 
     def _Debug_Save_ImgPeaks(self):

@@ -19,29 +19,40 @@ class Tab1():
         self.tab = ttk.Frame(self._gui.tabMain)
         self._gui.tabMain.add(self.tab, text="Image")
 
-        self.frameDisplay = tk.Frame(self.tab)
+        self.frameRadioImageMode = tk.Frame(self.tab)
         self.radioDisplayVar = tk.StringVar(value="imgMean")
-        self.radioDisplay1 = tk.Radiobutton(self.frameDisplay, variable=self.radioDisplayVar, indicatoron=False, command=self.Update, text="Image mean (imgMean)", value="imgMean")
-        self.radioDisplay1b = tk.Radiobutton(self.frameDisplay, variable=self.radioDisplayVar, indicatoron=False, command=self.Update, text="Image standard deviation (imgStd)", value="imgStd")
-        self.radioDisplay2 = tk.Radiobutton(self.frameDisplay, variable=self.radioDisplayVar, indicatoron=False, command=self.Update, text="Difference Image Maximum (diffImgMax)", value="diffMax")
-        self.radioDisplay3 = tk.Radiobutton(self.frameDisplay, variable=self.radioDisplayVar, indicatoron=False, command=self.Update, text="Difference Image Std (diffImgStd)", value="diffStd")
-        self.radioDisplay4 = tk.Radiobutton(self.frameDisplay, variable=self.radioDisplayVar, indicatoron=False, command=self.Update, text="2nd Derivative Maximum", value="diff2Max")
-        self.radioDisplay5 = tk.Radiobutton(self.frameDisplay, variable=self.radioDisplayVar, indicatoron=False, command=self.Update, text="2nd Derivative Std", value="diff2Std")
+        self.radioDisplay1 = tk.Radiobutton(self.frameRadioImageMode, variable=self.radioDisplayVar, indicatoron=False, command=self.Update, text="Image mean (imgMean)", value="imgMean")
+        self.radioDisplay1b = tk.Radiobutton(self.frameRadioImageMode, variable=self.radioDisplayVar, indicatoron=False, command=self.Update, text="Image standard deviation (imgStd)", value="imgStd")
+        self.radioDisplay2 = tk.Radiobutton(self.frameRadioImageMode, variable=self.radioDisplayVar, indicatoron=False, command=self.Update, text="Difference Image Maximum (diffImgMax)", value="diffMax")
+        self.radioDisplay3 = tk.Radiobutton(self.frameRadioImageMode, variable=self.radioDisplayVar, indicatoron=False, command=self.Update, text="Difference Image Std (diffImgStd)", value="diffStd")
+        #self.radioDisplay4 = tk.Radiobutton(self.frameRadioImageMode, variable=self.radioDisplayVar, indicatoron=False, command=self.Update, text="2nd Derivative Maximum", value="diff2Max")
+        #self.radioDisplay5 = tk.Radiobutton(self.frameRadioImageMode, variable=self.radioDisplayVar, indicatoron=False, command=self.Update, text="2nd Derivative Std", value="diff2Std")
         self.radioDisplay1.grid(row=0, column=0)
         self.radioDisplay1b.grid(row=0, column=1)
         self.radioDisplay2.grid(row=0, column=2)
         self.radioDisplay3.grid(row=0, column=3)
-        self.radioDisplay4.grid(row=0, column=4)
-        self.radioDisplay5.grid(row=0, column=5)
-        self.frameDisplay.pack()
+        #self.radioDisplay4.grid(row=0, column=4)
+        #self.radioDisplay5.grid(row=0, column=5)
+        self.frameRadioImageMode.pack()
 
-        self.tabMain = ttk.Notebook(self.tab)
-        self.tabMain.bind('<<NotebookTabChanged>>',self.Update)
-        self.tab2D = ttk.Frame(self.tabMain)
-        self.tab3D = ttk.Frame(self.tabMain)
-        self.tabMain.add(self.tab2D, text="2D")
-        self.tabMain.add(self.tab3D, text="3D")
-        self.tabMain.pack(expand=True, fill="both")
+        self.frameMainDisplay = tk.Frame(self.tab)
+        self.frameMainDisplay.pack(expand=True, fill="both")
+        self.frameMetadata = tk.LabelFrame(self.frameMainDisplay,  text="Metadata")
+        self.frameMetadata.pack(side=tk.LEFT, fill="y", padx=10)
+        self.treeMetadata = ttk.Treeview(self.frameMetadata, columns=("Value"))
+        self.treeMetadata.pack(expand=True, fill="y", padx=2)
+        self.treeMetadata.heading('#0', text="Property")
+        self.treeMetadata.heading('Value', text='Value')
+        self.treeMetadata.column("#0", minwidth=0, width=120)
+        self.treeMetadata.column("Value", minwidth=0, width=200)
+
+        self.notebookPlots = ttk.Notebook(self.frameMainDisplay)
+        self.notebookPlots.bind('<<NotebookTabChanged>>',self.Update)
+        self.tab2D = ttk.Frame(self.notebookPlots)
+        self.tab3D = ttk.Frame(self.notebookPlots)
+        self.notebookPlots.add(self.tab2D, text="2D")
+        self.notebookPlots.add(self.tab3D, text="3D")
+        self.notebookPlots.pack(side=tk.LEFT, expand=True, fill="both")
 
         self.figure2D = plt.Figure(figsize=(6,6), dpi=100)
         self.figure2D.tight_layout()
@@ -69,6 +80,26 @@ class Tab1():
             self.ax2D.set_axis_off()
             self.imshow2D = None
             self.imshow3D = None
+            self.treeMetadata.delete(*self.treeMetadata.get_children())
+            if self._gui.pimsObj is not None:
+                if hasattr(self._gui.pimsObj, "metadata"):
+                    try:
+                        for propFunc in dir(self._gui.pimsObj.metadata):
+                            k = propFunc
+                            v = ""
+                            try:
+                                v = getattr(self._gui.pimsObj.metadata, propFunc)(0)
+                            except Exception as exx:
+                                pass
+                            try:
+                                v = getattr(self._gui.pimsObj.metadata, propFunc)(0, 0)
+                            except Exception as exx:
+                                pass
+                            self.treeMetadata.insert('', 'end', text=k, values=([v]))
+                    except Exception as ex:
+                        print(ex)
+                else:
+                    print("Image has not metdata") 
         _selected = self.radioDisplayVar.get()
         if self.imshow2D is not None:
             self.imshow2D.remove()
@@ -103,10 +134,10 @@ class Tab1():
             case _:
                 self.ax2D.set_axis_off()
 
-        if (self.tabMain.tab(self.tabMain.select(), "text") == "2D"):
+        if (self.notebookPlots.tab(self.notebookPlots.select(), "text") == "2D"):
             self.canvas2D.draw()
             return
-        if self.tabMain.tab(self.tabMain.select(), "text") != "3D":
+        if self.notebookPlots.tab(self.notebookPlots.select(), "text") != "3D":
             print("Assertion Error: The tabMain value is not 2D or 3D")
 
         X = np.arange(0,self._gui.IMG.imgDiff.shape[2])

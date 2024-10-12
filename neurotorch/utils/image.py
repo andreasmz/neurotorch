@@ -21,12 +21,11 @@ class Img:
         self.imgDiffMaxSpatial = None
         self.imgDiffStdTime = None
 
-        self.imgDiff2 = None
-        self.imgDiff2_Stats = None
-        self.imgDiff2MaxTime = None
-        self.imgDiff2StdTime = None
+        #self.imgDiff2 = None
+        #self.imgDiff2_Stats = None
+        #self.imgDiff2MaxTime = None
+        #self.imgDiff2StdTime = None
 
-        self.imgConv = None
         self.name = None
 
     def SetIMG(self, img:np.ndarray, name:str="", denoise=False):
@@ -46,7 +45,8 @@ class Img:
         self.imgStd = np.std(self.img, axis=0)
         self.imgMedian = np.mean(self.img, axis=0)
         self.name = name
-        self.img_Stats = {"ClipMin": max(0, np.min(self.img)), "Max": np.max(self.img)}
+        _imgMin = np.min(self.img)
+        self.img_Stats = {"Max": np.max(self.img), "Min": _imgMin, "ClipMin": max(0, _imgMin)}
         self.CalcDiff(denoise=denoise)
         self.CalcDiffMax()
         return True
@@ -57,12 +57,12 @@ class Img:
             return
         
         self.imgDiff = np.diff(self.img, axis=0)
-        self.imgDiff2 = np.diff(self.img, axis=0, n=2)
+        #self.imgDiff2 = np.diff(self.img, axis=0, n=2)
         if denoise:
             self.imgDiff = gaussian_filter(self.imgDiff, sigma=2, axes=(1,2))
-            self.imgDiff2 = gaussian_filter(self.imgDiff2, sigma=2, axes=(1,2))  
+            #self.imgDiff2 = gaussian_filter(self.imgDiff2, sigma=2, axes=(1,2))  
         self.imgDiff_Stats = {"ClipMin": max(0, np.min(self.imgDiff)), "Max": np.max(self.imgDiff)}
-        self.imgDiff2_Stats = {"ClipMin": max(0, np.min(self.imgDiff2)), "Max": np.max(self.imgDiff2)}
+        #self.imgDiff2_Stats = {"ClipMin": max(0, np.min(self.imgDiff2)), "Max": np.max(self.imgDiff2)}
     
     def CalcDiffMax(self):
         if self.imgDiff is None: return
@@ -75,9 +75,15 @@ class Img:
                                      "Std": np.std(self.imgDiffMaxTime),
                                      "Median": np.median(self.imgDiffMaxTime),
                                      "Mean": np.mean(self.imgDiffMaxTime)}
+        
+        self.imgDiffStdTime_Stats = {"Min": np.min(self.imgDiffStdTime), 
+                                     "Max": np.max(self.imgDiffStdTime),
+                                     "Std": np.std(self.imgDiffStdTime),
+                                     "Median": np.median(self.imgDiffStdTime),
+                                     "Mean": np.mean(self.imgDiffStdTime)}
 
-        self.imgDiff2MaxTime = np.max(self.imgDiff2, axis=0)
-        self.imgDiff2StdTime = np.std(self.imgDiff2, axis=0)
+        #self.imgDiff2MaxTime = np.max(-self.imgDiff2, axis=0)
+        #self.imgDiff2StdTime = np.std(self.imgDiff2, axis=0)
 
 """
     # Point (X, Y)

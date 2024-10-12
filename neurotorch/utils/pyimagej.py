@@ -17,6 +17,8 @@ class ImageJHandler:
         self.imageJReady = False
         self.ij_load = False
         self.OvalRoi = None
+        self.PolygonRoi = None
+        self.Roi = None
         self.RM = None
         self.menubar = None
 
@@ -25,14 +27,14 @@ class ImageJHandler:
         self.menuImageJ = tk.Menu(self.menubar,tearoff=0)
         self.menubar.add_cascade(label="ImageJ",menu=self.menuImageJ)
         self.menuImageJ.add_command(label="Start ImageJ", state="normal", command=self.StartImageJ)
-        self.menuImageJ.add_command(label="Read Image from ImageJ", state="disabled", command=self.LoadImage)
+        self.menuImageJ.add_command(label="ImageJ --> Neurotorch", state="disabled", command=self.LoadImage)
         self.menuImageJ.add_separator()
         self.menuImageJ.add_command(label="Img --> ImageJ", state="disabled", command=self.ExportToImageJ_Img)
         self.menuImageJ.add_command(label="DiffImg --> ImageJ", state="disabled", command=self.ExportToImageJ_ImgDiff)
 
     def LoadImage(self):
         if self._gui.ij is None:
-            messagebox.showerror("Glutamate Roi Finder", "Please first start ImageJ")
+            messagebox.showerror("Neurotorch", "Please first start ImageJ")
             return
         self._img = self._gui.ij.py.active_xarray()
         if self._img is None:
@@ -52,7 +54,7 @@ class ImageJHandler:
 
     def ExportToImageJ_Img(self):
         if self._gui.ij is None:
-            messagebox.showerror("Glutamate Roi Finder", "Please first start ImageJ")
+            messagebox.showerror("Neurotorch", "Please first start ImageJ")
             return
         if self._gui.IMG.img is None:
             self.root.bell()
@@ -63,7 +65,7 @@ class ImageJHandler:
 
     def ExportToImageJ_ImgDiff(self):
         if self._gui.ij is None:
-            messagebox.showerror("Glutamate Roi Finder", "Please first start ImageJ")
+            messagebox.showerror("Neurotorch", "Please first start ImageJ")
             return
         if self._gui.IMG.imgDiff is None:
             self.root.bell()
@@ -112,6 +114,8 @@ class ImageJHandler:
         try:
             self._gui.ij = imagej.init(settings.UserSettings.imageJPath, mode='interactive')
             self.OvalRoi = jimport('ij.gui.OvalRoi')
+            self.PolygonRoi = jimport('ij.gui.PolygonRoi')
+            self.Roi = jimport('ij.gui.Roi')
         except:
             messagebox.showerror("Neurotorch", "Failed to start ImageJ. Did you specifed the right path in user/settings.json?")
             self.ij_load = False
@@ -124,6 +128,6 @@ class ImageJHandler:
         self._ImageJReady()
 
     def _ImageJReady(self):
-        self.menuImageJ.entryconfig("Read Image from ImageJ", state="normal")
+        self.menuImageJ.entryconfig("ImageJ --> Neurotorch", state="normal")
         self.menuImageJ.entryconfig("Img --> ImageJ", state="normal")
         self.menuImageJ.entryconfig("DiffImg --> ImageJ", state="normal")
