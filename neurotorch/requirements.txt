@@ -1,0 +1,16 @@
+python=3.11.10
+numpy>=2.1.0
+pandas>=2.1.4
+scipy>=1.13.1
+matplotlib>=3.8.4
+skimage>=0.23.2
+xarray>=2024.6.0
+PIMS>=0.7
+pyimagej==1.5.0
+#trace_selector>=0.2.14
+
+#Deprecated
+
+#Pillow
+#fsspec
+#Requests

@@ -12,11 +12,13 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 from matplotlib.widgets import Slider
 from matplotlib.patches import Circle
 matplotlib.use('TkAgg')
+import time
 
 import neurotorch.gui.settings as settings
-from neurotorch.utils.image import Img
+from neurotorch.utils.image import Img, ImgObj
 from neurotorch.utils.signalDetection import Signal
 import neurotorch.utils.update as Update
+from neurotorch.gui.components import Statusbar
 import neurotorch.external.trace_selector_connector as ts_con
 
 class Edition(Enum):
@@ -30,7 +32,8 @@ class _GUI:
         self.IMG = Img()
         self.ij = None
         self.ijH = None
-        self.signal = Signal(self.IMG)
+        self._imgObj = ImgObj()
+        self.signal = Signal()
         self.edition = None
         self.pimsObj = None
 
@@ -43,7 +46,8 @@ class _GUI:
         self.root = tk.Tk()
         self.SetWindowTitle("")
         self.root.iconbitmap(os.path.join(*[settings.UserSettings.ParentPath, "media", "neurotorch_logo.ico"]))
-        self.root.geometry("600x600")
+        #self.root.geometry("600x600")
+        self.root.state("zoomed")
 
         self.menubar = tk.Menu(self.root)
         self.root.config(menu=self.menubar)
@@ -72,6 +76,7 @@ class _GUI:
         self.menuDebug.add_command(label="Save diffImg peak frames", command=self._Debug_Save_ImgPeaks)
         self.menuDebug.add_command(label="Load diffImg peak frames", command=self._Debug_Load_ImgPeaks)
 
+        """
         self.statusFrame = tk.Frame(self.root)
         self.statusFrame.pack(side=tk.BOTTOM, fill="x", expand=False)
         self.varProgMain = tk.DoubleVar()
@@ -83,6 +88,8 @@ class _GUI:
         self.lblImgInfo.pack(side=tk.LEFT, padx=(10, 10))
         self.lblStatusInfo = tk.Label(self.statusFrame, text="", borderwidth=1, relief=tk.SUNKEN)
         self.lblStatusInfo.pack(side=tk.LEFT, padx=(10, 10))
+        """
+        self.statusbar = Statusbar(self.root, self.root)
 
         self.tabMain = ttk.Notebook(self.root)
         self.tabWelcome = tabWelcome.TabWelcome(self)
@@ -98,6 +105,17 @@ class _GUI:
 
         self.root.mainloop()
 
+    def GetActiveImageObject(self):
+        return self._imgObj
+    
+    @property
+    def ActiveImageObject(self):
+        return self._imgObj
+    
+    @ActiveImageObject.setter
+    def ActiveImageObject(self, val: ImgObj):
+        self._imgObj = val
+
     def NewImageProvided(self):
         self.SetWindowTitle(self.IMG.name)
         if self.IMG.img is not None:
@@ -105,7 +123,7 @@ class _GUI:
             self.lblImgInfo["text"] = f"Image: {self.IMG.img.shape}, dtype={self.IMG.img.dtype}, size = {_size} MB"
         else:
             self.lblImgInfo["text"] = "No image selected"
-        self.signal.DetectSignal(self.tab2.radioAlgoVar.get(), self.tab2.sliderProminenceFactorVar.get())
+        self.signal.Clear()
         self.tab1.Update(True)
         self.tab2.Update(True)
         self.tab3.Update(True)
@@ -146,6 +164,8 @@ class _GUI:
                 messagebox.showerror("Neurotorch", "The nd2 file can't be opened")
                 return
             imgNP = np.array(pimsImg)"""
+        _time = time.time()
+        print("Start opening Image")
         try:
             _pimsImg = pims.open(image_path)
         except FileNotFoundError:
@@ -154,14 +174,17 @@ class _GUI:
         except Exception:
             messagebox.showerror("Neurotorch", "The given image file is not supported")
             return
+        print(round(time.time() - _time, 3), "s", "PIMS opening")
         imgNP = np.array([np.array(_pimsImg[i]) for i in range(_pimsImg.shape[0])])    
-        #imgNP = np.array(_pimsImg)
+        print(round(time.time() - _time, 3), "s", "NP array")
         if len(imgNP.shape) != 3:
             messagebox.showerror("Neurotorch", "The image must contain 3 dimensions: Time, Y, X. This is with your image not the case")
             return
         self.pimsObj = _pimsImg
         self.IMG.SetIMG(imgNP, file_name, denoise)
+        print(round(time.time() - _time, 3), "s", "Set image")
         self.NewImageProvided()
+        print(round(time.time() - _time, 3), "s", "Finished")
 
     def DiffGaussianFilter(self):
         if self.IMG.img is None:
@@ -214,12 +237,16 @@ class _GUI:
         self.NewImageProvided()
 
     def _Debug_Load_ImgPeaks(self):
+   
         savePath = os.path.join(settings.UserSettings.UserPath, "img_peaks.dump")
         if not os.path.exists(savePath):
             self.root.bell()
             return
         with open(savePath, 'rb') as intp:
-            self.IMG.SetIMG(pickle.load(intp), name= "img_peaks.dump")
+            _img = pickle.load(intp)
+            self.IMG.SetIMG(_img, name= "img_peaks.dump")
+            self.ActiveImageObject = ImgObj()
+            self.ActiveImageObject.SetImage_Precompute(_img)
         self.NewImageProvided()
 
     def _Debug_Save_ImgPeaks(self):

@@ -93,6 +93,9 @@ class Thresholding_Integration(Tresholding, IDetectionAlgorithmIntegration):
         minROISize = self.varROIMinSize.get()/100
         return self.Detect(self.imgObj, frame=frame, threshold=threshold, radius=radius, minROISize=minROISize)
     
+    def Img_Detection_Raw(self):
+        return self.imgThresholded
+    
 
 class APD_Integration(APD, IDetectionAlgorithmIntegration):
     

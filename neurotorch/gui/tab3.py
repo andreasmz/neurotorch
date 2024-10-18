@@ -23,9 +23,7 @@ class Tab3():
         self.roiPatches = {}
         self.roiPatches2 = {}
         self.treeROIs_entryPopup = None
-        self.ax1Image = None
         self.ax2Image = None
-        self.ax2ImageOverlay = None
         self.Init()
 
     def Init(self):
@@ -129,19 +127,9 @@ class Tab3():
         if newImage:
             self.ax1.clear()
             self.ax2.clear()
-            self.ax1Image = None
-            self.ax2Image = None
-            self.ax2ImageOverlay = None
         else:
-            if self.ax1Image is not None:
-                self.ax1Image.remove()
-                self.ax1Image = None
-            if self.ax2Image is not None:
-                self.ax2Image.remove()
-                self.ax2Image = None
-            if self.ax2ImageOverlay is not None:
-                self.ax2ImageOverlay.remove()
-                self.ax2ImageOverlay = None
+            [axImg.remove() for axImg in self.ax1.get_images()]
+            [axImg.remove() for axImg in self.ax2.get_images()]
             [p.remove() for p in reversed(self.ax1.patches)]
             [p.remove() for p in reversed(self.ax2.patches)]
         self.ax3.clear()
@@ -161,7 +149,7 @@ class Tab3():
         if (self._gui.IMG.imgDiff is None):
             self.canvas1.draw()
             return
-        self.ax1Image = self.ax1.imshow(self._gui.IMG.imgMedian, cmap="Greys_r")
+        self.ax1.imshow(self._gui.IMG.imgMedian, cmap="Greys_r")
         if self.detectionAlgorithm.Img_Input() is None:
             self.ax2Image = self.ax2.imshow(self._gui.IMG.imgDiffMaxTime, cmap="inferno")
         else:
@@ -185,9 +173,7 @@ class Tab3():
     def UpdateROIs(self, draw = True):
         [p.remove() for p in reversed(self.ax1.patches)]
         [p.remove() for p in reversed(self.ax2.patches)]
-        if self.ax2ImageOverlay is not None:
-            self.ax2ImageOverlay.remove()
-            self.ax2ImageOverlay = None
+        [axImg.remove() for axImg in self.ax2.get_images() if axImg != self.ax2Image]
         self.roiPatches = {}
         self.roiPatches2 = {}
         self.treeROIs.delete(*self.treeROIs.get_children())
@@ -224,7 +210,7 @@ class Tab3():
                 c2 = patches.Circle(synapseROI.location, 3, color="green", fill=False)
             self.ax1.add_patch(c)
             if self.detectionAlgorithm.Img_Detection_Raw() is not None:
-                self.ax2ImageOverlay = self.ax2.imshow(self.detectionAlgorithm.Img_Detection_Raw()!=0, alpha=(self.detectionAlgorithm.Img_Detection_Raw() != 0).astype(int)*0.2, cmap="gist_gray")
+                self.ax2.imshow(self.detectionAlgorithm.Img_Detection_Raw()!=0, alpha=(self.detectionAlgorithm.Img_Detection_Raw() != 0).astype(int)*0.2, cmap="gist_gray")
             else:
                 self.ax2.add_patch(c2)
             self.roiPatches[synapseuuid] = c
@@ -356,12 +342,12 @@ class Tab3():
                 continue
             synapseROI: detection.ISynapseROI = synapse.synapse
             if isinstance(synapseROI, detection.CircularSynapseROI):
-                roi = self._gui.ijH.OvalRoi(synapseROI.location[0]-synapseROI.radius, synapseROI.location[1]-synapseROI.radius, 2*synapseROI.radius, 2*synapseROI.radius)
-                roi.setName(f"ROI {i+1} {synapseROI.LocationStr()}")
+                roi = self._gui.ijH.OvalRoi(synapseROI.location[0]+0.5-synapseROI.radius, synapseROI.location[1]+0.5-synapseROI.radius, 2*synapseROI.radius, 2*synapseROI.radius)
+                roi.setName(f"ROI {i+1} {synapseROI.LocationStr().replace(",","")}")
                 self._gui.ijH.RM.addRoi(roi)
             elif isinstance(synapseROI, detection.PolygonalSynapseROI):
-                roi = self._gui.ijH.PolygonRoi(synapseROI.polygon[:, 0], synapseROI.polygon[:, 1], self._gui.ijH.Roi.POLYGON)
-                roi.setName(f"ROI {i+1} {synapseROI.LocationStr()}")
+                roi = self._gui.ijH.PolygonRoi(synapseROI.polygon[:, 0]+0.5, synapseROI.polygon[:, 1]+0.5, self._gui.ijH.Roi.POLYGON)
+                roi.setName(f"ROI {i+1} {synapseROI.LocationStr().replace(",","")}")
                 self._gui.ijH.RM.addRoi(roi)
             else:
                 continue
