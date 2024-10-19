@@ -3,11 +3,8 @@ from tkinter import ttk, messagebox, filedialog
 import sys, os
 from enum import Enum 
 import pickle
-import numpy as np
-import pims
 import matplotlib
 matplotlib.use('TkAgg')
-import time
 
 import neurotorch.gui.settings as settings
 from neurotorch.utils.image import Img, ImgObj
@@ -23,14 +20,11 @@ class Edition(Enum):
 class _GUI:
     def __init__(self):
         self.root = None
-        self.menubar = None
         self.IMG = Img()
         self.ij = None
         self.ijH = None
         self._imgObj = ImgObj()
         self.signal = Signal()
-        self.edition = None
-        self.pimsObj = None
 
     def GUI(self, edition:Edition=Edition.NEUROTORCH):
         import neurotorch.gui.tabWelcome as tabWelcome
@@ -40,7 +34,10 @@ class _GUI:
         self.edition = edition
         self.root = tk.Tk()
         self.SetWindowTitle("")
-        self.root.iconbitmap(os.path.join(*[settings.UserSettings.ParentPath, "media", "neurotorch_logo.ico"]))
+        try:
+            self.root.iconbitmap(os.path.join(*[settings.UserSettings.ParentPath, "media", "neurotorch_logo.ico"]))
+        except:
+            pass
         #self.root.geometry("600x600")
         self.root.state("zoomed")
 
@@ -92,11 +89,17 @@ class _GUI:
         return self._imgObj
     
     @property
-    def ImageObject(self):
+    def ImageObject(self) -> ImgObj | None:
+        """
+            Returns the active ImgObj or None if not ImgObj is opened or selected
+        """
         return self._imgObj
     
     @ImageObject.setter
     def ImageObject(self, val: ImgObj):
+        """
+            Sets the active ImgObj and calls each tab to update
+        """
         self._imgObj = val
 
     def _OpenImage_Callback(self, imgObj: ImgObj):
