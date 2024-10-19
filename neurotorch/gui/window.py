@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 import sys, os
-from enum import Enum 
+from enum import Enum, auto
 import pickle
 import matplotlib
 matplotlib.use('TkAgg')
@@ -20,10 +20,13 @@ class Edition(Enum):
 class _GUI:
     def __init__(self):
         self.root = None
+        self.tabs : list[Tab] = []
+        self._imgObj = ImgObj()
+
+        # Deprecate
         self.IMG = Img()
         self.ij = None
         self.ijH = None
-        self._imgObj = ImgObj()
         self.signal = Signal()
 
     def GUI(self, edition:Edition=Edition.NEUROTORCH):
@@ -240,5 +243,20 @@ class _GUI:
         with open(savePath, 'wb') as intp:
             pickle.dump(self.IMG.img[_peaksExtended, :, :], intp, protocol=pickle.HIGHEST_PROTOCOL)
 
+class TabUpdateEvent(Enum):
+    NEWIMAGE = "newimage"
+    #Customs Event should have the syntas tabName_eventName
+
+class Tab:
+
+    def __init__(self, gui: _GUI):
+        pass
+
+    def Update(self, event : list[TabUpdateEvent]):
+        """
+            Called by the GUI to notify the tab, that it may need to update. It is the resposibility of the tab to check for the events
+            Note that the values in the Enum TabUpdatEvent may be added dynamically during tab creation.
+        """
+        pass
 
 GUI = _GUI()

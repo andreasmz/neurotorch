@@ -2,9 +2,9 @@ numpy>=2.1.2
 pandas>=2.2.3
 scipy>=1.14.1
 matplotlib>=3.9.2
-skimage>=0.24.0
+scikit-image>=0.24.0
 xarray>=2024.9.0
-PIMS>=0.7
+pims>=0.7
 pyimagej==1.5.0
 psutil
 #trace_selector>=0.2.14
