@@ -3,10 +3,12 @@ from tkinter import ttk
 from io import StringIO
 import time
 from enum import Enum
+import psutil
 
 class Statusbar:
     timerLowSpeed = 1000 # ms
     timerHighSpeed = 100 # ms
+    lowerTimerSpeed = 2000 #ms
     def __init__(self, root, frame):
         self._statusTxt = ""
         self._progTxt = ""
@@ -25,8 +27,14 @@ class Statusbar:
         self.lblProg.pack(side=tk.LEFT, padx=(10,10))
         self.lblStatus = tk.Label(self.statusFrame, text="", borderwidth=1, relief=tk.SUNKEN)
         self.lblStatus.pack(side=tk.LEFT, padx=(10, 10))
+        self.lblSystemUsage = tk.Label(self.statusFrame, text="")
+        self.lblSystemUsage.pack(anchor=tk.E, padx=(10, 10))
 
         self.root.after(0, self._TimerTick)
+        self.root.after(1000, self._LowerTimerTick)
+
+    def AddJob(self, job):
+        self._jobs.append(job)
 
     @property
     def StatusText(self):
@@ -76,6 +84,12 @@ class Statusbar:
                 if self.varProgMain.get() != j.Percentage:
                     self.varProgMain.set(j.Percentage)
         self.root.after(self._timerSpeed, self._TimerTick)
+
+    def _LowerTimerTick(self):
+        process = psutil.Process()
+        _size = round(process.memory_info().rss/(1024**2),2)
+        self.lblSystemUsage["text"] = f"RAM: {_size} MB"
+        self.root.after(Statusbar.lowerTimerSpeed, self._LowerTimerTick)
     
 class JobState(Enum):
     RUNNING = 1

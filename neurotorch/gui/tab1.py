@@ -108,29 +108,38 @@ class Tab1():
             self.imshow3D.remove()
             self.imshow3D = None
 
-        if (self._gui.IMG.img is None):
+        imgObj = self._gui.ImageObject
+
+        #if (self._gui.IMG.img is None):
+        if imgObj is None or imgObj.img is None or imgObj.imgDiff is None:
             self.canvas2D.draw()
             self.canvas3D.draw()
             return
         match (_selected):
             case "imgMean":
                 self.ax2D.set_axis_on()
-                self.imshow2D = self.ax2D.imshow(self._gui.IMG.imgMean, cmap="Greys_r")
+                #self.imshow2D = self.ax2D.imshow(self._gui.IMG.imgMean, cmap="Greys_r")
+                self.imshow2D = self.ax2D.imshow(imgObj.imgSpatial.meanImage, cmap="Greys_r")
             case "imgStd":
                 self.ax2D.set_axis_on()
-                self.imshow2D = self.ax2D.imshow(self._gui.IMG.imgStd, cmap="Greys_r")
+                #self.imshow2D = self.ax2D.imshow(self._gui.IMG.imgStd, cmap="Greys_r")
+                self.imshow2D = self.ax2D.imshow(imgObj.imgSpatial.stdImage, cmap="Greys_r")
             case "diffMax":
                 self.ax2D.set_axis_on()
-                self.imshow2D = self.ax2D.imshow(self._gui.IMG.imgDiffMaxTime, cmap="inferno")
+                #self.imshow2D = self.ax2D.imshow(self._gui.IMG.imgDiffMaxTime, cmap="inferno")
+                self.imshow2D = self.ax2D.imshow(imgObj.imgDiffSpatial.maxImage, cmap="inferno")
             case "diffStd":
                 self.ax2D.set_axis_on()
-                self.imshow2D = self.ax2D.imshow(self._gui.IMG.imgDiffStdTime, cmap="inferno")
+                #self.imshow2D = self.ax2D.imshow(self._gui.IMG.imgDiffStdTime, cmap="inferno")
+                self.imshow2D = self.ax2D.imshow(imgObj.imgDiffSpatial.stdImage, cmap="inferno")
+                """
             case "diff2Max":
                 self.ax2D.set_axis_on()
                 self.imshow2D = self.ax2D.imshow(self._gui.IMG.imgDiff2MaxTime, cmap="inferno")
             case "diff2Std":
                 self.ax2D.set_axis_on()
                 self.imshow2D = self.ax2D.imshow(self._gui.IMG.imgDiff2StdTime, cmap="inferno")
+                """
             case _:
                 self.ax2D.set_axis_off()
 
@@ -140,22 +149,30 @@ class Tab1():
         if self.notebookPlots.tab(self.notebookPlots.select(), "text") != "3D":
             print("Assertion Error: The tabMain value is not 2D or 3D")
 
-        X = np.arange(0,self._gui.IMG.imgDiff.shape[2])
-        Y = np.arange(0,self._gui.IMG.imgDiff.shape[1])
+        #X = np.arange(0,self._gui.IMG.imgDiff.shape[2])
+        #Y = np.arange(0,self._gui.IMG.imgDiff.shape[1])
+        X = np.arange(0,imgObj.imgDiff.shape[2])
+        Y = np.arange(0,imgObj.imgDiff.shape[1])
         X, Y = np.meshgrid(X, Y)
         match (_selected):
             case "imgMean":
-                self.imshow3D = self.ax3D.plot_surface(X,Y, self._gui.IMG.imgMean, cmap="Greys_r")
+                #self.imshow3D = self.ax3D.plot_surface(X,Y, self._gui.IMG.imgMean, cmap="Greys_r")
+                self.imshow3D = self.ax3D.plot_surface(X,Y, imgObj.imgSpatial.meanImage, cmap="Greys_r")
             case "imgStd":
-                self.imshow3D = self.ax3D.plot_surface(X,Y, self._gui.IMG.imgStd, cmap="Greys_r")
+                #self.imshow3D = self.ax3D.plot_surface(X,Y, self._gui.IMG.imgStd, cmap="Greys_r")
+                self.imshow3D = self.ax3D.plot_surface(X,Y, imgObj.imgSpatial.stdImage, cmap="Greys_r")
             case "diffMax":
-                self.imshow3D = self.ax3D.plot_surface(X,Y, self._gui.IMG.imgDiffMaxTime, cmap="inferno")
+                #self.imshow3D = self.ax3D.plot_surface(X,Y, self._gui.IMG.imgDiffMaxTime, cmap="inferno")
+                self.imshow3D = self.ax3D.plot_surface(X,Y, imgObj.imgDiffSpatial.maxImage, cmap="inferno")
             case "diffStd":
-                self.imshow3D = self.ax3D.plot_surface(X,Y, self._gui.IMG.imgDiffStdTime, cmap="inferno")
+                #self.imshow3D = self.ax3D.plot_surface(X,Y, self._gui.IMG.imgDiffStdTime, cmap="inferno")
+                self.imshow3D = self.ax3D.plot_surface(X,Y, imgObj.imgDiffSpatial.stdImage, cmap="inferno")
+                """
             case "diff2Max":
                 self.imshow3D = self.ax3D.plot_surface(X,Y, self._gui.IMG.imgDiff2MaxTime, cmap="inferno")
             case "diff2Std":
                 self.imshow3D = self.ax3D.plot_surface(X,Y, self._gui.IMG.imgDiff2StdTime, cmap="inferno")
+                """
             case _:
                 pass
         

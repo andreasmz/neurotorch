@@ -4,6 +4,8 @@ from scipy.ndimage import convolve, gaussian_filter
 import threading
 from enum import Enum
 import time
+import pims
+import os
 
 from  neurotorch.gui.components import Job, JobState    
 
@@ -75,6 +77,10 @@ class ImageProperties(ISubimage):
         if self.min is None:
             return None
         return np.min(0, self.min)
+    
+    @property
+    def img(self):
+        return self._img
 
 
 class AxisImage(ISubimage):
@@ -107,6 +113,26 @@ class AxisImage(ISubimage):
     @property
     def max(self) -> ImageProperties:
         return ImageProperties(super().max)
+    
+    @property
+    def meanImage(self) -> np.ndarray:
+        return super().mean
+    
+    @property
+    def medianImage(self) -> np.ndarray:
+        return super().median
+    
+    @property
+    def stdImage(self) -> np.ndarray:
+        return super().std
+    
+    @property
+    def minImage(self) -> np.ndarray:
+        return super().min
+    
+    @property
+    def maxImage(self) -> np.ndarray:
+        return super().max
 
 
 class ImgObj:
@@ -135,6 +161,17 @@ class ImgObj:
         self._imgDiffCTemporal = None
 
         self._loadingThread : threading.Thread = None
+        self._name = None
+
+    @property
+    def name(self):
+        if self._name is None:
+            return ""
+        return self._name
+    
+    @name.setter
+    def name(self, val):
+        self._name = val
 
     @property
     def img(self) -> np.ndarray | None:
@@ -313,10 +350,11 @@ class ImgObj:
     def _IsValidImagestack(image):
         if not isinstance(image, np.ndarray):
             return False
-        if image.shape != 3:
+        if len(image.shape) != 3:
             return False
+        return True
 
-    def SetImage_Precompute(self, image: np.ndarray, convolute: bool = False) -> Literal["AlreadyLoading", "ImageUnsupported"] | Job:
+    def SetImage_Precompute(self, image: np.ndarray, name="", callback = None, convolute: bool = False) -> Literal["AlreadyLoading", "ImageUnsupported"] | Job:
 
         def _Precompute(job: Job):
             job.SetProgress(2, text="Calculating Spatial Image View")
@@ -335,6 +373,8 @@ class ImgObj:
             self.imgDiffTemporal.std
             job.SetProgress(6, text="Loading Image")
             job.SetStopped("Loading Image")
+            if callable is not None:
+                callback(self)
 
         if self._loadingThread is not None and self._loadingThread.is_alive():
             return "AlreadyLoading"
@@ -342,13 +382,66 @@ class ImgObj:
         self.Clear()
         if not ImgObj._IsValidImagestack(image): return "ImageUnsupported"
         self._img = image
+        self._name = name
         job = Job(steps=6)
-        self._loadingThread = threading.Thread(_Precompute, args=(job))
+        self._loadingThread = threading.Thread(target=_Precompute, args=(job,))
         self._loadingThread.start()
         return job
 
+    def OpenFile(self, path: str, callback = None, errorcallback = None, convolute: bool = False) -> Literal["FileNotFound", "AlreadyLoading", "ImageUnsupported"] | Job:
 
+        def _Precompute(job: Job):
+            job.SetProgress(0, "Opening File")
+            try:
+                _pimsImg = pims.open(path)
+            except FileNotFoundError:
+                if errorcallback is not None:
+                    errorcallback("FileNotFound")
+                return "FileNotFound"
+            except Exception:
+                if errorcallback is not None:
+                    errorcallback("ImageUnsupported")
+                return "ImageUnsupported"
+            
+            job.SetProgress(1, "Converting Image")
+            imgNP = np.array([np.array(_pimsImg[i]) for i in range(_pimsImg.shape[0])])    
+            if not ImgObj._IsValidImagestack(imgNP): 
+                if errorcallback is not None:
+                    errorcallback("ImageUnsupported")
+                return "ImageUnsupported"
+            self.img = imgNP
 
+            job.SetProgress(2, text="Calculating Spatial Image View")
+            self.imgSpatial.mean
+            self.imgSpatial.std
+            job.SetProgress(3, text="Calculating imgDiff")
+            self.imgDiff
+            if convolute:
+                job.SetProgress(4, text="Applying Gaussian Filter on imgDiff")
+                self.imgDiff_Mode = "Convoluted"
+                self.imgDiff
+            job.SetProgress(5, text="Calculating Spatial and Temporal imgDiff View")
+            self.imgDiffSpatial.max
+            self.imgDiffSpatial.std
+            self.imgDiffTemporal.max
+            self.imgDiffTemporal.std
+            job.SetProgress(6, text="Loading Image")
+            job.SetStopped("Loading Image")
+            if callable is not None:
+                callback(self)
+
+        if self._loadingThread is not None and self._loadingThread.is_alive():
+            return "AlreadyLoading"
+
+        if path is None or path == "":
+            return "FileNotFound"
+        
+        self.Clear()
+        self.name = os.path.splitext(os.path.basename(path))[0]
+        job = Job(steps=6)
+        self._loadingThread = threading.Thread(target=_Precompute, args=(job,))
+        self._loadingThread.start()
+        return job
 
 
 

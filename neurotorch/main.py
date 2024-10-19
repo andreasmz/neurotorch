@@ -18,7 +18,6 @@ def Start_Background():
     task = threading.Thread(target=Start)
     task.start()
 
-    
 if __name__ == "__main__":
     Start()
 

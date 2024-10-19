@@ -1,16 +1,11 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
-import sys, os, threading
+import sys, os
 from enum import Enum 
 import pickle
 import numpy as np
-from PIL import Image, ImageSequence, UnidentifiedImageError
 import pims
 import matplotlib
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
-from matplotlib.widgets import Slider
-from matplotlib.patches import Circle
 matplotlib.use('TkAgg')
 import time
 
@@ -55,6 +50,7 @@ class _GUI:
         self.menubar.add_cascade(label="File",menu=self.menuFile)
         self.menuFile.add_command(label="Open", command=self.OpenFile)
         self.menuFile.add_command(label="Open noisy image", command=self._OpenFile_DenoiseClick)
+        self.menuFile.add_command(label="Close image", command=self._CloseImage)
 
         self.menuImage = tk.Menu(self.menubar,tearoff=0)
         self.menubar.add_cascade(label="Image", menu=self.menuImage)
@@ -76,19 +72,6 @@ class _GUI:
         self.menuDebug.add_command(label="Save diffImg peak frames", command=self._Debug_Save_ImgPeaks)
         self.menuDebug.add_command(label="Load diffImg peak frames", command=self._Debug_Load_ImgPeaks)
 
-        """
-        self.statusFrame = tk.Frame(self.root)
-        self.statusFrame.pack(side=tk.BOTTOM, fill="x", expand=False)
-        self.varProgMain = tk.DoubleVar()
-        self.progMain = ttk.Progressbar(self.statusFrame,orient="horizontal", length=200, variable=self.varProgMain)
-        self.progMain.pack(side=tk.LEFT)
-        self.lblProgMain = tk.Label(self.statusFrame, text="", relief=tk.SUNKEN,borderwidth=1)
-        self.lblProgMain.pack(side=tk.LEFT, padx=(10,10))
-        self.lblImgInfo = tk.Label(self.statusFrame, text="No image selected",borderwidth=1, relief=tk.SUNKEN)
-        self.lblImgInfo.pack(side=tk.LEFT, padx=(10, 10))
-        self.lblStatusInfo = tk.Label(self.statusFrame, text="", borderwidth=1, relief=tk.SUNKEN)
-        self.lblStatusInfo.pack(side=tk.LEFT, padx=(10, 10))
-        """
         self.statusbar = Statusbar(self.root, self.root)
 
         self.tabMain = ttk.Notebook(self.root)
@@ -105,24 +88,47 @@ class _GUI:
 
         self.root.mainloop()
 
-    def GetActiveImageObject(self):
+    def GetImageObject(self):
         return self._imgObj
     
     @property
-    def ActiveImageObject(self):
+    def ImageObject(self):
         return self._imgObj
     
-    @ActiveImageObject.setter
-    def ActiveImageObject(self, val: ImgObj):
+    @ImageObject.setter
+    def ImageObject(self, val: ImgObj):
         self._imgObj = val
 
+    def _OpenImage_Callback(self, imgObj: ImgObj):
+        self._imgObj = imgObj
+        self.NewImageProvided()
+
+    def _OpenImage_CallbackError(self, code):
+        match(code):
+            case "FileNotFound":
+                messagebox.showerror("Neurotorch", "The given path doesn't exist or can't be opened")
+            case "AlreadyLoading":
+                messagebox.showerror("Neurotorch", "Please wait until the current image is loaded")
+            case "ImageUnsupported":
+                messagebox.showerror("Neurotorch", "The provided file is not supported")
+            case _:
+                messagebox.showerror("Neurotorch", "An unkown error happend opening this image") 
+
+    def _CloseImage(self):
+        _oldImgObj = self._imgObj
+        self._imgObj = None
+        del _oldImgObj
+        self.NewImageProvided()
+
     def NewImageProvided(self):
-        self.SetWindowTitle(self.IMG.name)
-        if self.IMG.img is not None:
-            _size = round(sys.getsizeof(self.IMG.img)/(1024**2),2)
-            self.lblImgInfo["text"] = f"Image: {self.IMG.img.shape}, dtype={self.IMG.img.dtype}, size = {_size} MB"
+        if self.ImageObject is not None:
+            if self.ImageObject.img is not None:
+                _size = round(sys.getsizeof(self.ImageObject.img)/(1024**2),2)
+                self.statusbar.StatusText = f"Image of shape {self.ImageObject.img.shape} and size {_size} MB"
+            self.SetWindowTitle(self.ImageObject.name)
         else:
-            self.lblImgInfo["text"] = "No image selected"
+            self.statusbar.StatusText = ""
+            self.SetWindowTitle("")
         self.signal.Clear()
         self.tab1.Update(True)
         self.tab2.Update(True)
@@ -141,57 +147,19 @@ class _GUI:
     def OpenFile(self, denoise=False):
         image_path = filedialog.askopenfilename(parent=self.root, title="Open a Image File", 
                 filetypes=(("All compatible files", "*.tif *.tiff *.nd2"), ("TIF File", "*.tif *.tiff"), ("ND2 Files (NIS Elements)", "*.nd2"), ("All files", "*.*")) )
-        file_name = os.path.splitext(os.path.basename(image_path))[0]
         if image_path is None or image_path == "":
             return
-        """if image_path.lower().endswith(".tif") or image_path.lower().endswith(".tiff"):
-            try:
-                img = Image.open(image_path)
-            except FileNotFoundError:
-                self.root.bell()
-                return
-            except UnidentifiedImageError:
-                messagebox.showerror("Neurotorch", "The file provided is not a supported image")
-                return
-            imgNP = np.array([np.array(frame) for frame in ImageSequence.Iterator(img)])    
-        elif image_path.lower().endswith(".nd2"):
-            try:
-                pimsImg = pims.open(image_path)
-            except FileNotFoundError:
-                self.root.bell()
-                return
-            except Exception:
-                messagebox.showerror("Neurotorch", "The nd2 file can't be opened")
-                return
-            imgNP = np.array(pimsImg)"""
-        _time = time.time()
-        print("Start opening Image")
-        try:
-            _pimsImg = pims.open(image_path)
-        except FileNotFoundError:
-            self.root.bell()
-            return
-        except Exception:
-            messagebox.showerror("Neurotorch", "The given image file is not supported")
-            return
-        print(round(time.time() - _time, 3), "s", "PIMS opening")
-        imgNP = np.array([np.array(_pimsImg[i]) for i in range(_pimsImg.shape[0])])    
-        print(round(time.time() - _time, 3), "s", "NP array")
-        if len(imgNP.shape) != 3:
-            messagebox.showerror("Neurotorch", "The image must contain 3 dimensions: Time, Y, X. This is with your image not the case")
-            return
-        self.pimsObj = _pimsImg
-        self.IMG.SetIMG(imgNP, file_name, denoise)
-        print(round(time.time() - _time, 3), "s", "Set image")
-        self.NewImageProvided()
-        print(round(time.time() - _time, 3), "s", "Finished")
+        self.statusbar._jobs.append(ImgObj().OpenFile(image_path, callback=self._OpenImage_Callback, errorcallback=self._OpenImage_CallbackError, convolute=denoise))
+        return
 
     def DiffGaussianFilter(self):
-        if self.IMG.img is None:
+        if self.ImageObject is None or self.ImageObject.imgDiff is None:
             self.root.bell()
             return
-        self.IMG.CalcDiff(denoise=True)
-        self.IMG.CalcDiffMax()
+        if self.ImageObject.imgDiff_Mode == "Normal":
+            self.ImageObject.imgDiff_Mode = "Convoluted"
+        else:
+            self.ImageObject.imgDiff_Mode = "Normal"
         self.NewImageProvided()
 
     def MenuNeurotorchAbout_Click(self):
@@ -244,10 +212,9 @@ class _GUI:
             return
         with open(savePath, 'rb') as intp:
             _img = pickle.load(intp)
-            self.IMG.SetIMG(_img, name= "img_peaks.dump")
-            self.ActiveImageObject = ImgObj()
-            self.ActiveImageObject.SetImage_Precompute(_img)
-        self.NewImageProvided()
+            #self.IMG.SetIMG(_img, name= "img_peaks.dump")
+            self.statusbar._jobs.append(ImgObj().SetImage_Precompute(_img, name="img_peaks.dump", callback=self._OpenImage_Callback))
+        #self.NewImageProvided()
 
     def _Debug_Save_ImgPeaks(self):
         if self.IMG.img is None or self.IMG.imgDiff is None or self.signal.peaks is None or len(self.signal.peaks) == 0:
