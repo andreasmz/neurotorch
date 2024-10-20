@@ -1,4 +1,5 @@
-from typing import Literal
+import collections
+from typing import Callable, Literal
 import numpy as np
 from scipy.ndimage import convolve, gaussian_filter
 import threading
@@ -76,7 +77,7 @@ class ImageProperties(ISubimage):
     def minClipped(self):
         if self.min is None:
             return None
-        return np.min(0, self.min)
+        return np.max([0, self.min])
     
     @property
     def img(self):
@@ -115,23 +116,23 @@ class AxisImage(ISubimage):
         return ImageProperties(super().max)
     
     @property
-    def meanImage(self) -> np.ndarray:
+    def meanArray(self) -> np.ndarray:
         return super().mean
     
     @property
-    def medianImage(self) -> np.ndarray:
+    def medianArray(self) -> np.ndarray:
         return super().median
     
     @property
-    def stdImage(self) -> np.ndarray:
+    def stdArray(self) -> np.ndarray:
         return super().std
     
     @property
-    def minImage(self) -> np.ndarray:
+    def minArray(self) -> np.ndarray:
         return super().min
     
     @property
-    def maxImage(self) -> np.ndarray:
+    def maxArray(self) -> np.ndarray:
         return super().max
 
 
@@ -149,16 +150,19 @@ class ImgObj:
         self._imgS = None # Image with signed dtype
         self._imgSpatial = None
         self._imgTemporal = None
+        self._metadata = None
 
         self._imgDiff_mode = 0 #0: regular imgDiff, 1: convoluted imgDiff
         self._imgDiff = None
         self._imgDiffProps = None
-        self._imgDiffConv = None
-        self._imgDiffConvProps = None
+        self._imgDiffConvFunc : Callable = self.Conv_GaussianBlur
+        self._imgDiffConvArgs : tuple = (2,)
+        self._imgDiffConv = {}
+        self._imgDiffConvProps = {}
         self._imgDiffSpatial = None
         self._imgDiffTemporal = None
-        self._imgDiffCSpatial = None
-        self._imgDiffCTemporal = None
+        self._imgDiffCSpatial = {}
+        self._imgDiffCTemporal = {}
 
         self._loadingThread : threading.Thread = None
         self._name = None
@@ -193,6 +197,7 @@ class ImgObj:
             return None
         if self._imgProps is None:
             self._imgProps = ImageProperties(self._img)
+        return self._imgProps
     
     @property
     def imgS(self) -> np.ndarray | None:
@@ -262,11 +267,12 @@ class ImgObj:
     
     @property
     def imgDiff_Conv(self) -> np.ndarray | None:
-        if self.imgDiff_Normal is None:
+        if self.imgDiff_Normal is None or self._imgDiffConvFunc is None or self._imgDiffConvArgs is None:
             return None
-        if self._imgDiffConv is None:
-            self._imgDiffConv = gaussian_filter(self.imgDiff_Normal, sigma=2, axes=(1,2))
-        return self._imgDiffConv
+        _n = self._imgDiffConvFunc.__name__+str(self._imgDiffConvArgs)
+        if _n not in self._imgDiffConv.keys():
+            self._imgDiffConv[_n] = self._imgDiffConvFunc(args=self._imgDiffConvArgs)
+        return self._imgDiffConv[_n]
     
     @property
     def imgDiff_NormalProps(self) -> ImageProperties | None:
@@ -278,11 +284,12 @@ class ImgObj:
 
     @property
     def imgDiff_ConvProps(self) -> ImageProperties | None:
-        if self.imgDiff_Conv is None:
+        if self.imgDiff_Conv is None or self._imgDiffConvFunc is None or self._imgDiffConvArgs is None:
             return None
-        if self._imgDiffConvProps is None:
-            self._imgDiffConvProps = ImageProperties(self.imgDiff_Conv)
-        return self._imgDiffConvProps
+        _n = self._imgDiffConvFunc.__name__+str(self._imgDiffConvArgs)
+        if _n not in self._imgDiffConvProps.keys():
+            self._imgDiffConvProps[_n] = ImageProperties(self.imgDiff_Conv)
+        return self._imgDiffConvProps[_n]
     
     @property
     def imgDiff_NormalSpatial(self) -> AxisImage | None:
@@ -302,19 +309,21 @@ class ImgObj:
     
     @property
     def imgDiff_ConvSpatial(self) -> AxisImage | None:
-        if self.imgDiff_Conv is None:
+        if self.imgDiff_Conv is None or self._imgDiffConvFunc is None or self._imgDiffConvArgs is None:
             return None
-        if self._imgDiffCSpatial is None:
-            self._imgDiffCSpatial = AxisImage(self.imgDiff_Conv, axis=0)
-        return self._imgDiffCSpatial
+        _n = self._imgDiffConvFunc.__name__+str(self._imgDiffConvArgs)
+        if _n not in self._imgDiffCSpatial.keys():
+            self._imgDiffCSpatial[_n] = AxisImage(self.imgDiff_Conv, axis=0)
+        return self._imgDiffCSpatial[_n]
     
     @property
     def imgDiff_ConvTemporal(self) -> AxisImage | None:
-        if self.imgDiff_Conv is None:
+        if self.imgDiff_Conv is None or self._imgDiffConvFunc is None or self._imgDiffConvArgs is None:
             return None
-        if self._imgDiffCTemporal is None:
-            self._imgDiffCTemporal = AxisImage(self.imgDiff_Conv, axis=(1,2))
-        return self._imgDiffCTemporal
+        _n = self._imgDiffConvFunc.__name__+str(self._imgDiffConvArgs)
+        if _n not in self._imgDiffCTemporal.keys():
+            self._imgDiffCTemporal[_n] = AxisImage(self.imgDiff_Conv, axis=(1,2))
+        return self._imgDiffCTemporal[_n]
     
     @property
     def imgDiff(self) -> np.ndarray | None:
@@ -324,9 +333,10 @@ class ImgObj:
 
     @imgDiff.setter
     def imgDiff(self, image: np.ndarray) -> bool:
-        self.Clear()
         if not ImgObj._IsValidImagestack(image): return False
+        self.Clear()
         self._imgDiff = image
+        self._imgDiff_mode = "Normal"
         return True
 
     @property
@@ -346,6 +356,10 @@ class ImgObj:
         if self.imgDiff_Mode == "Convoluted":
             return self.imgDiff_ConvTemporal
         return self.imgDiff_NormalTemporal
+    
+    @property
+    def metadata(self) -> dict | None:
+        return self._metadata
 
     def _IsValidImagestack(image):
         if not isinstance(image, np.ndarray):
@@ -353,13 +367,26 @@ class ImgObj:
         if len(image.shape) != 3:
             return False
         return True
+    
+    def SetConvolutionFunction(self, func: Callable, args: tuple):
+        self._imgDiffConvFunc = func
+        self._imgDiffConvArgs = args
+    
+    def Conv_GaussianBlur(self, args: tuple) -> np.ndarray | None:
+        if self.imgDiff_Normal is None:
+            return None
+        if len(args) != 1:
+            return None
+        sigma = args[0]
+        return gaussian_filter(self.imgDiff_Normal, sigma=sigma, axes=(1,2))
+    
 
-    def SetImage_Precompute(self, image: np.ndarray, name="", callback = None, convolute: bool = False) -> Literal["AlreadyLoading", "ImageUnsupported"] | Job:
+    def SetImage_Precompute(self, image: np.ndarray, name="", callback = None, errorcallback = None, convolute: bool = False) -> Literal["AlreadyLoading", "ImageUnsupported"] | Job:
 
         def _Precompute(job: Job):
             job.SetProgress(2, text="Calculating Spatial Image View")
-            self.imgSpatial.mean
-            self.imgSpatial.std
+            self.imgSpatial.meanArray
+            self.imgSpatial.stdArray
             job.SetProgress(3, text="Calculating imgDiff")
             self.imgDiff
             if convolute:
@@ -367,20 +394,27 @@ class ImgObj:
                 self.imgDiff_Mode = "Convoluted"
                 self.imgDiff
             job.SetProgress(5, text="Calculating Spatial and Temporal imgDiff View")
-            self.imgDiffSpatial.max
-            self.imgDiffSpatial.std
-            self.imgDiffTemporal.max
-            self.imgDiffTemporal.std
+            self.imgDiffSpatial.meanArray
+            self.imgDiffSpatial.maxArray
+            self.imgDiffSpatial.stdArray
+            self.imgDiffTemporal.maxArray
+            self.imgDiffTemporal.stdArray
             job.SetProgress(6, text="Loading Image")
             job.SetStopped("Loading Image")
             if callable is not None:
                 callback(self)
 
         if self._loadingThread is not None and self._loadingThread.is_alive():
+            if errorcallback is not None: errorcallback("AlreadyLoading")
             return "AlreadyLoading"
 
         self.Clear()
-        if not ImgObj._IsValidImagestack(image): return "ImageUnsupported"
+        if not isinstance(image, np.ndarray):
+            if errorcallback is not None: errorcallback("ImageUnsupported")
+            return "ImageUnsupported"
+        if len(image.shape) != 3:
+            if errorcallback is not None: errorcallback("ImageUnsupported", f"The image needs to have shape (t, y, x). Your shape is {image.shape}")
+            return "ImageUnsupported"
         self._img = image
         self._name = name
         job = Job(steps=6)
@@ -388,32 +422,33 @@ class ImgObj:
         self._loadingThread.start()
         return job
 
-    def OpenFile(self, path: str, callback = None, errorcallback = None, convolute: bool = False) -> Literal["FileNotFound", "AlreadyLoading", "ImageUnsupported"] | Job:
+    def OpenFile(self, path: str, callback = None, errorcallback = None, convolute: bool = False) -> Literal["FileNotFound", "AlreadyLoading", "ImageUnsupported", "Wrong Shape"] | Job:
 
         def _Precompute(job: Job):
             job.SetProgress(0, "Opening File")
             try:
                 _pimsImg = pims.open(path)
             except FileNotFoundError:
-                if errorcallback is not None:
-                    errorcallback("FileNotFound")
+                job.SetStopped("File not found")
+                if errorcallback is not None: errorcallback("FileNotFound")
                 return "FileNotFound"
-            except Exception:
-                if errorcallback is not None:
-                    errorcallback("ImageUnsupported")
+            except Exception as ex:
+                job.SetStopped("Image Unsupported")
+                if errorcallback is not None: errorcallback("ImageUnsupported", ex)
                 return "ImageUnsupported"
             
             job.SetProgress(1, "Converting Image")
             imgNP = np.array([np.array(_pimsImg[i]) for i in range(_pimsImg.shape[0])])    
-            if not ImgObj._IsValidImagestack(imgNP): 
-                if errorcallback is not None:
-                    errorcallback("ImageUnsupported")
+            self._metadata = collections.OrderedDict(sorted(_pimsImg.get_metadata_raw().items()))
+            if len(imgNP.shape) != 3:
+                job.SetStopped("Image Unsupported")
+                if errorcallback is not None: errorcallback("ImageUnsupported", f"The image needs to have shape (t, y, x). Your shape is {imgNP.shape}")
                 return "ImageUnsupported"
             self.img = imgNP
 
             job.SetProgress(2, text="Calculating Spatial Image View")
-            self.imgSpatial.mean
-            self.imgSpatial.std
+            self.imgSpatial.meanArray
+            self.imgSpatial.stdArray
             job.SetProgress(3, text="Calculating imgDiff")
             self.imgDiff
             if convolute:
@@ -421,10 +456,11 @@ class ImgObj:
                 self.imgDiff_Mode = "Convoluted"
                 self.imgDiff
             job.SetProgress(5, text="Calculating Spatial and Temporal imgDiff View")
-            self.imgDiffSpatial.max
-            self.imgDiffSpatial.std
-            self.imgDiffTemporal.max
-            self.imgDiffTemporal.std
+            self.imgDiffSpatial.meanArray
+            self.imgDiffSpatial.maxArray
+            self.imgDiffSpatial.stdArray
+            self.imgDiffTemporal.maxArray
+            self.imgDiffTemporal.stdArray
             job.SetProgress(6, text="Loading Image")
             job.SetStopped("Loading Image")
             if callable is not None:

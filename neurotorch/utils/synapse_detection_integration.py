@@ -2,9 +2,9 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from typing import Literal
 
-from neurotorch.utils.image import Img as IMGObject
+from neurotorch.utils.image import ImgObj, ImageProperties
 from neurotorch.gui.components import IntStringVar
-from neurotorch.gui.window import GUI
+from neurotorch.gui.window import GUI, TabUpdateEvent
 from neurotorch.utils.synapse_detection import *
 
 # While synapse_detection.py provides detection algorithms, this file contains the actual implementation into Neurotorch GUI
@@ -16,7 +16,7 @@ class IDetectionAlgorithmIntegration:
         self.imgObj = None
         self.root = None
 
-    def OptionsFrame(self, root, updateCallback, imgObj: IMGObject) -> tk.LabelFrame:
+    def OptionsFrame(self, root, updateCallback, imgObj: ImgObj) -> tk.LabelFrame:
         """
             This function is used to generate an frame for the algorithm options. The Integration class is responsible for this LabelFrame and
             should return in after generation. If may (!) be that this class is called multiple times, for example after changing the algorithm.
@@ -40,14 +40,14 @@ class IDetectionAlgorithmIntegration:
         """
         pass
 
-    def Img_Detection_Raw(self) -> np.ndarray:
+    def Img_Detection_Raw(self) -> np.ndarray | None:
         """
             An Integration may choose to provide an custom overlay image, usually the raw data obtained in one of the first steps. 
             Return None to let the GUI decide.
         """
         return None
     
-    def Img_Input(self) -> np.ndarray:
+    def Img_Input(self) -> np.ndarray | None:
         """
             An Integration may offer to user other sources than imgDiffMaxTime. Use this function to return this image.
             Return None to let the GUI decide.
@@ -61,7 +61,7 @@ class Thresholding_Integration(Tresholding, IDetectionAlgorithmIntegration):
     def __init__(self):
         super().__init__()
 
-    def OptionsFrame(self, root, updateCallback, imgObj: IMGObject):
+    def OptionsFrame(self, root, updateCallback, imgObj: ImgObj):
         self.root = root
         self.imgObj = imgObj
         self.updatecallback = updateCallback
@@ -104,7 +104,7 @@ class APD_Integration(APD, IDetectionAlgorithmIntegration):
         self.lblImgStats = None
         self.imgStats = None
         
-    def OptionsFrame(self, root, updateCallback, imgObj: IMGObject):
+    def OptionsFrame(self, root, updateCallback, imgObj: ImgObj):
         self.root = root
         self.imgObj = imgObj
         self.updatecallback = updateCallback
@@ -175,11 +175,7 @@ class APD_Integration(APD, IDetectionAlgorithmIntegration):
             self.comboFrame['values'] = list(GUI.signal.peaks.astype(str))
             self.comboFrame["state"] = "normal"
 
-        if self.imgObj is None:
-            self.lblImgStats["text"] = ""
-            return
-        
-        if self.imgObj.imgDiffMaxTime is  None or self.imgObj.imgDiffMaxTime_Stats is None:
+        if self.imgObj is None or self.imgObj.imgDiff is None:
             self.lblImgStats["text"] = ""
             return
         
@@ -188,21 +184,17 @@ class APD_Integration(APD, IDetectionAlgorithmIntegration):
             if _frame < 0 or _frame >= self.imgObj.imgDiff.shape[0]:
                 self.lblImgStats["text"] = ""
                 return
-            self.imgStats = {"Min": np.min(self.imgObj.imgDiff[_frame]), 
-                         "Max": np.max(self.imgObj.imgDiff[_frame]),
-                         "Std": np.std(self.imgObj.imgDiff[_frame]),
-                         "Median": np.median(self.imgObj.imgDiff[_frame]),
-                         "Mean": np.mean(self.imgObj.imgDiff[_frame])}
+            self.imgStats = ImageProperties(self.imgObj.imgDiff[_frame])
         elif self.comboImageVar.get() == "DiffMax":
-            self.imgStats = self.imgObj.imgDiffMaxTime_Stats
+            self.imgStats = self.imgObj.imgDiffSpatial.max
         elif self.comboImageVar.get() == "DiffStd":
-            self.imgStats = self.imgObj.imgDiffStdTime_Stats
+            self.imgStats = self.imgObj.imgDiffSpatial.std
         else:
             self.lblImgStats["text"] = ""
             return
-        _t = f"Image Stats: range = [{int(self.imgStats["Min"])}, {int(self.imgStats["Max"])}], "
-        _t = _t + f"{np.round(self.imgStats["Mean"], 2)} ± {np.round(self.imgStats["Std"], 2)}, "
-        _t = _t + f"median = {np.round(self.imgStats["Median"], 2)}"
+        _t = f"Image Stats: range = [{int(self.imgStats.min)}, {int(self.imgStats.max)}], "
+        _t = _t + f"{np.round(self.imgStats.mean, 2)} ± {np.round(self.imgStats.std, 2)}, "
+        _t = _t + f"median = {np.round(self.imgStats.median, 2)}"
         self.lblImgStats["text"] = _t
         if newImage:
             self.CalcAutoParams()
@@ -212,8 +204,8 @@ class APD_Integration(APD, IDetectionAlgorithmIntegration):
             return
         if self.imgStats is None:
             return
-        lowerThreshold = int(self.imgStats["Mean"] + 2.5*self.imgStats["Std"])
-        upperThreshold = max(lowerThreshold, min(self.imgStats["Max"]/2, self.imgStats["Mean"] + 5*self.imgStats["Std"]))
+        lowerThreshold = int(self.imgStats.mean + 2.5*self.imgStats.std)
+        upperThreshold = max(lowerThreshold, min(self.imgStats.max/2, self.imgStats.mean + 5*self.imgStats.std))
         self.varLowerThreshold.IntVar.set(lowerThreshold)
         self.varUpperThreshold.IntVar.set(upperThreshold)
 
@@ -224,12 +216,12 @@ class APD_Integration(APD, IDetectionAlgorithmIntegration):
 
     def _ComboImage_Changed(self, val1, val2, val3):
         self.OptionsFrame_Update(newImage=True)
-        self.updatecallback()
+        self.updatecallback(["tab3_replotImages"])
 
     def _varChanged_Update(self, val1, val2, val3):
-        self.updatecallback()
+        self.updatecallback(["tab3_replotImages"])
 
-    def DetectAutoParams(self, frame: int = None) -> list[ISynapse]:
+    def DetectAutoParams(self, frame: int = None) -> list[ISynapseROI]:
         lowerThreshold = self.varLowerThreshold.IntVar.get()
         upperThreshold = self.varUpperThreshold.IntVar.get()
         minArea = self.varMinArea.IntVar.get()
@@ -253,23 +245,17 @@ class APD_Integration(APD, IDetectionAlgorithmIntegration):
             messagebox.showerror("Neurotorch", message)
 
     def Img_Input(self) -> np.ndarray:
-        if self.imgObj is None:
+        if self.imgObj is None or self.imgObj.img is None:
             return None
         match(self.comboImageVar.get()):
             case "DiffMax":
-                if self.imgObj.imgDiffMaxTime is None:
-                    return None
-                return self.imgObj.imgDiffMaxTime
+                return self.imgObj.imgDiffSpatial.maxArray
             case "DiffStd":
-                if self.imgObj.imgDiffStdTime is None:
-                    return None
-                return self.imgObj.imgDiffStdTime
+                return self.imgObj.imgDiffSpatial.stdArray
             case "Diff":
                 if not self.comboFrameVar.get().isdigit():
                     return None
                 _frame = int(self.comboFrameVar.get())
-                if self.imgObj.imgDiff is None:
-                    return None
                 if _frame < 0 or _frame > self.imgObj.imgDiff.shape[0]:
                     return None
                 return self.imgObj.imgDiff[_frame]
@@ -284,7 +270,7 @@ class APD_Integration(APD, IDetectionAlgorithmIntegration):
 
 class APD_CircleAprox_Integration(APD_Integration):
 
-    def OptionsFrame(self, root, updateCallback, imgObj: IMGObject):
+    def OptionsFrame(self, root, updateCallback, imgObj: ImgObj):
         super().OptionsFrame(root, updateCallback, imgObj)
         self.varCircApproxR = IntStringVar(self.root, tk.IntVar(value=6))
         self.numCircApproxR = tk.Spinbox(self.optionsFrame, width=6, textvariable=self.varCircApproxR.StringVar, from_=0, to=100)
@@ -292,13 +278,13 @@ class APD_CircleAprox_Integration(APD_Integration):
         tk.Label(self.optionsFrame, text="Approx. Circle Radius").grid(row=9, column=0, columnspan=2)
         return self.optionsFrame
 
-    def  DetectAutoParams(self, frame: int = None) -> list[ISynapse]:
+    def DetectAutoParams(self, frame: int = None) -> list[ISynapse]:
         radius = self.varCircApproxR.IntVar.get()
-        synapses = super().DetectAutoParams(frame)
+        synapseROIs = super().DetectAutoParams(frame)
         synapses_return = []
-        if synapses is None:
+        if synapseROIs is None:
             return None
-        for s in synapses:
+        for s in synapseROIs:
             if isinstance(s, CircularSynapseROI):
                 synapses_return.append(s)
                 continue

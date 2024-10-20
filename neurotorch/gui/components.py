@@ -63,7 +63,7 @@ class Statusbar:
             self._timerSpeed = Statusbar.timerHighSpeed
         
         for j in self._jobs:
-            if ((j.State == JobState.STOPPED) | (j.State == JobState.TIMEOUT)) and (j.Runtime <= -5):
+            if ((j.State == JobState.STOPPED) | (j.State == JobState.TIMEOUT)) and (j.Time <= -3 or j.Runtime <= 3):
                 self._jobs.remove(j)
         self._jobs.sort(key=lambda j: j.Runtime)
         
@@ -73,7 +73,7 @@ class Statusbar:
                 self.varProgMain.set(0)
         elif len(self._jobs) > 0:
             j = self._jobs[-1]
-            self.progressText = f"{j.Text} ({round(j.Runtime, 0)} s)" if len(self._jobs) == 1 else f"{j.Text} ({round(j.Runtime, 0)} s) and {len(self._jobs)-1} more job running"
+            self.progressText = f"{j.Text} ({round(j.Time, 0)} s)" if len(self._jobs) == 1 else f"{j.Text} ({round(j.Time, 0)} s) and {len(self._jobs)-1} more job running"
             if j.steps == 0:
                 if str(self.progMain["mode"]) != "indeterminate":
                     self.progMain.configure(mode="indeterminate")
@@ -155,13 +155,28 @@ class Job:
     @property
     def Percentage(self):
         if (self.State == JobState.STOPPED) | (self.State == JobState.TIMEOUT):
-            return 100
+            return 0
         if self.steps == 0:
             return 100
         return int(95*self._progress/self.steps + 5)
     
     @property
     def Runtime(self):
+        """
+            The runtime of the job
+        """
+        match (self.State):
+            case JobState.RUNNING:
+                return time.time() - self.startTime
+            case JobState.STOPPED | JobState.TIMEOUT:
+                if self._finishedTime is None:
+                    raise RuntimeError("The finish time of the job wasn't set")
+                return self._finishedTime - self.startTime
+            case _:
+                raise RuntimeError(f"The job was in an unkown JobState {self._state}")
+    
+    @property
+    def Time(self):
         """
             The runtime of the job (postive) or the time since stopped (negative)
         """

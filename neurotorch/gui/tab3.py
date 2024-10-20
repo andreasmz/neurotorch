@@ -1,8 +1,8 @@
-import neurotorch.gui.window as window
+from neurotorch.gui.window import _GUI, Tab, TabUpdateEvent
+import neurotorch.external.trace_selector_connector as ts_con
 import neurotorch.utils.synapse_detection_integration as detection
 from neurotorch.utils.synapse_detection import SingleframeSynapse
 from neurotorch.gui.components import EntryPopup, VirtualFile, IntStringVar
-import neurotorch.external.trace_selector_connector as ts_con
 
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
@@ -10,12 +10,13 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 import matplotlib.widgets as PltWidget
 import matplotlib.patches as patches
+from matplotlib.ticker import MaxNLocator
 import numpy as np
 import pandas as pd
 from io import StringIO
 
-class Tab3():
-    def __init__(self, gui: window._GUI):
+class Tab3(Tab):
+    def __init__(self, gui: _GUI):
         self._gui = gui
         self.root = gui.root
         self.detectionAlgorithm = None
@@ -24,7 +25,6 @@ class Tab3():
         self.roiPatches2 = {}
         self.treeROIs_entryPopup = None
         self.ax2Image = None
-        self.Init()
 
     def Init(self):
         self.tab = ttk.Frame(self._gui.tabMain)
@@ -37,9 +37,9 @@ class Tab3():
         self.lblAlgorithm = tk.Label(self.frameOptions, text="Algorithm")
         self.lblAlgorithm.grid(row=0, column=0, columnspan=2)
         self.radioAlgoVar = tk.StringVar(value="apd")
-        self.radioAlgo1 = tk.Radiobutton(self.frameOptions, variable=self.radioAlgoVar, indicatoron=False, text="Threshold (Deprecated)", value="threshold", command=self.AlgoChanged)
-        self.radioAlgo2 = tk.Radiobutton(self.frameOptions, variable=self.radioAlgoVar, indicatoron=False, text="Advanced Polygonal Detection", value="apd", command=self.AlgoChanged)
-        self.radioAlgo3 = tk.Radiobutton(self.frameOptions, variable=self.radioAlgoVar, indicatoron=False, text="Advanced Polygonal Detection (Circular Approximation)", value="apd_aprox", command=self.AlgoChanged)
+        self.radioAlgo1 = tk.Radiobutton(self.frameOptions, variable=self.radioAlgoVar, indicatoron=False, text="Threshold (Deprecated)", value="threshold", command=lambda:self.Invalidate_Algorithm())
+        self.radioAlgo2 = tk.Radiobutton(self.frameOptions, variable=self.radioAlgoVar, indicatoron=False, text="Hysteresis thresholding (Polygonal)", value="apd", command=lambda:self.Invalidate_Algorithm())
+        self.radioAlgo3 = tk.Radiobutton(self.frameOptions, variable=self.radioAlgoVar, indicatoron=False, text="Hysteresis thresholding (Circular)", value="apd_aprox", command=lambda:self.Invalidate_Algorithm())
         self.radioAlgo1.grid(row=1, column=0, sticky="news")
         self.radioAlgo2.grid(row=1, column=1, sticky="news")
         self.radioAlgo3.grid(row=2, column=0, columnspan=2, sticky="news")
@@ -47,7 +47,7 @@ class Tab3():
         self.btnDetect.grid(row=3, column=0)
 
         self.detectionAlgorithm = detection.IDetectionAlgorithmIntegration()
-        self.frameAlgoOptions = self.detectionAlgorithm.OptionsFrame(self.frame, self.Update, self._gui.IMG)
+        self.frameAlgoOptions = self.detectionAlgorithm.OptionsFrame(self.frame, self.Update, self._gui.ImageObject)
         self.frameAlgoOptions.grid(row=1, column=0, sticky="news")
 
         self.frameROIS = tk.LabelFrame(self.frame, text="ROIs")
@@ -58,7 +58,7 @@ class Tab3():
         self.treeROIs.column("#0", minwidth=0, width=50)
         self.treeROIs.column("Location", minwidth=0, width=50)
         self.treeROIs.column("Radius", minwidth=0, width=50)
-        self.treeROIs.bind("<<TreeviewSelect>>", self.TreeViewClick)
+        self.treeROIs.bind("<<TreeviewSelect>>", lambda _: self.Invalidate_SelectedROI())
         self.treeROIs.bind("<Double-1>", self.TreeRois_onDoubleClick)
         self.treeROIs.pack(fill="both", padx=10)
 
@@ -80,6 +80,7 @@ class Tab3():
         self.btnOpenInTraceSelector = tk.Button(self.frameBtnsExport, text="Open in Trace Selector", command=self.OpenInTraceSelector)
         self.btnOpenInTraceSelector.grid(row=1, column=0)
 
+        """
         self.frameImg = ttk.LabelFrame(self.frame, text="Image")
         self.frameImg.grid(row=3, column=0, sticky="new")
         self.figureImg = plt.Figure(figsize=(3,3), dpi=100)
@@ -90,16 +91,14 @@ class Tab3():
         self.canvasImg = FigureCanvasTkAgg(self.figureImg, self.frameImg)
         self.canvasImg.get_tk_widget().pack(expand=True, fill="both")
         self.canvasImg.draw()
+        """
 
         self.figure1 = plt.Figure(figsize=(20,10), dpi=100)
         self.ax1 = self.figure1.add_subplot(221)  
         self.ax2 = self.figure1.add_subplot(222, sharex=self.ax1, sharey=self.ax1)  
         self.ax3 = self.figure1.add_subplot(223)  
         self.ax4 = self.figure1.add_subplot(224)  
-        self.ax1.set_axis_off()
-        self.ax2.set_axis_off()
-        self.ax3.set_axis_off()
-        self.ax4.set_axis_off()
+        self.ClearImagePlot()
         self.canvas1 = FigureCanvasTkAgg(self.figure1, self.tab)
         self.canvtoolbar1 = NavigationToolbar2Tk(self.canvas1,self.tab)
         self.canvtoolbar1.update()
@@ -109,125 +108,21 @@ class Tab3():
 
         tk.Grid.rowconfigure(self.frame, 3, weight=1)
 
-        self.AlgoChanged()
+        self.Update(["tab3_algorithmChanged"])
 
-    def Update(self, newImage=False):
-        if newImage:
+    def Update(self, events: list[TabUpdateEvent|str]):
+        if TabUpdateEvent.NEWIMAGE in events:    
             self.detectionResult.Clear()
             self.detectionResult.modified = False
-            self.detectionAlgorithm.Reset()
-            self.detectionAlgorithm.OptionsFrame_Update(newImage=True)
-        self.axImg.clear()    
-        self.axImg.set_title("Img Mean")
-        self.axImg.set_axis_off()
-        if self._gui.IMG.imgMean is not None:
-            self.axImg.imshow(self._gui.IMG.imgMean, cmap="Greys_r")
-        self.canvasImg.draw()
+            self.ClearImagePlot()
+            self.Invalidate_Image()
+        elif "tab3_algorithmChanged" in events:
+            self.Invalidate_Algorithm()
+            self.Invalidate_Image()
+        elif "tab3_replotImages" in events:
+            self.Invalidate_Image()
 
-        if newImage:
-            self.ax1.clear()
-            self.ax2.clear()
-        else:
-            [axImg.remove() for axImg in self.ax1.get_images()]
-            [axImg.remove() for axImg in self.ax2.get_images()]
-            [p.remove() for p in reversed(self.ax1.patches)]
-            [p.remove() for p in reversed(self.ax2.patches)]
-        self.ax3.clear()
-        self.ax4.clear()
-        self.ax1.set_axis_off()
-        self.ax2.set_axis_off()
-        self.ax3.set_axis_off()
-        self.ax4.set_axis_off()
-        self.roiPatches = {}
-        self.roiPatches2 = {}
-        self.treeROIs.delete(*self.treeROIs.get_children())
-        self.frameROIS["text"] = "ROIs"
-        try: 
-            self.treeROIs_entryPopup.destroy()
-        except AttributeError:
-            pass
-        if (self._gui.IMG.imgDiff is None):
-            self.canvas1.draw()
-            return
-        self.ax1.imshow(self._gui.IMG.imgMedian, cmap="Greys_r")
-        if self.detectionAlgorithm.Img_Input() is None:
-            self.ax2Image = self.ax2.imshow(self._gui.IMG.imgDiffMaxTime, cmap="inferno")
-        else:
-            self.ax2Image = self.ax2.imshow(self.detectionAlgorithm.Img_Input(), cmap="inferno")
-        self.ax1.set_axis_on()
-        self.ax2.set_axis_on()
-        if self.detectionResult.synapses is None:
-            self.figure1.tight_layout()
-            self.canvas1.draw()
-            return
-        self.UpdateROIs(draw = False)
-        #if self.detectionAlgorithm.AX2Image() is not None:
-        #    self.ax2.set_axis_on()
-        #    self.ax2.set_title(self.detectionAlgorithm.ax2Title)
-        #    if self._gui.IMG.imgMean is not None:
-        #        self.ax2.imshow(self._gui.IMG.imgMean, cmap="Greys_r")
-        #    self.ax2.imshow(self.detectionAlgorithm.AX2Image(), alpha=0.4)
-        self.figure1.tight_layout()
-        self.canvas1.draw()
-
-    def UpdateROIs(self, draw = True):
-        [p.remove() for p in reversed(self.ax1.patches)]
-        [p.remove() for p in reversed(self.ax2.patches)]
-        [axImg.remove() for axImg in self.ax2.get_images() if axImg != self.ax2Image]
-        self.roiPatches = {}
-        self.roiPatches2 = {}
-        self.treeROIs.delete(*self.treeROIs.get_children())
-        try: 
-            self.treeROIs_entryPopup.destroy()
-        except AttributeError:
-            pass
-
-        if self.detectionResult.modified:
-            self.frameROIS["text"] = "ROIs*"
-        else:
-            self.frameROIS["text"] = "ROIs"
-
-        if self.detectionResult.synapses is None:
-            if draw: self.canvas1.draw()
-            return
-        
-        for i in range(len(self.detectionResult.synapses)):
-            synapse = self.detectionResult.synapses[i]
-            if not isinstance(synapse, detection.SingleframeSynapse):
-                continue
-            synapseROI: detection.ISynapseROI = synapse.synapse
-            if isinstance(synapseROI, detection.CircularSynapseROI):
-                synapseuuid = self.treeROIs.insert('', 'end', iid=synapse.uuid, text=f"ROI {i+1}", values=([synapseROI.LocationStr(), synapseROI.radius]))
-                c = patches.Circle(synapseROI.location, synapseROI.radius, color="red", fill=False)
-                c2 = patches.Circle(synapseROI.location, synapseROI.radius, color="green", fill=False)
-            elif isinstance(synapseROI, detection.PolygonalSynapseROI):
-                synapseuuid = self.treeROIs.insert('', 'end', iid=synapse.uuid, text=f"ROI {i+1}", values=([synapseROI.LocationStr(), "Polygon"]))
-                c = patches.Polygon(synapseROI.polygon, color="red", fill=False)
-                c2 = patches.Polygon(synapseROI.polygon, color="green", fill=False)
-            else:
-                synapseuuid = self.treeROIs.insert('', 'end', iid=synapse.uuid, text=f"ROI {i+1}", values=([synapseROI.LocationStr(), "Unsupported"]))
-                c = patches.Circle(synapseROI.location, 3, color="red", fill=False)
-                c2 = patches.Circle(synapseROI.location, 3, color="green", fill=False)
-            self.ax1.add_patch(c)
-            if self.detectionAlgorithm.Img_Detection_Raw() is not None:
-                self.ax2.imshow(self.detectionAlgorithm.Img_Detection_Raw()!=0, alpha=(self.detectionAlgorithm.Img_Detection_Raw() != 0).astype(int)*0.2, cmap="gist_gray")
-            else:
-                self.ax2.add_patch(c2)
-            self.roiPatches[synapseuuid] = c
-            self.roiPatches2[synapseuuid] = c2
-        if draw: 
-            self.figure1.tight_layout()
-            self.canvas1.draw()
-            
-    def Detect(self):
-        if self.detectionAlgorithm is None or self._gui.IMG.imgDiffMaxTime is None:
-            self._gui.root.bell()
-            return
-        self.detectionResult.modified = False
-        self.detectionResult.SetISynapses(SingleframeSynapse.ROIsToSynapses(self.detectionAlgorithm.DetectAutoParams()))
-        self.Update()
-
-    def AlgoChanged(self):
+    def Invalidate_Algorithm(self):
         match self.radioAlgoVar.get():
             case "threshold":
                 if isinstance(self.detectionAlgorithm, detection.Thresholding_Integration):
@@ -249,14 +144,172 @@ class Tab3():
         if (self.frameAlgoOptions is not None):
             self.frameAlgoOptions.grid_forget()
         if (self.detectionAlgorithm is not None):
-            self.frameAlgoOptions = self.detectionAlgorithm.OptionsFrame(self.frame, self.Update, self._gui.IMG)
+            self.frameAlgoOptions = self.detectionAlgorithm.OptionsFrame(self.frame, self.Update, self._gui.ImageObject)
             self.frameAlgoOptions.grid(row=1, column=0, sticky="news")
-        self.Update()
+
+    def ClearImagePlot(self):
+        for ax in [self.ax1, self.ax2, self.ax3, self.ax4]: 
+            ax.clear()
+            ax.set_axis_off()
+        self.ax1.xaxis.set_major_locator(MaxNLocator(integer=True))
+        self.ax1.yaxis.set_major_locator(MaxNLocator(integer=True))
+        self.ax2.xaxis.set_major_locator(MaxNLocator(integer=True))
+        self.ax2.yaxis.set_major_locator(MaxNLocator(integer=True))
+        self.ax1.set_title("Input Image (Mean)")
+        self.ax2.set_title("Difference Image (Max)")
+
+    def Invalidate_Image(self):
+        imgObj = self._gui.ImageObject
+
+        self.ax2Image = None    
+        for ax in [self.ax1, self.ax2]: 
+            for axImg in ax.get_images(): axImg.remove()
+            ax.set_axis_off()
+        
+        if imgObj is None or imgObj.img is None or imgObj.imgDiff is None:
+            self.Invalidate_ROIs()
+            return
+        
+        self.ax1.imshow(imgObj.imgSpatial.medianArray, cmap="Greys_r")
+        if self.detectionAlgorithm.Img_Input() is None:
+            self.ax2Image = self.ax2.imshow(imgObj.imgDiffSpatial.maxArray, cmap="inferno")
+        else:
+            self.ax2Image = self.ax2.imshow(self.detectionAlgorithm.Img_Input(), cmap="inferno")
+        self.ax1.set_axis_on()
+        self.ax2.set_axis_on()
+
+        self.Invalidate_ROIs()
+
+
+    def Invalidate_ROIs(self):
+        imgObj = self._gui.ImageObject
+
+        for axImg in self.ax2.get_images():
+            if axImg != self.ax2Image: axImg.remove()
+        for p in reversed(self.ax1.patches): p.remove()
+        for p in reversed(self.ax2.patches): p.remove()
+        self.roiPatches = {}
+        self.roiPatches2 = {}
+        self.treeROIs.delete(*self.treeROIs.get_children())
+        try: 
+            self.treeROIs_entryPopup.destroy()
+        except AttributeError:
+            pass
+
+        if self.detectionResult.modified:
+            self.frameROIS["text"] = "ROIs*"
+        else:
+            self.frameROIS["text"] = "ROIs"
+
+        if self.detectionResult.synapses is None:
+            self.Invalidate_SelectedROI()
+            return
+
+        _imgReady = True
+        if imgObj is None or imgObj.img is None or imgObj.imgDiff is None:
+            _imgReady = False
+        
+        for i in range(len(self.detectionResult.synapses)):
+            synapse = self.detectionResult.synapses[i]
+            if not isinstance(synapse, detection.SingleframeSynapse):
+                continue
+            synapseROI: detection.ISynapseROI = synapse.synapse
+            if isinstance(synapseROI, detection.CircularSynapseROI):
+                synapseuuid = self.treeROIs.insert('', 'end', iid=synapse.uuid, text=f"ROI {i+1}", values=([synapseROI.LocationStr(), synapseROI.radius]))
+                c = patches.Circle(synapseROI.location, synapseROI.radius, color="red", fill=False)
+                c2 = patches.Circle(synapseROI.location, synapseROI.radius, color="green", fill=False)
+            elif isinstance(synapseROI, detection.PolygonalSynapseROI):
+                synapseuuid = self.treeROIs.insert('', 'end', iid=synapse.uuid, text=f"ROI {i+1}", values=([synapseROI.LocationStr(), "Polygon"]))
+                c = patches.Polygon(synapseROI.polygon, color="red", fill=False)
+                c2 = patches.Polygon(synapseROI.polygon, color="green", fill=False)
+            else:
+                synapseuuid = self.treeROIs.insert('', 'end', iid=synapse.uuid, text=f"ROI {i+1}", values=([synapseROI.LocationStr(), "Unsupported"]))
+                c = patches.Circle(synapseROI.location, 3, color="red", fill=False)
+                c2 = patches.Circle(synapseROI.location, 3, color="green", fill=False)
+            
+            if _imgReady:
+                self.ax1.add_patch(c)
+                if self.detectionAlgorithm.Img_Detection_Raw() is None:
+                    self.ax2.add_patch(c2)
+                self.roiPatches[synapseuuid] = c
+                self.roiPatches2[synapseuuid] = c2
+
+        self.Invalidate_SelectedROI()
+
+
+    def Invalidate_SelectedROI(self):
+        imgObj = self._gui.ImageObject
+
+        self.ax3.clear()
+        self.ax3.set_title("Image Signal")
+        self.ax3.set_ylabel("mean brightness")
+        self.ax3.set_xlabel("frame")
+        self.ax4.clear()
+        self.ax4.set_title("Detection Signal (from imgDiff)")
+        self.ax4.set_ylabel("mean brightness increase")
+        self.ax4.set_xlabel("imgDiff frame")
+        
+        selectionIndex = None
+        if len(self.treeROIs.selection()) == 1:
+            selectionIndex = self.treeROIs.selection()[0]
+
+        for name,c in self.roiPatches.items():
+            if name == selectionIndex:
+                c.set_color("yellow")
+            else:
+                c.set_color("red")
+        for name,c in self.roiPatches2.items():
+            if name == selectionIndex:
+                c.set_color("yellow")
+            else:
+                c.set_color("green")
+
+        if imgObj is None or imgObj.img is None or self.detectionResult.synapses is None:
+            self.ax3.set_axis_off()
+            self.ax4.set_axis_off()
+            self.figure1.tight_layout()
+            self.canvas1.draw()
+            return
+       
+        for i in range(len(self.detectionResult.synapses)):
+            synapse = self.detectionResult.synapses[i]
+            if not isinstance(synapse, detection.SingleframeSynapse):
+                continue
+            synapseROI: detection.ISynapseROI = synapse.synapse
+            if synapse.uuid == selectionIndex:
+                _slice = synapseROI.GetImageSignal(imgObj)
+                if len(_slice) > 0:
+                    _signal = np.mean(_slice, axis=0)
+                    self.ax3.plot(_signal)
+                _sliceDiff = synapseROI.GetImageDiffSignal(imgObj)
+                if len(_sliceDiff) > 0:
+                    _signalMaxDiff = np.max(_sliceDiff, axis=0)
+                    _signalMeanDiff = np.mean(_sliceDiff, axis=0)
+                    _signalMinDiff = np.min(_sliceDiff, axis=0)
+                    self.ax4.plot(_signalMaxDiff, label="Max", c="blue")
+                    self.ax4.plot(_signalMeanDiff, label="Mean", c="red")
+                    self.ax4.plot(_signalMinDiff, label="Min", c="darkorchid")
+
+                    self.ax4.legend()
+
+        self.figure1.tight_layout()
+        self.canvas1.draw()
+
+    def Detect(self):
+        if self.detectionAlgorithm is None or self._gui.ImageObject.imgDiff is None:
+            self._gui.root.bell()
+            return
+        self.detectionResult.modified = False
+        self.detectionResult.SetISynapses(SingleframeSynapse.ROIsToSynapses(self.detectionAlgorithm.DetectAutoParams()))
+        self.Invalidate_ROIs()
+
+
+    # GUI Functions
 
     def BtnAddROI_Click(self):
         self.detectionResult.modified = True
         self.detectionResult.AddISynapses(detection.SingleframeSynapse(detection.CircularSynapseROI().SetLocation(0,0).SetRadius(6)))
-        self.UpdateROIs()
+        self.Invalidate_ROIs()
 
     def BtnRemoveROI_Click(self):
         if self.detectionResult.synapses is None:
@@ -272,61 +325,13 @@ class Tab3():
             if synapse.uuid == selectionIndex:
                 self.detectionResult.synapses.remove(synapse)
                 break
-        self.UpdateROIs()
+        self.Invalidate_ROIs()
 
     def BtnClearAllROIs_Click(self):
         if messagebox.askyesnocancel("Neurotorch", "Do you really want to clear all ROIs?"):
             self.detectionResult.Clear()
             self.detectionResult.modified = False
-            self.UpdateROIs()
-
-    def TreeViewClick(self, event):
-        if (self._gui.IMG.img is None):
-            return
-        if self.detectionResult.synapses is None:
-            return
-        if len(self.treeROIs.selection()) != 1:
-            return
-        selectionIndex = self.treeROIs.selection()[0]
-
-        self.ax3.clear()
-        self.ax3.set_title("Image Signal")
-        self.ax3.set_ylabel("mean brightness")
-        self.ax3.set_xlabel("frame")
-        self.ax4.clear()
-        self.ax4.set_title("Detection Signal (from imgDiff)")
-        self.ax4.set_ylabel("mean brightness increase")
-        self.ax4.set_xlabel("imgDiff frame")
-        for i in range(len(self.detectionResult.synapses)):
-            synapse = self.detectionResult.synapses[i]
-            if not isinstance(synapse, detection.SingleframeSynapse):
-                continue
-            synapseROI: detection.ISynapseROI = synapse.synapse
-            if synapse.uuid == selectionIndex:
-                _slice = synapseROI.GetImageSignal(self._gui.IMG)
-                if len(_slice) > 0:
-                    _signal = np.mean(_slice, axis=0)
-                    self.ax3.plot(_signal)
-                _sliceDiff = synapseROI.GetImageDiffSignal(self._gui.IMG)
-                if len(_sliceDiff) > 0:
-                    _signalMaxDiff = np.max(_sliceDiff, axis=0)
-                    _signalMeanDiff = np.mean(_sliceDiff, axis=0)
-                    self.ax4.plot(_signalMaxDiff, label="Max")
-                    self.ax4.plot(_signalMeanDiff, label="Mean")
-
-                    self.ax4.legend()
-        for name,c in self.roiPatches.items():
-            if name == selectionIndex:
-                c.set_color("yellow")
-            else:
-                c.set_color("red")
-        for name,c in self.roiPatches2.items():
-            if name == selectionIndex:
-                c.set_color("yellow")
-            else:
-                c.set_color("green")
-        self.figure1.tight_layout()
-        self.canvas1.draw()
+            self.Invalidate_ROIs()
 
     def ExportROIsImageJ(self):
         if self._gui.ij is None:
@@ -353,7 +358,7 @@ class Tab3():
                 continue
 
     def ExportCSVMultiM(self, toStream = False):
-        if self.detectionResult.synapses is None or len(self.detectionResult.synapses) == 0 or self._gui.IMG.img is None:
+        if self.detectionResult.synapses is None or len(self.detectionResult.synapses) == 0 or self._gui.ImageObject.img is None:
             self.root.bell()
             return None
         data = pd.DataFrame()
@@ -363,7 +368,7 @@ class Tab3():
             if not isinstance(synapse, detection.SingleframeSynapse):
                 continue
             synapseROI: detection.ISynapseROI = synapse.synapse
-            _slice = synapseROI.GetImageSignal(self._gui.IMG)
+            _slice = synapseROI.GetImageSignal(self._gui.ImageObject)
             if len(_slice) == 0:
                 continue
             _signal = np.mean(_slice, axis=0)
@@ -449,7 +454,7 @@ class Tab3():
                     synapseROI.SetRadius(int(event["NewVal"]))
                     break
         self.detectionResult.modified = True
-        self.UpdateROIs()
+        self.Invalidate_ROIs()
 
     def _Canvas1Resize(self, event):
         if self.tab.winfo_width() > 300:

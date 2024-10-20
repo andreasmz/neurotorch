@@ -7,6 +7,8 @@ xarray>=2024.9.0
 pims>=0.7
 pyimagej==1.5.0
 psutil
+fsspec>=2024.9.0
+requests>=2.32.3
 #trace_selector>=0.2.14
 
 #Deprecated

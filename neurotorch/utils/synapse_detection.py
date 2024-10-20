@@ -4,16 +4,21 @@ import math
 from tkinter import messagebox
 import uuid
 
-from neurotorch.utils.image import Img as IMGObject
+from neurotorch.utils.image import ImgObj
 
 # A Synapse Fire at a specific time. Must include a location (at least a estimation) to be display in the TreeView
 class ISynapseROI:
     def __init__(self):
         self.location = None
+        self.regionProps = None
         self.uuid = str(uuid.uuid4())
 
     def SetLocation(self, X, Y):
         self.location = (X, Y)
+        return self
+    
+    def SetRegionProps(self, region_props):
+        self.regionProps = region_props
         return self
     
     def LocationStr(self) -> str:
@@ -21,10 +26,10 @@ class ISynapseROI:
             return ""
         return f"{self.location[0]}, {self.location[1]}"
     
-    def GetImageSignal(self, imgObj: IMGObject) -> list[float]:
+    def GetImageSignal(self, imgObj: ImgObj) -> list[float]:
         return []
     
-    def GetImageDiffSignal(self, imgObj: IMGObject) -> list[float]:
+    def GetImageDiffSignal(self, imgObj: ImgObj) -> list[float]:
         return []
     
     def ToStr(self):
@@ -39,7 +44,7 @@ class CircularSynapseROI(ISynapseROI):
         self.radius = radius
         return self
     
-    def GetImageSignal(self, imgObj: IMGObject) -> list[float]:
+    def GetImageSignal(self, imgObj: ImgObj) -> list[float]:
         if imgObj.img is None:
             return
         xmax = imgObj.img.shape[2]
@@ -49,7 +54,7 @@ class CircularSynapseROI(ISynapseROI):
         return np.array([imgObj.img[:,y,x] for x in range(point[0]-radius,point[0]+2*radius+1) for y in range(point[1]-radius,point[1]+2*radius+1)
                      if ((x-point[0])**2+(y-point[1])**2)<radius**2+2**(1/2) and x >= 0 and y >= 0 and x < xmax and y < ymax])
     
-    def GetImageDiffSignal(self, imgObj: IMGObject) -> list[float]:
+    def GetImageDiffSignal(self, imgObj: ImgObj) -> list[float]:
         if imgObj.imgDiff is None:
             return
         xmax = imgObj.imgDiff.shape[2]
@@ -66,7 +71,6 @@ class PolygonalSynapseROI(ISynapseROI):
     def __init__(self):
         super().__init__()
         self.polygon = None
-        self.regionProps = None
         self.coords_scaled = None
 
     def SetPolygon(self, polygon, region_props):
@@ -77,12 +81,12 @@ class PolygonalSynapseROI(ISynapseROI):
         self.SetLocation(int(region_props.centroid_weighted[1]), int(region_props.centroid_weighted[0]))
         return self
     
-    def GetImageSignal(self, imgObj: IMGObject) -> list[float]:
+    def GetImageSignal(self, imgObj: ImgObj) -> list[float]:
         if imgObj.img is None or self.regionProps is None:
             return
         return np.array([imgObj.img[:,int(y),int(x)] for (y,x) in self.regionProps.coords_scaled])
     
-    def GetImageDiffSignal(self, imgObj: IMGObject) -> list[float]:
+    def GetImageDiffSignal(self, imgObj: ImgObj) -> list[float]:
         if imgObj.imgDiff is None or self.regionProps is None:
             return
         return np.array([imgObj.imgDiff[:,int(y),int(x)] for (y,x) in self.regionProps.coords_scaled]) 
@@ -169,7 +173,7 @@ class DetectionResult:
 
 class DetectionAlgorithm:
 
-    def Detect(self, imgObject: IMGObject, frame:int = None, **kwargs) -> list[ISynapseROI]:
+    def Detect(self, imgObject: ImgObj, frame:int = None, **kwargs) -> list[ISynapseROI]:
         return None
     
     def Reset(self):
@@ -187,8 +191,8 @@ class Tresholding(DetectionAlgorithm):
         self.imgLabeled = None
         self.imgRegProps = None
 
-    def Detect(self, imgObject: IMGObject, frame:int = None, **kwargs) -> list[ISynapseROI]:
-        if frame is None and imgObject.imgDiffMaxTime is None:
+    def Detect(self, imgObject: ImgObj, frame:int = None, **kwargs) -> list[ISynapseROI]:
+        if frame is None and imgObject.imgDiffSpatial.maxArray is None:
             return None
         if frame is not None and imgObject.imgDiff is None:
             return None
@@ -201,15 +205,16 @@ class Tresholding(DetectionAlgorithm):
 
         minArea = math.pi*(radius**2)*minROISize
         if frame is None:
-            self.imgThresholded = (imgObject.imgDiffMaxTime >= threshold).astype(int)
+            self.imgThresholded = (imgObject.imgDiffSpatial.maxArray >= threshold).astype(int)
         else:
             self.imgThresholded = (imgObject.imgDiff[frame] >= threshold).astype(int)
         self.imgLabeled = measure.label(self.imgThresholded, connectivity=2)
         self.imgRegProps = measure.regionprops(self.imgLabeled)
         synapses = []
         for i in range(len(self.imgRegProps)):
-            if(self.imgRegProps[i].area >= minArea):
-                s = CircularSynapseROI().SetLocation(int(round(self.imgRegProps[i].centroid[1],0)), int(round(self.imgRegProps[i].centroid[0],0))).SetRadius(radius)
+            props = self.imgRegProps[i]
+            if(props.area >= minArea):
+                s = CircularSynapseROI().SetLocation(int(round(props.centroid[1],0)), int(round(props.centroid[0],0))).SetRadius(radius)
                 synapses.append(s)
         return synapses
 
@@ -225,7 +230,7 @@ class APD(DetectionAlgorithm):
         self.region_props = None
         self.thresholdFiltered_img = None
 
-    def Detect(self, imgObject: IMGObject, frame = None, **kwargs) -> list[ISynapseROI]:
+    def Detect(self, imgObject: ImgObj, frame = None, **kwargs) -> list[ISynapseROI]:
         try:
             mode = kwargs["imgMode"]
             lowerThreshold = kwargs["lowerThreshold"]
@@ -239,9 +244,9 @@ class APD(DetectionAlgorithm):
                 return None
             _img = imgObject.imgDiff[frame]
         elif mode == "DiffMax":
-            _img = imgObject.imgDiffMaxTime
+            _img = imgObject.imgDiffSpatial.maxArray
         elif mode == "DiffStd":
-            _img = imgObject.imgDiffStdTime
+            _img = imgObject.imgDiffSpatial.stdArray
         else:
             return None
 

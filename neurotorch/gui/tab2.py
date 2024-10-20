@@ -1,4 +1,4 @@
-import neurotorch.gui.window as window
+from neurotorch.gui.window import _GUI, Tab, TabUpdateEvent
 import neurotorch.utils.resourcemanager as rsm
 from neurotorch.utils.signalDetection import SigDetect_DiffMax, SigDetect_DiffStd, ISignalDetectionAlgorithm
 
@@ -9,15 +9,12 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 import matplotlib.widgets as PltWidget
 from matplotlib.patches import Circle
 
-class Tab2():
-    def __init__(self, gui: window._GUI):
+class Tab2(Tab):
+    def __init__(self, gui: _GUI):
         self._gui = gui
         self.root = gui.root
-        self.frameSlider = None
-        self.ax1_imshow = None
         self.signalDetectionAlgorithms = [SigDetect_DiffMax(), SigDetect_DiffStd()]
         self.currentSigDecAlgo : ISignalDetectionAlgorithm = self.signalDetectionAlgorithms[0]
-        self.Init()
 
     def Init(self):
         self.tab = ttk.Frame(self._gui.tabMain)
@@ -40,31 +37,31 @@ class Tab2():
         self.lblAlgorithm = tk.Label(self.frameAlgorithmPick, text="Algorithm:")
         self.lblAlgorithm.pack(side=tk.LEFT)
         self.radioAlgoVar = tk.StringVar(value="diffMax")
-        self.radioAlgo1 = tk.Radiobutton(self.frameAlgorithmPick, variable=self.radioAlgoVar, indicatoron=False, text="DiffMax", value="diffMax", command=self._AlgoChanged)
-        self.radioAlgo2 = tk.Radiobutton(self.frameAlgorithmPick, variable=self.radioAlgoVar, indicatoron=False, text="DiffStd", value="diffStd", command=self._AlgoChanged)
+        self.radioAlgo1 = tk.Radiobutton(self.frameAlgorithmPick, variable=self.radioAlgoVar, indicatoron=False, text="DiffMax", value="diffMax", command=lambda:self.Update(["tab2_algorithmChanged"]))
+        self.radioAlgo2 = tk.Radiobutton(self.frameAlgorithmPick, variable=self.radioAlgoVar, indicatoron=False, text="DiffStd", value="diffStd", command=lambda:self.Update(["tab2_algorithmChanged"]))
         self.radioAlgo1.pack(side=tk.LEFT)
         self.radioAlgo2.pack(side=tk.LEFT)
         self.lblAlgoInfo = tk.Label(self.frameAlgorithm, text=rsm.Get("tab2_algorithms").Get("DiffMax"), wraplength=400, justify="left")
         self.lblAlgoInfo.pack(anchor=tk.W)
         self.checkSnapPeaksVar = tk.IntVar(value=1)
-        self.checkSnapPeaks = tk.Checkbutton(self.frameOptions, text="Snap frames to peaks", variable=self.checkSnapPeaksVar, command=self._IntSliderChanged)
+        self.checkSnapPeaks = tk.Checkbutton(self.frameOptions, text="Snap frames to peaks", variable=self.checkSnapPeaksVar, command=lambda:self.UpdateFromSignal())
         self.checkSnapPeaks.pack(anchor=tk.W)
         self.checkNormalizeImgVar = tk.IntVar(value=1)
-        self.checkNormalizeImg = tk.Checkbutton(self.frameOptions, text="Normalize", variable=self.checkNormalizeImgVar, command=self._IntSliderChanged)
+        self.checkNormalizeImg = tk.Checkbutton(self.frameOptions, text="Normalize", variable=self.checkNormalizeImgVar, command=lambda:self.PlotImage())
         self.checkNormalizeImg.pack(anchor=tk.W)
         self.checkShownOriginalImgVar = tk.IntVar(value=0)
-        self.checkShownOriginalImg = tk.Checkbutton(self.frameOptions, text="Show original image", variable=self.checkShownOriginalImgVar, command=self._IntSliderChanged)
+        self.checkShownOriginalImg = tk.Checkbutton(self.frameOptions, text="Show original image", variable=self.checkShownOriginalImgVar, command=lambda:self.PlotImage())
         self.checkShownOriginalImg.pack(anchor=tk.W)
         self.frameProminence = tk.Frame(self.frameOptions)
         self.frameProminence.pack(anchor=tk.W)
         tk.Label(self.frameProminence, text="Peak Prominence:").pack(side=tk.LEFT)
         self.sliderProminenceFactorVar = tk.DoubleVar(value=0.5)
-        self.sliderProminenceFactor = tk.Scale(self.frameProminence, from_=0.1, to=0.9, orient="horizontal", variable=self.sliderProminenceFactorVar, resolution=0.05, length=100, command=self._AlgoChanged)
+        self.sliderProminenceFactor = tk.Scale(self.frameProminence, from_=0.1, to=0.9, orient="horizontal", variable=self.sliderProminenceFactorVar, resolution=0.05, length=100, command=lambda _:self.Update(["tab2_refindpeaks"]))
         self.sliderProminenceFactor.pack(side=tk.LEFT)
         self.varAutoStart = tk.IntVar(value=1)
         self.checkAutoStart = tk.Checkbutton(self.frameOptions, text="Autostart Detection", variable=self.varAutoStart)
         self.checkAutoStart.pack(anchor=tk.W)
-        tk.Button(self.frameOptions, text="Detect", command=self.BtnDetect_Click).pack(anchor=tk.W)
+        tk.Button(self.frameOptions, text="Detect", command=self.Detect).pack(anchor=tk.W)
 
         self.frameSignal = ttk.LabelFrame(self.frame, text="Image")
         self.frameSignal.grid(row=2, column=0, sticky="new")
@@ -87,11 +84,11 @@ class Tab2():
         self.ax1_axbtnDown.set_axis_off()
 
         self.frameSlider = PltWidget.Slider(self.ax1_slider1, 'Frame', 0, 1, valstep=1)
-        self.frameSlider.on_changed(self._UpdateFrameSlider)
+        self.frameSlider.on_changed(lambda _:self.PlotImage())
         self.ax1_btnDown = PltWidget.Button(self.ax1_axbtnDown, '<-')
         self.ax1_btnUp = PltWidget.Button(self.ax1_axbtnUp, '->')
-        self.ax1_btnDown.on_clicked(self._BtnDown)
-        self.ax1_btnUp.on_clicked(self._BtnUp)
+        self.ax1_btnDown.on_clicked(self.BtnDown_Click)
+        self.ax1_btnUp.on_clicked(self.BtnUp_Click)
         
         self.frameCanvas1 = tk.Frame(self.frame)
         self.frameCanvas1.grid(row=0, column=1, rowspan=3, sticky="news")
@@ -105,73 +102,105 @@ class Tab2():
         tk.Grid.columnconfigure(self.frame, 1, weight=1)
         tk.Grid.rowconfigure(self.frame, 2, weight=1)
 
-        self.Update()
-
-    def Update(self, newImage=False):
-        if newImage:
-            self.ax1.clear()
+    def Update(self, events: list[TabUpdateEvent|str]):
+        if TabUpdateEvent.NEWIMAGE in events:    
             for algo in self.signalDetectionAlgorithms: algo.Clear()
-            self._AlgoChanged()
+
+        if "tab2_algorithmChanged" in events:
+            match(self.radioAlgoVar.get()):
+                case "diffMax":
+                    self.currentSigDecAlgo = self.signalDetectionAlgorithms[0]
+                    self.lblAlgoInfo["text"] = rsm.Get("tab2_algorithms").Get("DiffMax")
+                case "diffStd":
+                    self.currentSigDecAlgo = self.signalDetectionAlgorithms[1]
+                    self.lblAlgoInfo["text"] = rsm.Get("tab2_algorithms").Get("DiffStd")
+                case _:
+                    self.currentSigDecAlgo = ISignalDetectionAlgorithm()
+                    self.lblAlgoInfo["text"] = ""
+
+        if "tab2_algorithmChanged" in events or TabUpdateEvent.NEWIMAGE in events:
+            if (self.varAutoStart.get() == 1): 
+                if self.Detect():
+                    return
+        if "tab2_refindpeaks" in events:
+            self._gui.signal.DetectPeaks(self.sliderProminenceFactorVar.get())
+            self._gui.SignalChanged()
             return
+
+        if "tab2_algorithmChanged" in events or TabUpdateEvent.NEWIMAGE in events or TabUpdateEvent.NEWSIGNAL:
+            self.UpdateFromSignal()
             
+    def UpdateFromSignal(self):  
+        imgObj = self._gui.ImageObject
+        signal = self._gui.signal.signal
+        peaks = self._gui.signal.peaks
         self.axSignal.clear()
         self.axSignal.set_ylabel("Strength")
         self.axSignal.set_xlabel("Frame")
 
-        if self._gui.signal.signal is not None:
-            self.axSignal.plot(self._gui.signal.signal)
-            self.axSignal.scatter(self._gui.signal.peaks, self._gui.signal.signal[self._gui.signal.peaks], c="orange")
-            _valstep = 1
-            _min = 1
-            if (self.checkSnapPeaksVar.get() == 1 and len(self._gui.signal.peaks) > 0):
-                _valstep =self._gui.signal.peaks + 1
-            if (self.checkShownOriginalImgVar.get() == 1):
-                _min = 0
-            self.frameSlider.valmin = _min
-            self.frameSlider.valmax = self._gui.IMG.img.shape[0]-1
-            self.frameSlider.valstep = _valstep
-            self.frameSlider.slidermin = _min
-            self.frameSlider.slidermax = self._gui.IMG.img.shape[0]-1
-            self.frameSlider.active = True
-            
-            self._UpdateFrameSlider(self.frameSlider.val)
-        else:
+        if signal is None or imgObj is None or imgObj.img is None:
+            self.figureSignal.tight_layout()
+            self.canvasSignal.draw()     
             self.frameSlider.valmin = 0
             self.frameSlider.valmax = 1
             self.frameSlider.valstep = 1
-            self.frameSlider.slidermin = 0
-            self.frameSlider.slidermax = 0
+            self.ax1_slider1.set_xlim(self.frameSlider.valmin,self.frameSlider.valmax)
             self.frameSlider.active = False
-            self.frameSlider.set_val(1)
             self.canvas1.draw()
-        self.figureSignal.tight_layout()
-        self.canvasSignal.draw()
-
-    def _UpdateFrameSlider(self, val):
-        for axImg in self.ax1.get_images(): axImg.remove()
-        if self.frameSlider is None or self._gui.IMG.imgDiff is None:
+            self.frameSlider.set_val(0)
             return
-        frame = self.frameSlider.val
-        self.frameSlider.valtext.set_text(f"{frame} / {self._gui.IMG.img.shape[0]-1}")
+
+        self.axSignal.plot(signal)
+        self.axSignal.scatter(peaks, signal[peaks], c="orange")
+        _valstep = 1
+        _min = 1
+        if (self.checkSnapPeaksVar.get() == 1 and len(peaks) > 0):
+            _valstep = peaks + 1
         if (self.checkShownOriginalImgVar.get() == 1):
-            if frame < 0 or frame >= self._gui.IMG.imgDiff.shape[0]:
+            _min = 0
+        self.frameSlider.valmin = _min
+        self.frameSlider.valmax = imgObj.img.shape[0]-1
+        self.frameSlider.valstep = _valstep
+        self.ax1_slider1.set_xlim(self.frameSlider.valmin,self.frameSlider.valmax)
+        self.frameSlider.active = True
+        self.canvas1.draw()     
+        self.figureSignal.tight_layout()
+        self.canvasSignal.draw()      
+        if self.frameSlider.val > self.frameSlider.valmax:
+            self.frameSlider.set_val(self.frameSlider.valmax)
+        elif self.frameSlider.val < self.frameSlider.valmin:
+            self.frameSlider.set_val(self.frameSlider.valmin)
+        else:
+            self.PlotImage()
+
+    def PlotImage(self):
+        imgObj = self._gui.ImageObject
+        frame = self.frameSlider.val
+        for axImg in self.ax1.get_images(): axImg.remove()
+        if imgObj is None or imgObj.img is None:
+            self.frameSlider.valtext.set_text("")
+            return
+        else:
+            self.frameSlider.valtext.set_text(f"{frame} / {imgObj.img.shape[0]-1}")
+        if (self.checkShownOriginalImgVar.get() == 1):
+            if frame < 0 or frame >= imgObj.img.shape[0]:
                 _img = None
             else:
-                _img = self._gui.IMG.img[frame,:,:]
-            _vmin = self._gui.IMG.img_Stats["ClipMin"]
-            _vmax = self._gui.IMG.img_Stats["Max"]
+                _img = imgObj.img[frame,:,:]
+            _vmin = imgObj.imgProps.min
+            _vmax = imgObj.imgProps.max
             _cmap = "Greys_r"
             _title = ""
         else:
             frame -= 1
-            if frame < 0 or frame >= self._gui.IMG.imgDiff.shape[0]:
+            if frame < 0 or frame >= imgObj.imgDiff.shape[0]:
                 _img = None
             else:
-                _img = self._gui.IMG.imgDiff[frame,:,:]
-            _vmin = self._gui.IMG.imgDiff_Stats["ClipMin"]
-            _vmax = self._gui.IMG.imgDiff_Stats["Max"]
+                _img = imgObj.imgDiff[frame,:,:]
+            _vmin = imgObj.imgDiffProps.minClipped
+            _vmax = imgObj.imgDiffProps.max
             _cmap = "inferno"
-            _title = "Diff Image"
+            _title = "Difference Image"
 
         if (self.checkNormalizeImgVar.get() == 0):
             _vmin = None
@@ -181,37 +210,24 @@ class Tab2():
             self.ax1.set_title(_title)
         self.canvas1.draw()
 
-    def _AlgoChanged(self, val=0):
-        match(self.radioAlgoVar.get()):
-            case "diffMax":
-                self.currentSigDecAlgo = self.signalDetectionAlgorithms[0]
-                self.lblAlgoInfo["text"] = rsm.Get("tab2_algorithms").Get("DiffMax")
-            case "diffStd":
-                self.currentSigDecAlgo = self.signalDetectionAlgorithms[1]
-                self.lblAlgoInfo["text"] = rsm.Get("tab2_algorithms").Get("DiffStd")
-            case _:
-                self.currentSigDecAlgo = ISignalDetectionAlgorithm()
-                self.lblAlgoInfo["text"] = ""
-        if (self._gui.IMG.imgDiff is None):
-            return
-        if (self.varAutoStart.get() == 1):
-            self.Detect()
+    # Data functions 
 
     def Detect(self):
-        self._gui.signal.SetSignal(self.currentSigDecAlgo.GetSignal(self._gui.IMG))
+        if self._gui.ImageObject is None or self._gui.ImageObject.imgDiff is None:
+            return False
+        self._gui.signal.SetSignal(self.currentSigDecAlgo.GetSignal(self._gui.ImageObject))
         self._gui.signal.DetectPeaks(self.sliderProminenceFactorVar.get())
         self._gui.SignalChanged()
+        return True
 
-    def BtnDetect_Click(self):
-        self.Detect()
+    # GUI
 
-    def _IntSliderChanged(self):
-        self._UpdateFrameSlider(self.frameSlider.val)
-
-    def _BtnDown(self, event):
+    def BtnDown_Click(self, event):
         newval = min(self.frameSlider.valmax, max(self.frameSlider.valmin, self.frameSlider.val - 1))
-        self.frameSlider.set_val(newval)
+        if self.frameSlider.active:
+            self.frameSlider.set_val(newval)
     
-    def _BtnUp(self, event):
+    def BtnUp_Click(self, event):
         newval = min(self.frameSlider.valmax, max(self.frameSlider.valmin, self.frameSlider.val + 1))
-        self.frameSlider.set_val(newval)
+        if self.frameSlider.active:
+            self.frameSlider.set_val(newval)

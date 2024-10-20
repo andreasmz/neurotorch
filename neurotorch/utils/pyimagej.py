@@ -1,5 +1,7 @@
 import neurotorch.gui.settings as settings
-import neurotorch.gui.window as window
+from neurotorch.gui.window import _GUI
+from neurotorch.utils.image import ImgObj
+
 
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -10,10 +12,9 @@ from scyjava import jimport
 import imagej
 
 class ImageJHandler:
-    def __init__(self, gui: window._GUI):
+    def __init__(self, gui: _GUI):
         self._gui = gui
         self.root = gui.root
-        self.IMG = gui.IMG
         self.imageJReady = False
         self.ij_load = False
         self.OvalRoi = None
@@ -44,13 +45,8 @@ class ImageJHandler:
         
         self._img = np.array(self._img).astype("int16")
         _name = self._img.name if hasattr(self._img, 'name') else "ImageJ Img"
-        if not self.IMG.SetIMG(self._img, _name):
-            self._gui.lblStatusInfo["text"] = "Your image has an invalid shape"
-            return
 
-        _size = round(sys.getsizeof(self.IMG.img)/(1024**2),2)
-        self._gui.lblImgInfo["text"] = f"Image: {self.IMG.img.shape}, dtype={self.IMG.img.dtype}, size = {_size} MB"
-        self._gui.NewImageProvided()
+        self._gui.statusbar._jobs.append(ImgObj().SetImage_Precompute(self._img, name=_name, callback=self._gui._OpenImage_Callback, errorcallback=self._gui._OpenImage_CallbackError))
 
     def ExportToImageJ_Img(self):
         if self._gui.ij is None:
