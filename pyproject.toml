@@ -1,0 +1,20 @@
+[project]
+name = "Andreas' Neurotorch"
+version = "24.10.3"
+authors = [
+  { name="Andreas B"},
+]
+description = "First pip version for Neutorch developed at the AG Heine"
+readme = "README.md"
+requires-python = ">=3.12.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+
+[project.urls]
+Homepage = "https://github.com/andreasmz/neurotorch"
+Issues = "https://github.com/andreasmz/neurotorch/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
