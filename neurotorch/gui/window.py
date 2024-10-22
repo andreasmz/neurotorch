@@ -1,33 +1,35 @@
-import threading
-import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
 import sys, os
-from enum import Enum, auto
+import tkinter as tk
+import configparser
+import threading
 import pickle
-from typing import Literal
 import matplotlib
+from tkinter import ttk, messagebox, filedialog
+from enum import Enum
+from typing import Literal
+
 matplotlib.use('TkAgg')
 
-import neurotorch.gui.settings as settings
-from neurotorch.utils.image import Img, ImgObj
-from neurotorch.utils.signalDetection import Signal
 import neurotorch.utils.update as Update
-from neurotorch.gui.components import Job, Statusbar
 import neurotorch.external.trace_selector_connector as ts_con
+from neurotorch.utils.image import ImgObj
+from neurotorch.utils.signalDetection import SignalObj
+from neurotorch.gui.components import Job, Statusbar
+from neurotorch.gui.settings import Neurotorch_Settings as Settings
+
 
 class Edition(Enum):
     NEUROTORCH = 1
     NEUROTORCH_LIGHT = 2
 
-class _GUI:
+class Neurotorch_GUI:
     def __init__(self):
         self.root = None
         self.tabs : dict[str: Tab] = {}
         self._imgObj = None
-        self.signal = Signal()
+        self.signal = SignalObj(self.GetImageObject)
 
         # Deprecate
-        self.ij = None
         self.ijH = None
 
     def GUI(self, edition:Edition=Edition.NEUROTORCH):
@@ -39,7 +41,7 @@ class _GUI:
         self.root = tk.Tk()
         self.SetWindowTitle("")
         try:
-            self.root.iconbitmap(os.path.join(*[settings.UserSettings.ParentPath, "media", "neurotorch_logo.ico"]))
+            self.root.iconbitmap(os.path.join(*[Settings.ParentPath, "media", "neurotorch_logo.ico"]))
         except:
             pass
         #self.root.geometry("600x600")
@@ -98,6 +100,8 @@ class _GUI:
 
         self.tabMain.pack(expand=1, fill="both")
 
+        # Debug
+        self.root.protocol("WM_DELETE_WINDOW", self.OnClosing)
 
         self.root.mainloop()
 
@@ -128,8 +132,8 @@ class _GUI:
     def NewImageProvided(self):
         def _Update(job: Job):
             #Preload
+            job.SetProgress(0, text="Calculating image preview")
             if self.ImageObject is not None and self.ImageObject.imgDiff is not None:
-                job.SetProgress(0, text="Calculating image preview")
                 self.ImageObject.imgSpatial
                 job.SetProgress(1, text="Calculating imgDiff")
                 self.ImageObject.imgDiff
@@ -138,7 +142,7 @@ class _GUI:
                 self.ImageObject.imgDiffSpatial.max
                 self.ImageObject.imgDiffTemporal.max
                 self.ImageObject.imgDiffTemporal.std
-                job.SetProgress(3, text="Updating GUI")
+            job.SetProgress(3, text="Updating GUI")
 
             if self.ImageObject is not None:
                 if self.ImageObject.img is not None:
@@ -149,12 +153,11 @@ class _GUI:
                 self.statusbar.StatusText = ""
                 self.SetWindowTitle("")
             for t in self.tabs.values(): t.Update([TabUpdateEvent.NEWIMAGE, TabUpdateEvent.NEWSIGNAL])
-            job.SetStopped("Finished updating image")
+            job.SetStopped("Updating GUI")
 
         job = Job(steps=4)
         self.statusbar.AddJob(job)
-        self._loadingThread = threading.Thread(target=_Update, args=(job,))
-        self._loadingThread.start()
+        threading.Thread(target=_Update, args=(job,), daemon=True).start()
 
     def SignalChanged(self):
         for t in self.tabs.values(): t.Update([TabUpdateEvent.NEWSIGNAL])
@@ -242,7 +245,7 @@ class _GUI:
 
 
     def MenuDebugLoadPeaks(self):
-        path = os.path.join(settings.UserSettings.UserPath, "img_peaks.dump")
+        path = os.path.join(Settings.UserPath, "img_peaks.dump")
         if not os.path.exists(path):
             self.root.bell()
             return
@@ -267,10 +270,18 @@ class _GUI:
                 print(f"Skipped peak {p} as it is to near to the edge")
         _peaksExtended.extend([int(p+2)])
         print("Exported frames", _peaksExtended)
-        savePath = os.path.join(settings.UserSettings.UserPath, "img_peaks.dump")
+        savePath = os.path.join(Settings.UserPath, "img_peaks.dump")
         with open(savePath, 'wb') as f:
             pickle.dump(self.ImageObject.img[_peaksExtended, :, :], f, protocol=pickle.HIGHEST_PROTOCOL)
 
+    def OnClosing(self):
+        print("Running threads: ", end="")
+        for thread in threading.enumerate(): 
+            print(thread.name, end="")
+        print("\nClosing")
+        self.root.destroy()
+        print("Exit Neurotorch")
+        exit()
 
 
 class TabUpdateEvent(Enum):
@@ -280,7 +291,7 @@ class TabUpdateEvent(Enum):
 
 class Tab:
 
-    def __init__(self, gui: _GUI):
+    def __init__(self, gui: Neurotorch_GUI):
         self.tab = None
 
     def Init(self):
@@ -295,5 +306,3 @@ class Tab:
             Note that the values in the Enum TabUpdatEvent may be added dynamically during tab creation.
         """
         pass
-
-GUI = _GUI()

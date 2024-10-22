@@ -1,4 +1,4 @@
-import neurotorch.gui.settings as settings
+from neurotorch.gui.settings import Neurotorch_Settings as Settings
 import fsspec
 from tkinter import messagebox
 import requests
@@ -7,7 +7,7 @@ from pathlib import Path
 
 class _Updater:
     def __init__(self):
-        _versiontxtPath = os.path.join(settings.UserSettings.ParentPath, "VERSION.txt")
+        _versiontxtPath = os.path.join(Settings.ParentPath, "VERSION.txt")
         if not os.path.exists(_versiontxtPath):
             self.version = "?"
         else:
@@ -34,12 +34,12 @@ class _Updater:
             return
         try:
             self.fs = fsspec.filesystem("github", org="andreasmz", repo="neurotorch", branch="main")
-            if (len(settings.UserSettings.SuperParentPath) < 10):
+            if (len(Settings.SuperParentPath) < 10):
                 # Never download to toplevel or any wrong path like '' or 'C:\'
                 # Yeah, it's a dump solution...
                 messagebox.showerror("There was an error downloading the update (Home Path is unsafe)")
                 return
-            destination = Path(settings.UserSettings.SuperParentPath) / "neurotorch_update"
+            destination = Path(Settings.SuperParentPath) / "neurotorch_update"
             print(f"Download Update to {destination}")
             destination.mkdir(exist_ok=True)
             self.fs.get("neurotorch", destination.as_posix(), recursive=True)

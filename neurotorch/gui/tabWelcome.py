@@ -1,5 +1,5 @@
-import neurotorch.gui.window as window
-import neurotorch.gui.settings as settings
+from neurotorch.gui.window import Neurotorch_GUI
+from neurotorch.gui.settings import Neurotorch_Settings as Settings
 
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -8,7 +8,7 @@ import os, sys
 import subprocess
 
 class TabWelcome():
-    def __init__(self, gui: window._GUI):
+    def __init__(self, gui: Neurotorch_GUI):
         self._gui = gui
         self.root = gui.root
         self.Init()
@@ -21,8 +21,7 @@ class TabWelcome():
         self.frame.bind("<Configure>", self._FrameResizeEvent)
         self.frame.pack(expand=True, fill="both")
 
-        #self.coverimg = Image.open(os.path.join(settings.UserSettings.MediaPath, "neurotorch_coverimage_24_10.jpg"))
-        self.coverimg = Image.open(os.path.join(settings.UserSettings.MediaPath, "chaptgpt_neurotorch_coverimage_4.webp"))
+        self.coverimg = Image.open(os.path.join(Settings.MediaPath, "chaptgpt_neurotorch_coverimage_4.webp"))
         self.canvas = tk.Canvas(self.frame, background="black")
         self.canvas.pack(expand=True, fill="both")
         self.frameBottom_L = tk.Frame(self.frame)
@@ -65,7 +64,7 @@ class TabWelcome():
         self.canvas.create_image(xOffset, yOffset, image=self.image, anchor="nw", tags="IMG")
 
     def BtnOpenDocs(self):
-        _path = os.path.join(*[settings.UserSettings.ParentPath, "Neurotorch Documentation.pdf"])
+        _path = os.path.join(*[Settings.ParentPath, "Neurotorch Documentation.pdf"])
         print("Opening Documentation at", _path)
         subprocess.Popen([_path],shell=True)
 

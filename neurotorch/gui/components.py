@@ -69,6 +69,8 @@ class Statusbar:
         
         if len(self._jobs) == 0:
             self.progressText = ""
+            if str(self.progMain["mode"]) != "determinate":
+                self.progMain.configure(mode="determinate")
             if self.varProgMain.get() != 0:
                 self.varProgMain.set(0)
         elif len(self._jobs) > 0:
@@ -77,7 +79,7 @@ class Statusbar:
             if j.steps == 0:
                 if str(self.progMain["mode"]) != "indeterminate":
                     self.progMain.configure(mode="indeterminate")
-                self.progMain.step(100)
+                self.progMain.step(10)
             else:
                 if str(self.progMain["mode"]) != "determinate":
                     self.progMain.configure(mode="determinate")

@@ -1,12 +1,20 @@
-import neurotorch.gui.window as window
-import neurotorch.gui.settings as settings
-import neurotorch.utils.resourcemanager as rsm
-from neurotorch.utils.api import API
+from .gui.window import Neurotorch_GUI
+from .utils.api_guy import API_GUI as _api_gui_class
 import threading
 
+neutorch_GUI = None
+_apiGUI = None
+
+def Get_API():
+    if neutorch_GUI is None:
+        return None
+    return _apiGUI
+
 def Start():
-    settings.UserSettings.ReadSettings()
-    window.GUI.GUI()
+    global neutorch_GUI, _apiGUI
+    neutorch_GUI = Neurotorch_GUI()
+    _apiGUI = _api_gui_class(neutorch_GUI)
+    neutorch_GUI.GUI()
 
 def Start_Background():
     task = threading.Thread(target=Start)

@@ -1,26 +1,87 @@
-from typing import Literal
+from typing import Callable, Literal
 import numpy as np
 from scipy.signal import find_peaks
-from neurotorch.utils.image import ImgObj
+from neurotorch.utils.image import ImgObj, AxisImage, ImageProperties
 
-class Signal:
-    def __init__(self):
-        self.signal = None
-        self.peaks = None
+class SignalObj:
+
+    def __init__(self, imgObjCallback: Callable):
+        self._imgObjCallback = imgObjCallback
+        self._peakWidth_L = 1
+        self._peakWidth_R = 6
+        self.Clear()
 
     def Clear(self):
-        self.signal = None
-        self.peaks = None
+        self._signal = None
+        self._peaks = None
+        self.ClearCache()        
 
+    def ClearCache(self):
+        self._imgObj_Sliced = None
+
+    @property
+    def signal(self):
+        return self._signal
+    
+    @signal.setter
+    def signal(self, val):
+        self._signal = val
+        self._peaks = None
+
+    @property
+    def peaks(self):
+        return self._peaks
+    
+    @property
+    def imgObjCallback(self):
+        return self._imgObjCallback
+    
+    def SetPeakWidths(self, widthLeft: int, widthRight: int):
+        self._peakWidth_L = widthLeft
+        self._peakWidth_R = widthRight
+        self.ClearCache()
+
+    @imgObjCallback.setter
+    def imgObjCallback(self, val):
+        self.ClearCache()
+        self._imgObjCallback = val
+    
     def DetectPeaks(self, prominenceFactor:int):
-        if self.signal is None:
+        if self._signal is None:
             return
-        self.peaks = None
-        self.peaks, _ = find_peaks(self.signal, prominence=prominenceFactor*(np.max(self.signal)-np.min(self.signal)))
+        self._peaks, _ = find_peaks(self._signal, prominence=prominenceFactor*(np.max(self._signal)-np.min(self._signal))) 
+        self._peaks.sort()
+        self.ClearCache()
 
-    def SetSignal(self, signal: np.array):
-        self.signal = signal
-        self.peaks = None
+    @property
+    def imgObj_Sliced(self) -> ImgObj | None:
+        if self._imgObjCallback is None:
+            return None
+        imgObj: ImgObj = self._imgObjCallback()
+        if imgObj is None or imgObj.imgDiff is None or self._imgObj_Sliced is False:
+            return None
+        if self._imgObj_Sliced is None:
+            self._imgObj_Sliced = ImgObj()
+            if self._peaks is None:
+                return None
+            if len(self._peaks) == 0:
+                self._imgObj_Sliced.imgDiff = imgObj.imgDiff
+            else:
+                _slices = []
+                for i, p in enumerate([*self._peaks, imgObj.imgDiff.shape[0]]):
+                    pStart = (self._peaks[i-1]+1 + self._peakWidth_R) if i >= 1 else 0 
+                    pStop = p - self._peakWidth_L
+                    if pStop <= pStart:
+                        continue
+                    _slices.append(slice(pStart, pStop))
+                if len(_slices) > 0:
+                    _sliceObj = np.s_[_slices]
+                    self._imgObj_Sliced.imgDiff = np.concatenate([imgObj.imgDiff[_slice] for _slice in _sliceObj])
+                else:
+                    self._imgObj_Sliced = False
+                    return None
+        return self._imgObj_Sliced
+
 
 class ISignalDetectionAlgorithm:
 

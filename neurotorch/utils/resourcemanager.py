@@ -1,12 +1,12 @@
 import json
 import os
 
-import neurotorch.gui.settings as settings
+from neurotorch.gui.settings import Neurotorch_Settings as Settings
 
 class _ResourceManager():
 
     def __init__(self):
-        self.resourceFolderPath = os.path.join(*[settings.UserSettings.ParentPath, "resources", "strings.json"])
+        self.resourceFolderPath = os.path.join(*[Settings.ParentPath, "resources", "strings.json"])
         if not os.path.exists(self.resourceFolderPath):
             return
         with open(self.resourceFolderPath) as f:

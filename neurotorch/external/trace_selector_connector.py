@@ -4,8 +4,8 @@ from tkinter import messagebox
 from io import StringIO
 import os, sys
 import contextlib
-
-import neurotorch.gui.settings as ntsettings
+import pathlib
+from neurotorch.gui.settings import Neurotorch_Settings
 
 ts_modelzoo, ts_settings, ts_app, ts_mainWindow = None, None, None, None
 
@@ -21,7 +21,8 @@ def _StartTraceSelector():
     from trace_selector.detection.model_zoo import ModelZoo
     from PyQt6.QtWidgets import QApplication
     if ts_modelzoo is None or ts_settings is None:
-        modelzoo_folder = os.path.join(*[ntsettings.UserSettings.ParentPath, "external", "synapse_selector_modelzoo"])
+        modelzoo_folder = pathlib.Path(Neurotorch_Settings.DataPath / "external" / "synapse_selector_modelzoo")
+        modelzoo_folder.mkdir(exist_ok=True, parents=True) 
         ts_modelzoo = ModelZoo(modelzoo_folder)
         ts_settings = gui_settings(ts_modelzoo)
     if ts_app or ts_mainWindow is None:

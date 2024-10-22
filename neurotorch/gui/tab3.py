@@ -1,11 +1,13 @@
-from neurotorch.gui.window import _GUI, Tab, TabUpdateEvent
+import time
+from neurotorch.gui.window import Neurotorch_GUI, Tab, TabUpdateEvent
 import neurotorch.external.trace_selector_connector as ts_con
 import neurotorch.utils.synapse_detection_integration as detection
 from neurotorch.utils.synapse_detection import SingleframeSynapse
-from neurotorch.gui.components import EntryPopup, VirtualFile, IntStringVar
+from neurotorch.gui.components import EntryPopup, VirtualFile, Job
 
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
+import threading
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 import matplotlib.widgets as PltWidget
@@ -13,10 +15,9 @@ import matplotlib.patches as patches
 from matplotlib.ticker import MaxNLocator
 import numpy as np
 import pandas as pd
-from io import StringIO
 
 class Tab3(Tab):
-    def __init__(self, gui: _GUI):
+    def __init__(self, gui: Neurotorch_GUI):
         self._gui = gui
         self.root = gui.root
         self.detectionAlgorithm = None
@@ -47,7 +48,7 @@ class Tab3(Tab):
         self.btnDetect.grid(row=3, column=0)
 
         self.detectionAlgorithm = detection.IDetectionAlgorithmIntegration()
-        self.frameAlgoOptions = self.detectionAlgorithm.OptionsFrame(self.frame, self.Update, self._gui.ImageObject)
+        self.frameAlgoOptions = self.detectionAlgorithm.OptionsFrame(self.frame, self._gui, self.Update, self._gui.GetImageObject)
         self.frameAlgoOptions.grid(row=1, column=0, sticky="news")
 
         self.frameROIS = tk.LabelFrame(self.frame, text="ROIs")
@@ -80,19 +81,6 @@ class Tab3(Tab):
         self.btnOpenInTraceSelector = tk.Button(self.frameBtnsExport, text="Open in Trace Selector", command=self.OpenInTraceSelector)
         self.btnOpenInTraceSelector.grid(row=1, column=0)
 
-        """
-        self.frameImg = ttk.LabelFrame(self.frame, text="Image")
-        self.frameImg.grid(row=3, column=0, sticky="new")
-        self.figureImg = plt.Figure(figsize=(3,3), dpi=100)
-        self.axImg = self.figureImg.add_subplot()  
-        self.axImg.set_title("Img Mean")
-        self.axImg.set_axis_off()
-        self.figureImg.tight_layout()
-        self.canvasImg = FigureCanvasTkAgg(self.figureImg, self.frameImg)
-        self.canvasImg.get_tk_widget().pack(expand=True, fill="both")
-        self.canvasImg.draw()
-        """
-
         self.figure1 = plt.Figure(figsize=(20,10), dpi=100)
         self.ax1 = self.figure1.add_subplot(221)  
         self.ax2 = self.figure1.add_subplot(222, sharex=self.ax1, sharey=self.ax1)  
@@ -114,6 +102,7 @@ class Tab3(Tab):
         if TabUpdateEvent.NEWIMAGE in events:    
             self.detectionResult.Clear()
             self.detectionResult.modified = False
+            self.Invalidate_Algorithm()
             self.ClearImagePlot()
             self.Invalidate_Image()
         elif "tab3_algorithmChanged" in events:
@@ -130,12 +119,12 @@ class Tab3(Tab):
                 self.detectionAlgorithm = detection.Thresholding_Integration()
             case "apd":
                 if type(self.detectionAlgorithm) == detection.APD_Integration:
-                    self.detectionAlgorithm.OptionsFrame_Update(newImage=True)
+                    self.detectionAlgorithm.OptionsFrame_Update()
                     return
                 self.detectionAlgorithm = detection.APD_Integration()
             case "apd_aprox":
                 if type(self.detectionAlgorithm) == detection.APD_CircleAprox_Integration:
-                    self.detectionAlgorithm.OptionsFrame_Update(newImage=True)
+                    self.detectionAlgorithm.OptionsFrame_Update()
                     return
                 self.detectionAlgorithm = detection.APD_CircleAprox_Integration()
             case _:
@@ -144,7 +133,7 @@ class Tab3(Tab):
         if (self.frameAlgoOptions is not None):
             self.frameAlgoOptions.grid_forget()
         if (self.detectionAlgorithm is not None):
-            self.frameAlgoOptions = self.detectionAlgorithm.OptionsFrame(self.frame, self.Update, self._gui.ImageObject)
+            self.frameAlgoOptions = self.detectionAlgorithm.OptionsFrame(self.frame, self._gui, self.Update, self._gui.GetImageObject)
             self.frameAlgoOptions.grid(row=1, column=0, sticky="news")
 
     def ClearImagePlot(self):
@@ -170,8 +159,10 @@ class Tab3(Tab):
             self.Invalidate_ROIs()
             return
         
-        self.ax1.imshow(imgObj.imgSpatial.medianArray, cmap="Greys_r")
-        if self.detectionAlgorithm.Img_Input() is None:
+        self.ax1.imshow(imgObj.imgSpatial.meanArray, cmap="Greys_r") 
+        if self.detectionAlgorithm.Img_Input() is False:
+            pass
+        elif self.detectionAlgorithm.Img_Input() is None:
             self.ax2Image = self.ax2.imshow(imgObj.imgDiffSpatial.maxArray, cmap="inferno")
         else:
             self.ax2Image = self.ax2.imshow(self.detectionAlgorithm.Img_Input(), cmap="inferno")
@@ -233,6 +224,9 @@ class Tab3(Tab):
                     self.ax2.add_patch(c2)
                 self.roiPatches[synapseuuid] = c
                 self.roiPatches2[synapseuuid] = c2
+
+        if self.detectionAlgorithm.Img_Detection_Raw() is not None:
+            self.ax2.imshow(self.detectionAlgorithm.Img_Detection_Raw()!=0, alpha=(self.detectionAlgorithm.Img_Detection_Raw() != 0).astype(int)*0.5, cmap="gist_gray")
 
         self.Invalidate_SelectedROI()
 
@@ -300,8 +294,17 @@ class Tab3(Tab):
             self._gui.root.bell()
             return
         self.detectionResult.modified = False
-        self.detectionResult.SetISynapses(SingleframeSynapse.ROIsToSynapses(self.detectionAlgorithm.DetectAutoParams()))
-        self.Invalidate_ROIs()
+
+        def _Detect(job: Job):
+            job.SetProgress(0, "Detect ROIs")
+            self.detectionResult.SetISynapses(SingleframeSynapse.ROIsToSynapses(self.detectionAlgorithm.DetectAutoParams()))
+            job.SetStopped("Detecting ROIs")
+            self.Invalidate_ROIs()
+
+        job = Job(steps=1)
+        self._gui.statusbar.AddJob(job)
+        threading.Thread(target=_Detect, args=(job,), daemon=True).start()
+
 
 
     # GUI Functions
@@ -334,28 +337,10 @@ class Tab3(Tab):
             self.Invalidate_ROIs()
 
     def ExportROIsImageJ(self):
-        if self._gui.ij is None:
-            messagebox.showerror("Neurotorch", "Please first start ImageJ")
-            return
         if self.detectionResult.synapses is None or len(self.detectionResult.synapses) == 0:
             self.root.bell()
             return
-        self._gui.ijH.OpenRoiManager()
-        for i in  range(len(self.detectionResult.synapses)):
-            synapse = self.detectionResult.synapses[i]
-            if not isinstance(synapse, detection.SingleframeSynapse):
-                continue
-            synapseROI: detection.ISynapseROI = synapse.synapse
-            if isinstance(synapseROI, detection.CircularSynapseROI):
-                roi = self._gui.ijH.OvalRoi(synapseROI.location[0]+0.5-synapseROI.radius, synapseROI.location[1]+0.5-synapseROI.radius, 2*synapseROI.radius, 2*synapseROI.radius)
-                roi.setName(f"ROI {i+1} {synapseROI.LocationStr().replace(",","")}")
-                self._gui.ijH.RM.addRoi(roi)
-            elif isinstance(synapseROI, detection.PolygonalSynapseROI):
-                roi = self._gui.ijH.PolygonRoi(synapseROI.polygon[:, 0]+0.5, synapseROI.polygon[:, 1]+0.5, self._gui.ijH.Roi.POLYGON)
-                roi.setName(f"ROI {i+1} {synapseROI.LocationStr().replace(",","")}")
-                self._gui.ijH.RM.addRoi(roi)
-            else:
-                continue
+        self._gui.ijH.ExportROIs([s.synapse for s in self.detectionResult.synapses if isinstance(s, detection.SingleframeSynapse)])
 
     def ExportCSVMultiM(self, toStream = False):
         if self.detectionResult.synapses is None or len(self.detectionResult.synapses) == 0 or self._gui.ImageObject.img is None:

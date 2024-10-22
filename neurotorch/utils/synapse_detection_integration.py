@@ -1,10 +1,10 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
-from typing import Literal
+from typing import Callable, Literal
 
 from neurotorch.utils.image import ImgObj, ImageProperties
 from neurotorch.gui.components import IntStringVar
-from neurotorch.gui.window import GUI, TabUpdateEvent
+from neurotorch.gui.window import Neurotorch_GUI, TabUpdateEvent
 from neurotorch.utils.synapse_detection import *
 
 # While synapse_detection.py provides detection algorithms, this file contains the actual implementation into Neurotorch GUI
@@ -16,17 +16,18 @@ class IDetectionAlgorithmIntegration:
         self.imgObj = None
         self.root = None
 
-    def OptionsFrame(self, root, updateCallback, imgObj: ImgObj) -> tk.LabelFrame:
+    def OptionsFrame(self, root, gui:Neurotorch_GUI, updateCallback, imgObj_Callable: Callable) -> tk.LabelFrame:
         """
             This function is used to generate an frame for the algorithm options. The Integration class is responsible for this LabelFrame and
             should return in after generation. If may (!) be that this class is called multiple times, for example after changing the algorithm.
         """
         self.root = root
+        self.gui = gui
         self.optionsFrame = tk.LabelFrame(self.root, text="Options")
         self.updatecallback = updateCallback
         return self.optionsFrame
     
-    def OptionsFrame_Update(self, newImage = False):
+    def OptionsFrame_Update(self):
         """
             This Update function is called, after an new image is loaded (or after other certain events that may invalidate the algorithms parameters)
             and could be for example used to update parameter estimations.
@@ -61,9 +62,9 @@ class Thresholding_Integration(Tresholding, IDetectionAlgorithmIntegration):
     def __init__(self):
         super().__init__()
 
-    def OptionsFrame(self, root, updateCallback, imgObj: ImgObj):
+    def OptionsFrame(self, root, gui:Neurotorch_GUI, updateCallback, imgObj_Callable: Callable):
         self.root = root
-        self.imgObj = imgObj
+        self.imgObjCallback = imgObj_Callable
         self.updatecallback = updateCallback
         self.optionsFrame = tk.LabelFrame(self.root, text="Options")
         self.lblScaleDiffInfo = tk.Label(self.optionsFrame, text="threshold")
@@ -91,7 +92,7 @@ class Thresholding_Integration(Tresholding, IDetectionAlgorithmIntegration):
         threshold = self.varThreshold.get()
         radius = self.varROIRadius.get()
         minROISize = self.varROIMinSize.get()/100
-        return self.Detect(self.imgObj, frame=frame, threshold=threshold, radius=radius, minROISize=minROISize)
+        return self.Detect(self.imgObjCallback(), frame=frame, threshold=threshold, radius=radius, minROISize=minROISize)
     
     def Img_Detection_Raw(self):
         return self.imgThresholded
@@ -103,10 +104,12 @@ class APD_Integration(APD, IDetectionAlgorithmIntegration):
         super().__init__()
         self.lblImgStats = None
         self.imgStats = None
+        self._currentImgObj_Callback = None
         
-    def OptionsFrame(self, root, updateCallback, imgObj: ImgObj):
+    def OptionsFrame(self, root, gui:Neurotorch_GUI, updateCallback, imgObj_Callable: Callable):
         self.root = root
-        self.imgObj = imgObj
+        self.gui = gui
+        self.imgObjCallback = imgObj_Callable
         self.updatecallback = updateCallback
         self.optionsFrame = tk.LabelFrame(self.root, text="Options")
 
@@ -125,7 +128,7 @@ class APD_Integration(APD, IDetectionAlgorithmIntegration):
         self.comboImageVar = tk.StringVar(value="DiffMax")
         self.comboImageVar.trace_add("write", self._ComboImage_Changed)
         self.comboImage = ttk.Combobox(self.optionsFrame, textvariable=self.comboImageVar, state="readonly")
-        self.comboImage['values'] = ["Diff", "DiffMax", "DiffStd"]
+        self.comboImage['values'] = ["Diff", "DiffMax", "DiffStd", "DiffMax without Signal"]
         self.comboImage.grid(row=3, column=1, sticky="news")
         self.comboFrameVar = tk.StringVar()
         self.comboFrameVar.trace_add("write", self._ComboImage_Changed)
@@ -163,41 +166,55 @@ class APD_Integration(APD, IDetectionAlgorithmIntegration):
         
         return self.optionsFrame
     
-    def OptionsFrame_Update(self, newImage = False):
+    def OptionsFrame_Update(self):
         if self.lblImgStats is None:
             self.lblImgStats = tk.Label(self.optionsFrame)
             self.lblImgStats.grid(row=0, column=0, columnspan=3)
-        if self.comboImageVar.get() != "Diff" or GUI.signal is  None or GUI.signal.peaks is None or len(GUI.signal.peaks) == 0:
+        if self.comboImageVar.get() != "Diff" or self.gui.signal is  None or self.gui.signal.peaks is None or len(self.gui.signal.peaks) == 0:
             self.comboFrame['values'] = []
             self.comboFrame["state"] = "disabled"
-            self.comboFrame.set("")
+            if self.comboFrame.get() != "":
+                self.comboFrame.set("")
         else:
-            self.comboFrame['values'] = list(GUI.signal.peaks.astype(str))
+            self.comboFrame['values'] = list(self.gui.signal.peaks.astype(str))
             self.comboFrame["state"] = "normal"
 
-        if self.imgObj is None or self.imgObj.imgDiff is None:
+        imgObj = self.imgObjCallback()
+
+        if imgObj is None or imgObj.imgDiff is None:
             self.lblImgStats["text"] = ""
             return
         
+        self._currentImgObj_Callback = self.imgObjCallback
         if self.comboImageVar.get() == "Diff" and self.comboFrameVar.get() != "":
+            self._currentImgObj_Callback = self.imgObjCallback
             _frame = int(self.comboFrameVar.get())
-            if _frame < 0 or _frame >= self.imgObj.imgDiff.shape[0]:
+            if _frame < 0 or _frame >= imgObj.imgDiff.shape[0]:
                 self.lblImgStats["text"] = ""
                 return
-            self.imgStats = ImageProperties(self.imgObj.imgDiff[_frame])
+            self.imgStats = ImageProperties(imgObj.imgDiff[_frame])
         elif self.comboImageVar.get() == "DiffMax":
-            self.imgStats = self.imgObj.imgDiffSpatial.max
+            self._currentImgObj_Callback = self.imgObjCallback
+            self.imgStats = imgObj.imgDiffSpatial.max
         elif self.comboImageVar.get() == "DiffStd":
-            self.imgStats = self.imgObj.imgDiffSpatial.std
+            self._currentImgObj_Callback = self.imgObjCallback
+            self.imgStats = imgObj.imgDiffSpatial.std
+        elif self.comboImageVar.get() == "DiffMax without Signal":
+            self._currentImgObj_Callback = lambda: self.gui.signal.imgObj_Sliced
+            if self.gui.signal.imgObj_Sliced is None or self.gui.signal.imgObj_Sliced.imgDiff is None:
+                self.lblImgStats["text"] = "imgDiff or Signal not ready"
+                self.imgStats = None
+                return
+            self.imgStats = self.gui.signal.imgObj_Sliced.imgDiffSpatial.max
         else:
             self.lblImgStats["text"] = ""
+            self.imgStats = None
             return
         _t = f"Image Stats: range = [{int(self.imgStats.min)}, {int(self.imgStats.max)}], "
         _t = _t + f"{np.round(self.imgStats.mean, 2)} ± {np.round(self.imgStats.std, 2)}, "
         _t = _t + f"median = {np.round(self.imgStats.median, 2)}"
         self.lblImgStats["text"] = _t
-        if newImage:
-            self.CalcAutoParams()
+        self.CalcAutoParams()
 
     def CalcAutoParams(self):
         if self.varAutoParams.get() != 1:
@@ -215,7 +232,7 @@ class APD_Integration(APD, IDetectionAlgorithmIntegration):
         self.lblMinAreaInfo["text"] = f"A circle with radius {r} px has the same area" 
 
     def _ComboImage_Changed(self, val1, val2, val3):
-        self.OptionsFrame_Update(newImage=True)
+        self.OptionsFrame_Update()
         self.updatecallback(["tab3_replotImages"])
 
     def _varChanged_Update(self, val1, val2, val3):
@@ -226,13 +243,16 @@ class APD_Integration(APD, IDetectionAlgorithmIntegration):
         upperThreshold = self.varUpperThreshold.IntVar.get()
         minArea = self.varMinArea.IntVar.get()
         mode = self.comboImageVar.get()
-        if frame is None:
+        if mode == "DiffMax without Signal":
+            mode = "DiffMax"
+        imgObj = self._currentImgObj_Callback()
+        if frame is None and mode == "Diff":
             _frame = self.comboFrameVar.get()
             if _frame.isdigit(): 
                 _frame = int(self.comboFrameVar.get())
-                if _frame >= 0 and _frame < self.imgObj.imgDiff.shape[0]:
+                if _frame >= 0 and _frame < imgObj.imgDiff.shape[0]:
                     frame = _frame
-        return self.Detect(self.imgObj, frame, imgMode=mode, lowerThreshold=lowerThreshold, upperThreshold=upperThreshold, minArea=minArea, warning_callback=self._Callback)
+        return self.Detect(imgObj, frame, imgMode=mode, lowerThreshold=lowerThreshold, upperThreshold=upperThreshold, minArea=minArea, warning_callback=self._Callback)
 
     def _Callback(self, mode: Literal["ask", "info", "warning", "error"], message=""):
         if mode == "ask":
@@ -244,21 +264,22 @@ class APD_Integration(APD, IDetectionAlgorithmIntegration):
         elif mode == "error":
             messagebox.showerror("Neurotorch", message)
 
-    def Img_Input(self) -> np.ndarray:
-        if self.imgObj is None or self.imgObj.img is None:
-            return None
+    def Img_Input(self) -> np.ndarray | None:
+        imgObj = self._currentImgObj_Callback()
+        if imgObj is None or imgObj.imgDiff is None:
+            return False
         match(self.comboImageVar.get()):
-            case "DiffMax":
-                return self.imgObj.imgDiffSpatial.maxArray
+            case "DiffMax" | "DiffMax without Signal":
+                return imgObj.imgDiffSpatial.maxArray
             case "DiffStd":
-                return self.imgObj.imgDiffSpatial.stdArray
+                return imgObj.imgDiffSpatial.stdArray
             case "Diff":
                 if not self.comboFrameVar.get().isdigit():
-                    return None
+                    return False
                 _frame = int(self.comboFrameVar.get())
-                if _frame < 0 or _frame > self.imgObj.imgDiff.shape[0]:
-                    return None
-                return self.imgObj.imgDiff[_frame]
+                if _frame < 0 or _frame > imgObj.imgDiff.shape[0]:
+                    return False
+                return imgObj.imgDiff[_frame]
             case _:
                 return None
             
@@ -270,8 +291,8 @@ class APD_Integration(APD, IDetectionAlgorithmIntegration):
 
 class APD_CircleAprox_Integration(APD_Integration):
 
-    def OptionsFrame(self, root, updateCallback, imgObj: ImgObj):
-        super().OptionsFrame(root, updateCallback, imgObj)
+    def OptionsFrame(self, root, gui:Neurotorch_GUI, updateCallback, imgObj_Callable: Callable):
+        super().OptionsFrame(root, gui, updateCallback, imgObj_Callable)
         self.varCircApproxR = IntStringVar(self.root, tk.IntVar(value=6))
         self.numCircApproxR = tk.Spinbox(self.optionsFrame, width=6, textvariable=self.varCircApproxR.StringVar, from_=0, to=100)
         self.numCircApproxR.grid(row = 9, column=2)

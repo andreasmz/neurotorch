@@ -1,6 +1,7 @@
-from neurotorch.gui.window import _GUI, Tab, TabUpdateEvent
+from neurotorch.gui.window import Neurotorch_GUI, Tab, TabUpdateEvent
 import neurotorch.utils.resourcemanager as rsm
 from neurotorch.utils.signalDetection import SigDetect_DiffMax, SigDetect_DiffStd, ISignalDetectionAlgorithm
+from neurotorch.gui.components import IntStringVar
 
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -10,7 +11,7 @@ import matplotlib.widgets as PltWidget
 from matplotlib.patches import Circle
 
 class Tab2(Tab):
-    def __init__(self, gui: _GUI):
+    def __init__(self, gui: Neurotorch_GUI):
         self._gui = gui
         self.root = gui.root
         self.signalDetectionAlgorithms = [SigDetect_DiffMax(), SigDetect_DiffStd()]
@@ -61,6 +62,25 @@ class Tab2(Tab):
         self.varAutoStart = tk.IntVar(value=1)
         self.checkAutoStart = tk.Checkbutton(self.frameOptions, text="Autostart Detection", variable=self.varAutoStart)
         self.checkAutoStart.pack(anchor=tk.W)
+
+        self.framePeakWidths = tk.Frame(self.frameOptions)
+        self.framePeakWidths.pack()
+        self.varPeakWidthLeft = IntStringVar(self.root, tk.IntVar(value=1))
+        self.varPeakWidthRight = IntStringVar(self.root, tk.IntVar(value=6))
+        self.varPeakWidthLeft.SetCallback(self._UpdateSignalWidths)
+        self.varPeakWidthRight.SetCallback(self._UpdateSignalWidths)
+        self._UpdateSignalWidths()
+        tk.Label(self.framePeakWidths, text="Peak Width Left").grid(row=0, column=0)
+        tk.Label(self.framePeakWidths, text="Peak Width Right").grid(row=1, column=0)
+        self.spinPeakWidthLeft = ttk.Scale(self.framePeakWidths, from_=0, to=10, variable=self.varPeakWidthLeft.IntVar)
+        self.spinPeakWidthLeft.grid(row = 0, column=1)
+        self.spinPeakWidthRight = ttk.Scale(self.framePeakWidths, from_=0, to=10, variable=self.varPeakWidthRight.IntVar)
+        self.spinPeakWidthRight.grid(row = 1, column=1)
+        self.numPeakWidthLeft = tk.Spinbox(self.framePeakWidths, width=6, textvariable=self.varPeakWidthLeft.StringVar, from_=0, to=10)
+        self.numPeakWidthLeft.grid(row = 0, column=2)
+        self.numPeakWidthRight = tk.Spinbox(self.framePeakWidths, width=6, textvariable=self.varPeakWidthRight.StringVar, from_=0, to=10)
+        self.numPeakWidthRight.grid(row = 1, column=2)
+
         tk.Button(self.frameOptions, text="Detect", command=self.Detect).pack(anchor=tk.W)
 
         self.frameSignal = ttk.LabelFrame(self.frame, text="Image")
@@ -150,8 +170,8 @@ class Tab2(Tab):
             self.frameSlider.set_val(0)
             return
 
-        self.axSignal.plot(signal)
-        self.axSignal.scatter(peaks, signal[peaks], c="orange")
+        self.axSignal.plot(range(1, len(signal)+1), signal)
+        self.axSignal.scatter(peaks+1, signal[peaks], c="orange")
         _valstep = 1
         _min = 1
         if (self.checkSnapPeaksVar.get() == 1 and len(peaks) > 0):
@@ -215,10 +235,13 @@ class Tab2(Tab):
     def Detect(self):
         if self._gui.ImageObject is None or self._gui.ImageObject.imgDiff is None:
             return False
-        self._gui.signal.SetSignal(self.currentSigDecAlgo.GetSignal(self._gui.ImageObject))
+        self._gui.signal.signal = self.currentSigDecAlgo.GetSignal(self._gui.ImageObject)
         self._gui.signal.DetectPeaks(self.sliderProminenceFactorVar.get())
         self._gui.SignalChanged()
         return True
+    
+    def _UpdateSignalWidths(self):
+        self._gui.signal.SetPeakWidths(self.varPeakWidthLeft.IntVar.get(), self.varPeakWidthRight.IntVar.get())
 
     # GUI
 
