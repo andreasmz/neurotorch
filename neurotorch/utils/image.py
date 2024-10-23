@@ -6,7 +6,7 @@ import threading
 from enum import Enum
 import time
 import pims
-import os
+import os, sys
 
 from  neurotorch.gui.components import Job, JobState    
 
@@ -30,7 +30,6 @@ class ISubimage:
         if self._mean is None:
             self._mean = np.mean(self._img, axis=self._axis)
         return self._mean
-    
     
     @property
     def median(self):

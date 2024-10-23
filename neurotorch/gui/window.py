@@ -1,12 +1,12 @@
 import sys, os
 import tkinter as tk
-import configparser
 import threading
 import pickle
 import matplotlib
 from tkinter import ttk, messagebox, filedialog
 from enum import Enum
 from typing import Literal
+import logging
 
 matplotlib.use('TkAgg')
 
@@ -24,6 +24,7 @@ class Edition(Enum):
 
 class Neurotorch_GUI:
     def __init__(self):
+        logging.getLogger().addHandler(logging.StreamHandler())
         self.root = None
         self.tabs : dict[str: Tab] = {}
         self._imgObj = None
@@ -83,6 +84,8 @@ class Neurotorch_GUI:
 
         self.menuDebug = tk.Menu(self.menubar,tearoff=0)
         self.menubar.add_cascade(label="Debug", menu=self.menuDebug)
+        self.menuDebug.add_command(label="Activate debugging", command=self.MenuDebug_EnableDebugging)
+        self.menuDebug.add_command(label="Dump memory usage", command=self.MenuDebug_MemoryDump)
         self.menuDebug.add_command(label="Save diffImg peak frames", command=self.MenuDebugSavePeaks)
         self.menuDebug.add_command(label="Load diffImg peak frames", command=self.MenuDebugLoadPeaks)
 
@@ -171,6 +174,15 @@ class Neurotorch_GUI:
             self.root.title(f"NeuroTorch Light {text}")
         else:
             self.root.title(f"NeuroTorch {text}")
+
+    def OnClosing(self):
+        print("Running threads: ", end="")
+        for thread in threading.enumerate(): 
+            print(thread.name, end="")
+        print("\nClosing")
+        self.root.destroy()
+        print("Exit Neurotorch")
+        exit()
 
     
     # Menu Buttons Click
@@ -274,15 +286,29 @@ class Neurotorch_GUI:
         with open(savePath, 'wb') as f:
             pickle.dump(self.ImageObject.img[_peaksExtended, :, :], f, protocol=pickle.HIGHEST_PROTOCOL)
 
-    def OnClosing(self):
-        print("Running threads: ", end="")
-        for thread in threading.enumerate(): 
-            print(thread.name, end="")
-        print("\nClosing")
-        self.root.destroy()
-        print("Exit Neurotorch")
-        exit()
+    def MenuDebug_EnableDebugging(self):
+        logging.getLogger().setLevel(logging.DEBUG)
+        logging.info("Activated Debugging")
 
+    def MenuDebug_MemoryDump(self):
+        logging.debug("Dump ImageObject Sizes")
+        if self._imgObj is None:
+            self.root.bell()
+            logging.debug("ImageObject is None")
+            return
+        for name, obj in {"img": self._imgObj._img, 
+                          "imgDiff": self._imgObj._imgDiff, 
+                          "imgSpatial": self._imgObj._imgSpatial}.items():
+            _size = sys.getsizeof(obj)
+            if _size < 1024:
+                _sizeFormatted = f"{_size} Bytes"
+            elif _size < 1024**2:
+                _sizeFormatted = f"{round(_size/1024, 3)} KB"
+            elif _size < 1024**3:
+                _sizeFormatted = f"{round(_size/1024**2, 3)} MB"
+            else:
+                _sizeFormatted = f"{round(_size/1024**3, 3)} GB"
+            logging.debug(f"{name}: {_sizeFormatted}")
 
 class TabUpdateEvent(Enum):
     NEWIMAGE = "newimage"
