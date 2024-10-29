@@ -13,10 +13,9 @@ matplotlib.use('TkAgg')
 import neurotorch.utils.update as Update
 import neurotorch.external.trace_selector_connector as ts_con
 from neurotorch.utils.image import ImgObj
-from neurotorch.utils.signalDetection import SignalObj
 from neurotorch.gui.components import Job, Statusbar
+from neurotorch.utils.signalDetection import SignalObj
 from neurotorch.gui.settings import Neurotorch_Settings as Settings
-
 
 class Edition(Enum):
     NEUROTORCH = 1
@@ -48,6 +47,7 @@ class Neurotorch_GUI:
         #self.root.geometry("600x600")
         self.root.state("zoomed")
         self.root.minsize(600, 600)
+        self.statusbar = Statusbar(self.root, self.root)
 
         self.menubar = tk.Menu(self.root)
         self.root.config(menu=self.menubar)
@@ -88,8 +88,6 @@ class Neurotorch_GUI:
         self.menuDebug.add_command(label="Dump memory usage", command=self.MenuDebug_MemoryDump)
         self.menuDebug.add_command(label="Save diffImg peak frames", command=self.MenuDebugSavePeaks)
         self.menuDebug.add_command(label="Load diffImg peak frames", command=self.MenuDebugLoadPeaks)
-
-        self.statusbar = Statusbar(self.root, self.root)
 
         self.tabMain = ttk.Notebook(self.root)
         self.tabWelcome = tabWelcome.TabWelcome(self)

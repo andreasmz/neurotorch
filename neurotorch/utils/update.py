@@ -1,7 +1,7 @@
 from neurotorch.gui.settings import Neurotorch_Settings as Settings
 import fsspec
 from tkinter import messagebox
-import requests
+#import requests
 import os
 from pathlib import Path
 
@@ -19,7 +19,8 @@ class _Updater:
     def CheckForUpdate(self):
         self.version_github = None
         try:
-            response = requests.get("https://raw.githubusercontent.com/andreasmz/neurotorch/main/neurotorch/VERSION.txt")
+            response = None
+            #response = requests.get("https://raw.githubusercontent.com/andreasmz/neurotorch/main/neurotorch/VERSION.txt")
             if (response.status_code != 200):
                 return False
             self.version_github = response.text

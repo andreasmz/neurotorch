@@ -1,12 +1,15 @@
 import collections
 from typing import Callable, Literal
 import numpy as np
+import psutil
 from scipy.ndimage import convolve, gaussian_filter
 import threading
 from enum import Enum
 import time
 import pims
 import os, sys
+import logging
+import gc
 
 from  neurotorch.gui.components import Job, JobState    
 
@@ -470,9 +473,10 @@ class ImgObj:
                 job.SetStopped("Image Unsupported")
                 if errorcallback is not None: errorcallback("ImageUnsupported", ex)
                 return "ImageUnsupported"
-            
+            self._MemoryDump("Memory after image loading with PIMS")
             job.SetProgress(1, "Converting Image")
             imgNP = np.array([np.array(_pimsImg[i]) for i in range(_pimsImg.shape[0])])    
+            self._MemoryDump("Memory after numpy conversion")
             if len(imgNP.shape) != 3:
                 job.SetStopped("Image Unsupported")
                 if errorcallback is not None: errorcallback("ImageUnsupported", f"The image needs to have shape (t, y, x). Your shape is {imgNP.shape}")
@@ -480,12 +484,18 @@ class ImgObj:
             self.img = imgNP
             if getattr(_pimsImg, "get_metadata_raw", None) != None:
                 self._pimsmetadata = collections.OrderedDict(sorted(_pimsImg.get_metadata_raw().items()))
+            self._MemoryDump("Memory before PIMS deletion")
+            del _pimsImg
+            gc.collect()
+            self._MemoryDump("Memory after PIMS deletion")
 
             job.SetProgress(2, text="Calculating Spatial Image View")
             self.imgSpatial.meanArray
             self.imgSpatial.stdArray
+            self._MemoryDump("Memory after mean Array calculation")
             job.SetProgress(3, text="Calculating imgDiff")
             self.imgDiff
+            self._MemoryDump("Memory after diff calculation")
             if convolute:
                 job.SetProgress(4, text="Applying Gaussian Filter on imgDiff")
                 self.imgDiff_Mode = "Convoluted"
@@ -494,8 +504,10 @@ class ImgObj:
             self.imgDiffSpatial.meanArray
             self.imgDiffSpatial.maxArray
             self.imgDiffSpatial.stdArray
+            self._MemoryDump("Memory after imgDiffSpatial calculations")
             self.imgDiffTemporal.maxArray
             self.imgDiffTemporal.stdArray
+            self._MemoryDump("Memory after imgDiffTemporal calculations")
             job.SetProgress(6, text="Loading Image")
             job.SetStopped("Loading Image")
             if callable is not None:
@@ -513,3 +525,15 @@ class ImgObj:
         self._loadingThread = threading.Thread(target=_Precompute, args=(job,), daemon=True)
         self._loadingThread.start()
         return job
+    
+    def _MemoryDump(self, msg):
+        _size = psutil.Process().memory_info().rss
+        if _size < 1024:
+            _sizeFormatted = f"{_size} Bytes"
+        elif _size < 1024**2:
+            _sizeFormatted = f"{round(_size/1024, 3)} KB"
+        elif _size < 1024**3:
+            _sizeFormatted = f"{round(_size/1024**2, 3)} MB"
+        else:
+            _sizeFormatted = f"{round(_size/1024**3, 3)} GB"
+        logging.debug(f"{msg}: {_sizeFormatted}")
