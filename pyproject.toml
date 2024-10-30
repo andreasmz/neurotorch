@@ -1,5 +1,5 @@
 [project]
-name = "Andreas' Neurotorch"
+name = "Neurotorchmz"
 version = "24.11.1"
 authors = [
   { name="Andreas B"},
@@ -26,9 +26,6 @@ dependencies = [
   "platformdirs>=4.3.6",
 ]
 
-[dirs]
-project = ["neurotorch"]
-
 [project.urls]
 Homepage = "https://github.com/andreasmz/neurotorch"
 Issues = "https://github.com/andreasmz/neurotorch/issues"
@@ -36,3 +33,4 @@ Issues = "https://github.com/andreasmz/neurotorch/issues"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+

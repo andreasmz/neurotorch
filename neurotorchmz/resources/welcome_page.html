@@ -1,0 +1,45 @@
+<html>
+    <head>
+        <style>
+            * {
+                font-family: sans-serif;
+            }
+            #mainDiv {
+                height: 100%;
+                width: 100%;
+                display: grid;
+                grid-template-columns: 3fr 2fr;
+                column-gap: 50px;
+            }
+
+            #mainDiv > div {
+                height: 100%;
+                width: 100%;
+                display: flex;
+                align-items: center;
+            }
+            #textDiv {
+                height: 400px;
+            }
+
+            #coverImg {
+                width: 100%;
+                height: auto;
+                object-fit: cover;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="mainDiv">
+            <div>
+                <img id="coverImg" src="file:///D:/Eigene%20Datein/Programmieren/Git/abrilka/neurotorch/neurotorch/media/neurotorch_coverimage_24_10.jpg">
+            </div>
+            <div>
+                <div id="textDiv">
+                    <h1> Welcome to Neurotorch </h1>
+                </div>
+                
+            </div>
+        </div>
+    </body>
+</html>

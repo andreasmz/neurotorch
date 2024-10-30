@@ -1,0 +1,7 @@
+{
+    "tab2_description": "Use this tab to find the frames where synapses fire (called peak frames). Depending on your algorithm, a signal is calculated for every frame of your video (plotted on the left side). In this signal, the peaks are identified and marked with orange dots. You can view them using the slider on the bottom middle.",
+    "tab2_algorithms": {
+        "DiffMax": "Takes the differences between two frames (called 'diff') and calculates the maximum (called 'max') per frame. Useally a good first choice as algorithm. The peak height is proportional to most bright synapse",
+        "DiffStd": "Takes the differences between two frames (called 'diff') and calculates the standard deviation (called 'std') per frame. Use this for noisy videos as it will yield better results. The peak height is proportional to the number of synapses firing and their brightness"
+    }
+}
