@@ -12,6 +12,8 @@ from matplotlib.patches import Circle
 
 class Tab2(Tab):
     def __init__(self, gui: Neurotorch_GUI):
+        super().__init__(gui)
+        self.tab_name = "Tab Signal"
         self._gui = gui
         self.root = gui.root
         self.signalDetectionAlgorithms = [SigDetect_DiffMax(), SigDetect_DiffStd()]

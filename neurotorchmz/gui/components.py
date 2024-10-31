@@ -65,7 +65,7 @@ class Statusbar:
         for j in self._jobs:
             if ((j.State == JobState.STOPPED) | (j.State == JobState.TIMEOUT)) and (j.Time <= -3 or j.Runtime <= 3):
                 self._jobs.remove(j)
-        self._jobs.sort(key=lambda j: j.Runtime)
+        self._jobs.sort(key=lambda j: j.startTime) #Ascending sorting: Newest job last
         
         if len(self._jobs) == 0:
             self.progressText = ""
@@ -74,7 +74,7 @@ class Statusbar:
             if self.varProgMain.get() != 0:
                 self.varProgMain.set(0)
         elif len(self._jobs) > 0:
-            j = self._jobs[-1]
+            j = self._jobs[-1] # Pick newest job
             self.progressText = f"{j.Text} ({round(j.Time, 0)} s)" if len(self._jobs) == 1 else f"{j.Text} ({round(j.Time, 0)} s) and {len(self._jobs)-1} more job running"
             if j.steps == 0:
                 if str(self.progMain["mode"]) != "indeterminate":

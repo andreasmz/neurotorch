@@ -143,7 +143,7 @@ class Neurotorch_GUI:
                 self.ImageObject.imgView(ImgObj.SPATIAL).Std
                 self.ImageObject.imgDiffView(ImgObj.SPATIAL).Max
                 self.ImageObject.imgDiffView(ImgObj.SPATIAL).Std
-            job.SetProgress(3, text="Updating GUI")
+            job.SetProgress(3, text="Updating GUI (Statusbar)")
 
             if self.ImageObject is not None:
                 if self.ImageObject.img is not None:
@@ -153,7 +153,9 @@ class Neurotorch_GUI:
             else:
                 self.statusbar.StatusText = ""
                 self.SetWindowTitle("")
-            for t in self.tabs.values(): t.Update([TabUpdateEvent.NEWIMAGE, TabUpdateEvent.NEWSIGNAL])
+            for t in self.tabs.values(): 
+                job.SetProgress(3, text=f"Updating GUI ({t.tab_name})")
+                t.Update([TabUpdateEvent.NEWIMAGE, TabUpdateEvent.NEWSIGNAL])
             job.SetStopped("Updating GUI")
 
         job = Job(steps=4)
@@ -316,6 +318,7 @@ class TabUpdateEvent(Enum):
 class Tab:
 
     def __init__(self, gui: Neurotorch_GUI):
+        self.tab_name = None
         self.tab = None
 
     def Init(self):

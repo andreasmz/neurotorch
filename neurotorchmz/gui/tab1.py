@@ -12,6 +12,7 @@ import numpy as np
 class Tab1(Tab):
     def __init__(self, gui: Neurotorch_GUI):
         super().__init__(gui)
+        self.tab_name = "Tab Image"
         self.gui = gui
         self.root = gui.root
         self.imshow2D = None
@@ -112,6 +113,8 @@ class Tab1(Tab):
                         self.treeMetadata.insert('nd2ImageData', 'end', text=v, values=(["Not set"]))
                 self.treeMetadata.insert('', 'end', iid="nd2RawImageData", text="ND2 Image Data (All)", open=False)
                 for k,v in self.gui.ImageObject.pims_metadata.items():
+                    if "#" in k:
+                        continue
                     self.treeMetadata.insert('nd2RawImageData', 'end', text=k, values=([v]))
 
         _selected = self.radioDisplayVar.get()

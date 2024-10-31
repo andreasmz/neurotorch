@@ -18,6 +18,8 @@ import time
 
 class Tab3(Tab):
     def __init__(self, gui: Neurotorch_GUI):
+        super().__init__(gui)
+        self.tab_name = "Tab ROI Finder"
         self._gui = gui
         self.root = gui.root
         self.detectionAlgorithm = None
@@ -80,6 +82,18 @@ class Tab3(Tab):
         self.btnExportCSVMultiM.grid(row=0, column=1)
         self.btnOpenInTraceSelector = tk.Button(self.frameBtnsExport, text="Open in Trace Selector", command=self.OpenInTraceSelector)
         self.btnOpenInTraceSelector.grid(row=1, column=0)
+
+        self.frameROIProperties = tk.LabelFrame(self.frame, text="ROI Properties")
+        self.frameROIProperties.grid(row=3, column=0, sticky="news")
+        self.treeROIInfo = ttk.Treeview(self.frameROIProperties, columns=("Value"))
+        self.treeROIInfo.heading('#0', text='Name')
+        self.treeROIInfo.heading('Value', text='Value')
+        self.treeROIInfo.column("#0", minwidth=0, width=50)
+        self.treeROIInfo.column("Value", minwidth=0, width=100)
+        #self.treeROIInfo.bind("<<TreeviewSelect>>", FUNCTION)
+        #self.treeROIInfo.bind("<Double-1>", FUNCTION)
+        self.treeROIInfo.pack(fill="both", padx=10)
+
 
         self.figure1 = plt.Figure(figsize=(20,10), dpi=100)
         self.ax1 = self.figure1.add_subplot(221)  
@@ -242,6 +256,8 @@ class Tab3(Tab):
         self.ax4.set_title("Detection Signal (from imgDiff)")
         self.ax4.set_ylabel("mean brightness increase")
         self.ax4.set_xlabel("imgDiff frame")
+
+        self.treeROIInfo.delete(*self.treeROIInfo.get_children())
         
         selectionIndex = None
         if len(self.treeROIs.selection()) == 1:
@@ -285,7 +301,20 @@ class Tab3(Tab):
                     self.ax4.plot(_signalMinDiff, label="Min", c="darkorchid")
 
                     self.ax4.legend()
-
+                if synapseROI.regionProps is not None:
+                    p = synapseROI.regionProps
+                    self.treeROIInfo.insert('', 'end', text=f"Area [px]", values=([p.area]))
+                    self.treeROIInfo.insert('', 'end', text=f"Center of mass (X,Y)", values=([f"({round(p.centroid_weighted[1], 3)}, {round(p.centroid_weighted[0], 3)})"]))
+                    self.treeROIInfo.insert('', 'end', text=f"Radius of circle with same size [px]", values=([f"{round(p.equivalent_diameter_area/2, 2)}"]))
+                    self.treeROIInfo.insert('', 'end', text=f"Eccentricity [0,1)", values=([f"{round(p.eccentricity, 3)}"]))
+                    self.treeROIInfo.insert('', 'end', text=f"Intensity Max", values=([f"{round(p.intensity_max, 2)}"]))
+                    self.treeROIInfo.insert('', 'end', text=f"Intensity Mean", values=([f"{round(p.intensity_mean, 2)}"]))
+                    self.treeROIInfo.insert('', 'end', text=f"Intensity Min", values=([f"{round(p.intensity_min, 2)}"]))
+                    self.treeROIInfo.insert('', 'end', text=f"Intensity Std", values=([f"{round(p.intensity_std, 2)}"]))
+                    self.treeROIInfo.insert('', 'end', text=f"Inertia X", values=([f"{round(p.inertia_tensor[0,0], 2)}"]))
+                    self.treeROIInfo.insert('', 'end', text=f"Inertia Y", values=([f"{round(p.inertia_tensor[1,1], 2)}"]))
+                    self.treeROIInfo.insert('', 'end', text=f"Inertia Ratio", values=([f"{round(p.inertia_tensor[0,0]/p.inertia_tensor[1,1], 2)}"]))
+                    #print(p.moments_weighted_central)
         self.figure1.tight_layout()
         self.canvas1.draw()
 

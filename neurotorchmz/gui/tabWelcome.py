@@ -1,4 +1,4 @@
-from neurotorchmz.gui.window import Neurotorch_GUI
+from neurotorchmz.gui.window import Neurotorch_GUI, Tab
 from neurotorchmz.gui.settings import Neurotorch_Settings as Settings
 
 import tkinter as tk
@@ -7,8 +7,10 @@ from PIL import ImageTk, Image, ImageOps
 import os, sys
 import subprocess
 
-class TabWelcome():
+class TabWelcome(Tab):
     def __init__(self, gui: Neurotorch_GUI):
+        super().__init__(gui)
+        self.tab_name = "Tab Welcome"
         self._gui = gui
         self.root = gui.root
         self.Init()

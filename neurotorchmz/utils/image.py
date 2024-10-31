@@ -33,7 +33,7 @@ class ImageProperties:
         if self._img is None:
             return None
         if self._mean is None:
-            self._mean = np.mean(self._img, axis=self._axis)
+            self._mean = np.mean(self._img)
         return self._mean
     
     @property
@@ -41,7 +41,7 @@ class ImageProperties:
         if self._img is None:
             return None
         if self._median is None:
-            self._median = np.median(self._img, axis=self._axis)
+            self._median = np.median(self._img)
         return self._median
     
     @property
@@ -49,7 +49,7 @@ class ImageProperties:
         if self._img is None:
             return None
         if self._std is None:
-            self._std = np.std(self._img, axis=self._axis)
+            self._std = np.std(self._img, mean=self.mean)
         return self._std
     
     @property
@@ -57,7 +57,7 @@ class ImageProperties:
         if self._img is None:
             return None
         if self._min is None:
-            self._min = np.min(self._img, axis=self._axis)
+            self._min = np.min(self._img)
         return self._min
     
     @property
@@ -65,7 +65,7 @@ class ImageProperties:
         if self._img is None:
             return None
         if self._max is None:
-            self._max = np.max(self._img, axis=self._axis)
+            self._max = np.max(self._img)
         return self._max
 
     @property
@@ -158,7 +158,7 @@ class AxisImage:
         if self._img is None:
             return None
         if self._Std is None:
-            self._Std = ImageProperties(np.std(self._img, axis=self._axis))
+            self._Std = ImageProperties(np.std(self._img, axis=self._axis, dtype="float32").astype("float64")) # Use float32 for calculations (!) to lower peak memory usage
         return self._Std
     
     @property
@@ -487,6 +487,7 @@ class ImgObj:
     def OpenFile(self, path: str, callback = None, errorcallback = None, convolute: bool = False) -> Literal["FileNotFound", "AlreadyLoading", "ImageUnsupported", "Wrong Shape"] | Job:
 
         def _Precompute(job: Job):
+            self._MemoryDump("Begin")
             job.SetProgress(0, "Opening File")
             try:
                 _pimsImg = pims.open(path)
@@ -498,10 +499,12 @@ class ImgObj:
                 job.SetStopped("Image Unsupported")
                 if errorcallback is not None: errorcallback("ImageUnsupported", ex)
                 return "ImageUnsupported"
-            self._MemoryDump("Memory after image loading with PIMS")
+            self._MemoryDump("Image loading with PIMS")
             job.SetProgress(1, "Converting Image")
-            imgNP = np.array([np.array(_pimsImg[i]) for i in range(_pimsImg.shape[0])])    
-            self._MemoryDump("Memory after numpy conversion")
+            imgNP = np.empty(shape=_pimsImg.shape, dtype=_pimsImg.dtype)
+            for i in range(_pimsImg.shape[0]):
+                imgNP[i] = _pimsImg[i]
+            self._MemoryDump("Numpy conversion")
             if len(imgNP.shape) != 3:
                 job.SetStopped("Image Unsupported")
                 if errorcallback is not None: errorcallback("ImageUnsupported", f"The image needs to have shape (t, y, x). Your shape is {imgNP.shape}")
@@ -509,29 +512,36 @@ class ImgObj:
             self.img = imgNP
             if getattr(_pimsImg, "get_metadata_raw", None) != None:
                 self._pimsmetadata = collections.OrderedDict(sorted(_pimsImg.get_metadata_raw().items()))
-            self._MemoryDump("Memory before PIMS deletion")
+            self._MemoryDump("Before PIMS deletion")
             del _pimsImg
             gc.collect()
-            self._MemoryDump("Memory after PIMS deletion")
+            self._MemoryDump("After PIMS deletion")
 
-            job.SetProgress(2, text="Calculating Spatial Image View")
+            job.SetProgress(2, text="Precalculating ImgView (Spatial Mean)")
             self.imgView(ImgObj.SPATIAL).Mean
+            job.SetProgress(2, text="Precalculating ImgView (Spatial Std)")
             self.imgView(ImgObj.SPATIAL).Std
-            self._MemoryDump("Memory after mean Array calculation")
+            gc.collect()
+            self._MemoryDump("Precalculating ImgView")
             job.SetProgress(3, text="Calculating imgDiff")
             self.imgDiff
-            self._MemoryDump("Memory after diff calculation")
+            self._MemoryDump("ImgDiff")
             if convolute:
                 job.SetProgress(4, text="Applying Gaussian Filter on imgDiff")
                 self.imgDiff_Mode = "Convoluted"
                 self.imgDiff
-            job.SetProgress(5, text="Calculating Spatial and Temporal imgDiff View")
+            gc.collect()
+            job.SetProgress(5, text="Precalculating ImgDiffView (Spatial Max)")
             self.imgDiffView(ImgObj.SPATIAL).Max
+            job.SetProgress(5, text="Precalculating ImgDiffView (Spatial Std)")
             self.imgDiffView(ImgObj.SPATIAL).Std
-            self._MemoryDump("Memory after imgDiffSpatial calculations")
+            gc.collect()
+            job.SetProgress(5, text="Precalculating ImgDiffView (Temporal Max)")
             self.imgDiffView(ImgObj.TEMPORAL).Max
+            job.SetProgress(5, text="Precalculating ImgDiffView (Temporal Std)")
             self.imgDiffView(ImgObj.TEMPORAL).Std
-            self._MemoryDump("Memory after imgDiffTemporal calculations")
+            gc.collect()
+            self._MemoryDump("Precalculating ImgDiffView")
             job.SetProgress(6, text="Loading Image")
             job.SetStopped("Loading Image")
             if callable is not None:
@@ -560,4 +570,4 @@ class ImgObj:
             _sizeFormatted = f"{round(_size/1024**2, 3)} MB"
         else:
             _sizeFormatted = f"{round(_size/1024**3, 3)} GB"
-        logging.debug(f"{msg}: {_sizeFormatted}")
+        logging.debug(f"Memory ({msg}): {_sizeFormatted}")
