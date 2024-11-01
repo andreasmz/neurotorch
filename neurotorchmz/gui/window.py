@@ -64,12 +64,18 @@ class Neurotorch_GUI:
         self.menuDenoise.add_command(label="Disable denoising", command=lambda: self.MenuImageDenoise(None, None))
         self.menuDenoise.add_command(label="Gaussian kernel (σ=2, recommended)", command=lambda: self.MenuImageDenoise('Gaussian', (2,)))
         self.menuDenoise.add_separator()
+        self.menuDenoise.add_command(label="Gaussian kernel (σ=0.5)", command=lambda: self.MenuImageDenoise('Gaussian', (0.5,)))
+        self.menuDenoise.add_command(label="Gaussian kernel (σ=0.8)", command=lambda: self.MenuImageDenoise('Gaussian', (0.8,)))
         self.menuDenoise.add_command(label="Gaussian kernel (σ=1)", command=lambda: self.MenuImageDenoise('Gaussian', (1,)))
         self.menuDenoise.add_command(label="Gaussian kernel (σ=1.5)", command=lambda: self.MenuImageDenoise('Gaussian', (1.5,)))
         self.menuDenoise.add_command(label="Gaussian kernel (σ=2)", command=lambda: self.MenuImageDenoise('Gaussian', (2,)))
         self.menuDenoise.add_command(label="Gaussian kernel (σ=2.5)", command=lambda: self.MenuImageDenoise('Gaussian', (2.5,)))
         self.menuDenoise.add_command(label="Gaussian kernel (σ=3)", command=lambda: self.MenuImageDenoise('Gaussian', (3,)))
         self.menuDenoise.add_command(label="Gaussian kernel (σ=5)", command=lambda: self.MenuImageDenoise('Gaussian', (5,)))
+        self.menuDenoiseImg = tk.Menu(self.menuImage,tearoff=0)
+        self.menuImage.add_cascade(label="Denoise Image", menu=self.menuDenoiseImg)
+        self.menuDenoiseImg.add_command(label="On", command=lambda:self.MenuImageDenoiseImg(True))
+        self.menuDenoiseImg.add_command(label="Off", command=lambda:self.MenuImageDenoiseImg(False))
         self.menuImage.add_command(label="Start Trace Selector", command=self.MenuImageTraceSelector)
 
         if (edition == Edition.NEUROTORCH):
@@ -224,6 +230,14 @@ class Neurotorch_GUI:
         else:
             raise ValueError(f"Mode parameter has an unkown value '{mode}'")
         self.NewImageProvided()
+
+    def MenuImageDenoiseImg(self, enable: bool):
+        if self.ImageObject is None:
+            self.root.bell()
+            return
+        self.ImageObject._imgMode = 1 if enable else 0
+        self.NewImageProvided()
+        
 
     def MenuImageTraceSelector(self):
         if messagebox.askokcancel("Neurotorch", "This is currently an experimental feature. Are you sure you want to continue?"):

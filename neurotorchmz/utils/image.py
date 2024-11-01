@@ -206,6 +206,8 @@ class ImgObj:
 
     def Clear(self):
         self._img: np.ndarray = None
+        self._imgDenoised: np.ndarray = None
+        self._imgMode: int = 0 # 0: Use given image, 1: use denoised image
         self._imgProps: ImageProperties = None
         self._imgS: np.ndarray = None # Image with signed dtype
         self._imgSpatial: AxisImage = None
@@ -245,6 +247,12 @@ class ImgObj:
         """
             Returns the provided image in form of an np.ndarray or None if not loaded
         """
+        if self._imgMode == 1:
+            if self._imgDenoised is None:
+                if self.imgDiff_Conv is None:
+                    return None
+                self._imgDenoised = self.imgView(ImgObj.SPATIAL).Median + np.cumsum(self.imgDiff_Conv, axis=(1,2)) 
+            return self._imgDenoised
         return self._img
     
     @img.setter
