@@ -33,27 +33,41 @@ class Tab3(Tab):
         self.tab = ttk.Frame(self._gui.tabMain)
         self._gui.tabMain.add(self.tab, text="Synapse ROI Finder")
 
-        self.frame = tk.Frame(self.tab)
-        self.frame.pack(side=tk.LEFT, fill="y", expand=True, anchor=tk.W)
-        self.frameOptions = ttk.LabelFrame(self.frame, text="Options")
+        self.frameToolsContainer = tk.Frame(self.tab, borderwidth=10)
+        self.frameToolsContainer.pack(side=tk.LEFT, fill="y", expand=True, anchor=tk.W)
+        self.canvasFrameTools = tk.Canvas(self.frameToolsContainer, background="blue")
+        self.scrollFrameTools = ttk.Scrollbar(self.frameToolsContainer)
+        self.frameTools = tk.Frame(self.canvasFrameTools)
+        self.frameTools.bind(
+            "<Configure>",
+            lambda e: self.canvasFrameTools.configure(
+                scrollregion=self.canvasFrameTools.bbox("all")
+            )
+        )
+        self.canvasFrameTools.create_window((0, 0), window=self.frameTools, anchor="nw")
+        self.canvasFrameTools.configure(yscrollcommand=self.scrollFrameTools.set)
+        self.canvasFrameTools.pack(side=tk.LEFT, fill="y", expand=True)
+        self.scrollFrameTools.pack(fill="y", expand=True)
+
+        self.frameOptions = ttk.LabelFrame(self.frameTools, text="Options")
         self.frameOptions.grid(row=0, column=0, sticky="news")
         self.lblAlgorithm = tk.Label(self.frameOptions, text="Algorithm")
         self.lblAlgorithm.grid(row=0, column=0, columnspan=2)
         self.radioAlgoVar = tk.StringVar(value="apd")
-        self.radioAlgo1 = tk.Radiobutton(self.frameOptions, variable=self.radioAlgoVar, indicatoron=False, text="Threshold (Deprecated)", value="threshold", command=lambda:self.Invalidate_Algorithm())
-        self.radioAlgo2 = tk.Radiobutton(self.frameOptions, variable=self.radioAlgoVar, indicatoron=False, text="Hysteresis thresholding (Polygonal)", value="apd", command=lambda:self.Invalidate_Algorithm())
-        self.radioAlgo3 = tk.Radiobutton(self.frameOptions, variable=self.radioAlgoVar, indicatoron=False, text="Hysteresis thresholding (Circular)", value="apd_aprox", command=lambda:self.Invalidate_Algorithm())
-        self.radioAlgo1.grid(row=1, column=0, sticky="news")
-        self.radioAlgo2.grid(row=1, column=1, sticky="news")
-        self.radioAlgo3.grid(row=2, column=0, columnspan=2, sticky="news")
+        self.radioAlgo1 = tk.Radiobutton(self.frameOptions, variable=self.radioAlgoVar, indicatoron=True, text="Threshold (Deprecated)", value="threshold", command=lambda:self.Invalidate_Algorithm())
+        self.radioAlgo2 = tk.Radiobutton(self.frameOptions, variable=self.radioAlgoVar, indicatoron=True, text="Hysteresis thresholding (Polygonal)", value="apd", command=lambda:self.Invalidate_Algorithm())
+        self.radioAlgo3 = tk.Radiobutton(self.frameOptions, variable=self.radioAlgoVar, indicatoron=True, text="Hysteresis thresholding (Circular)", value="apd_aprox", command=lambda:self.Invalidate_Algorithm())
+        self.radioAlgo1.grid(row=1, column=0, sticky="nw")
+        self.radioAlgo2.grid(row=2, column=0, sticky="nw")
+        self.radioAlgo3.grid(row=3, column=0, columnspan=2, sticky="nw")
         self.btnDetect = tk.Button(self.frameOptions, text="Detect", command=self.Detect)
-        self.btnDetect.grid(row=3, column=0)
+        self.btnDetect.grid(row=4, column=0)
 
         self.detectionAlgorithm = detection.IDetectionAlgorithmIntegration()
-        self.frameAlgoOptions = self.detectionAlgorithm.OptionsFrame(self.frame, self._gui, self.Update, self._gui.GetImageObject)
+        self.frameAlgoOptions = self.detectionAlgorithm.OptionsFrame(self.frameTools, self._gui, self.Update, self._gui.GetImageObject)
         self.frameAlgoOptions.grid(row=1, column=0, sticky="news")
 
-        self.frameROIS = tk.LabelFrame(self.frame, text="ROIs")
+        self.frameROIS = tk.LabelFrame(self.frameTools, text="ROIs")
         self.frameROIS.grid(row=2, column=0, sticky="news")
         self.treeROIs = ttk.Treeview(self.frameROIS, columns=("Location", "Radius"))
         self.treeROIs.heading('Location', text="Center (X,Y)")
@@ -83,7 +97,7 @@ class Tab3(Tab):
         self.btnOpenInTraceSelector = tk.Button(self.frameBtnsExport, text="Open in Trace Selector", command=self.OpenInTraceSelector)
         self.btnOpenInTraceSelector.grid(row=1, column=0)
 
-        self.frameROIProperties = tk.LabelFrame(self.frame, text="ROI Properties")
+        self.frameROIProperties = tk.LabelFrame(self.frameTools, text="ROI Properties")
         self.frameROIProperties.grid(row=3, column=0, sticky="news")
         self.treeROIInfo = ttk.Treeview(self.frameROIProperties, columns=("Value"))
         self.treeROIInfo.heading('#0', text='Name')
@@ -108,7 +122,10 @@ class Tab3(Tab):
         self.canvas1.mpl_connect('resize_event', self._Canvas1Resize)
         self.canvas1.draw()
 
-        tk.Grid.rowconfigure(self.frame, 3, weight=1)
+        #tk.Grid.rowconfigure(self.frameTools, 3, weight=1)
+
+        self.treeROIInfo2 = ttk.Treeview(self.frameTools, columns=("Value"))
+        #self.treeROIInfo2.grid(row=4, column=1, sticky="news")
 
         self.Update(["tab3_algorithmChanged"])
 
@@ -147,7 +164,7 @@ class Tab3(Tab):
         if (self.frameAlgoOptions is not None):
             self.frameAlgoOptions.grid_forget()
         if (self.detectionAlgorithm is not None):
-            self.frameAlgoOptions = self.detectionAlgorithm.OptionsFrame(self.frame, self._gui, self.Update, self._gui.GetImageObject)
+            self.frameAlgoOptions = self.detectionAlgorithm.OptionsFrame(self.frameTools, self._gui, self.Update, self._gui.GetImageObject)
             self.frameAlgoOptions.grid(row=1, column=0, sticky="news")
 
     def ClearImagePlot(self):

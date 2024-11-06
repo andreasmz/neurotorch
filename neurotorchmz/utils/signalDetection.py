@@ -20,7 +20,7 @@ class SignalObj:
         self._imgObj_Sliced = None
 
     @property
-    def signal(self):
+    def signal(self) -> np.ndarray:
         return self._signal
     
     @signal.setter
@@ -29,7 +29,7 @@ class SignalObj:
         self._peaks = None
 
     @property
-    def peaks(self):
+    def peaks(self) -> np.ndarray:
         return self._peaks
     
     @property

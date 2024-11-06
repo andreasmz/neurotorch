@@ -11,8 +11,6 @@ from tkinter import messagebox, filedialog
 import os, threading
 import numpy as np
 import xarray
-from scyjava import jimport
-import imagej
 
 class ImageJHandler:
     def __init__(self, gui: Neurotorch_GUI):
@@ -52,6 +50,13 @@ class ImageJHandler:
         self.menuImageJ.add_command(label="Locate Installation", state="normal", command=self.MenuLocateInstallation_Click)
 
     def StartImageJ(self):
+        try:
+            from scyjava import jimport
+            import imagej
+        except ModuleNotFoundError as ex:
+            print(ex)
+            messagebox.showerror("Neurotorch", "It seems that pyimagej is not installed")
+            return
         if Settings.GetSettings("ImageJ_Path") is None or (not os.path.exists(Settings.GetSettings("ImageJ_Path"))):
             messagebox.showerror("Neurotorch", "Can't locate your local Fiji/ImageJ installation. Please set the path to your installation via the menubar and try again")
             return

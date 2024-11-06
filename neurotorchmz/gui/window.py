@@ -23,7 +23,9 @@ class Edition(Enum):
 
 class Neurotorch_GUI:
     def __init__(self):
-        logging.getLogger().addHandler(logging.StreamHandler())
+        loggingHandler = logging.StreamHandler()
+        loggingHandler.setFormatter(logging.Formatter("%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s"))
+        logging.getLogger().addHandler(loggingHandler)
         self.root = None
         self.tabs : dict[str: Tab] = {}
         self._imgObj = None
@@ -37,6 +39,7 @@ class Neurotorch_GUI:
         from neurotorchmz.gui.tab1 import Tab1
         from neurotorchmz.gui.tab2 import Tab2
         from neurotorchmz.gui.tab3 import Tab3
+        from neurotorchmz.gui.tabAnalysis import TabAnalysis
         self.edition = edition
         self.root = tk.Tk()
         self.SetWindowTitle("")
@@ -90,19 +93,20 @@ class Neurotorch_GUI:
 
         self.menuDebug = tk.Menu(self.menubar,tearoff=0)
         self.menubar.add_cascade(label="Debug", menu=self.menuDebug)
-        self.menuDebug.add_command(label="Activate debugging", command=self.MenuDebug_EnableDebugging)
-        self.menuDebug.add_command(label="Dump memory usage", command=self.MenuDebug_MemoryDump)
         self.menuDebug.add_command(label="Save diffImg peak frames", command=self.MenuDebugSavePeaks)
         self.menuDebug.add_command(label="Load diffImg peak frames", command=self.MenuDebugLoadPeaks)
+        self.menuDebug.add_separator()
+        self.menuDebug.add_command(label="Activate debugging to console", command=self.MenuDebug_EnableDebugging)
+        self.menuDebug.add_command(label="Dump memory usage", command=self.MenuDebug_MemoryDump)
+        self.menuDebug.add_command(label="Print all imported modules", command=self.MenuDebug_ImportedModules)
 
         self.tabMain = ttk.Notebook(self.root)
         self.tabWelcome = tabWelcome.TabWelcome(self)
         self.tabs["Tab1"] = Tab1(self)
         self.tabs["Tab2"] = Tab2(self)
         self.tabs["Tab3"] = Tab3(self)
+        self.tabs["TabAnalysis"] = TabAnalysis(self)
         for t in self.tabs.values(): t.Init()
-        self.tab4 = ttk.Frame(self.tabMain)
-        self.tabMain.add(self.tab4, text="Synapse Analysis")
         self.tabMain.select(self.tabs["Tab1"].tab)
 
         self.tabMain.pack(expand=1, fill="both")
@@ -293,9 +297,9 @@ class Neurotorch_GUI:
                 else:
                     _peaksExtended.extend([int(p),int(p+1)])
             else:
-                print(f"Skipped peak {p} as it is to near to the edge")
+                logging.info(f"Skipped peak {p} as it is to near to the edge")
         _peaksExtended.extend([int(p+2)])
-        print("Exported frames", _peaksExtended)
+        logging.info("Exported frames", _peaksExtended)
         savePath = os.path.join(Settings.UserPath, "img_peaks.dump")
         with open(savePath, 'wb') as f:
             pickle.dump(self.ImageObject.img[_peaksExtended, :, :], f, protocol=pickle.HIGHEST_PROTOCOL)
@@ -323,6 +327,9 @@ class Neurotorch_GUI:
             else:
                 _sizeFormatted = f"{round(_size/1024**3, 3)} GB"
             logging.debug(f"{name}: {_sizeFormatted}")
+
+    def MenuDebug_ImportedModules(self):
+        print([k for k in sys.modules.keys() if "imagej" in k])
 
 class TabUpdateEvent(Enum):
     NEWIMAGE = "newimage"

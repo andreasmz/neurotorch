@@ -451,6 +451,15 @@ class ImgObj:
         sigma = args[0]
         return gaussian_filter(self.imgDiff_Normal, sigma=sigma, axes=(1,2))
     
+    def SetImgFromAny(self, img) -> bool:
+        if len(img.shape) != 3:
+            return False
+        imgNP = np.empty(shape=img.shape, dtype=img.dtype)
+        for i in range(img.shape[0]):
+            imgNP[i] = img[i]
+        self.img = imgNP
+        return True
+
 
     def SetImage_Precompute(self, image: np.ndarray, name="", callback = None, errorcallback = None, convolute: bool = False) -> Literal["AlreadyLoading", "ImageUnsupported"] | Job:
 
@@ -509,15 +518,14 @@ class ImgObj:
                 return "ImageUnsupported"
             self._MemoryDump("Image loading with PIMS")
             job.SetProgress(1, "Converting Image")
-            imgNP = np.empty(shape=_pimsImg.shape, dtype=_pimsImg.dtype)
-            for i in range(_pimsImg.shape[0]):
-                imgNP[i] = _pimsImg[i]
-            self._MemoryDump("Numpy conversion")
-            if len(imgNP.shape) != 3:
+            if len(_pimsImg.shape) != 3:
                 job.SetStopped("Image Unsupported")
-                if errorcallback is not None: errorcallback("ImageUnsupported", f"The image needs to have shape (t, y, x). Your shape is {imgNP.shape}")
-                return "ImageUnsupported"
-            self.img = imgNP
+                if errorcallback is not None: errorcallback("ImageUnsupported_Shape", f"The image needs to have shape (t, y, x). Your shape is {_pimsImg.shape}")
+                return "ImageUnsupported_Shape"
+            if not self.SetImgFromAny(_pimsImg):
+                if errorcallback is not None: errorcallback("ImageUnsupported", f"Can't convert your image to an numpy array")
+                return "ImageUnsupported" 
+            self._MemoryDump("Numpy conversion")
             if getattr(_pimsImg, "get_metadata_raw", None) != None:
                 self._pimsmetadata = collections.OrderedDict(sorted(_pimsImg.get_metadata_raw().items()))
             self._MemoryDump("Before PIMS deletion")
