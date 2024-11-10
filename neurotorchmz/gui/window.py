@@ -47,9 +47,8 @@ class Neurotorch_GUI:
             self.root.iconbitmap(os.path.join(*[Settings.ParentPath, "media", "neurotorch_logo.ico"]))
         except:
             pass
-        #self.root.geometry("600x600")
+        self.root.geometry("600x600")
         self.root.state("zoomed")
-        self.root.minsize(600, 600)
         self.statusbar = Statusbar(self.root, self.root)
 
         self.menubar = tk.Menu(self.root)

@@ -1,5 +1,6 @@
 from .window import Neurotorch_GUI, Tab, TabUpdateEvent
 from ..utils.synapse_detection_integration import *
+from .components import EntryPopup
 
 class TabAnalysis(Tab):
     def __init__(self, gui: Neurotorch_GUI):
@@ -8,6 +9,8 @@ class TabAnalysis(Tab):
         self.gui = gui
         self.root = gui.root
         self.detectionResult = DetectionResult()
+        self.detectionAlgorithm = None
+        self.treeAlgorithmEntryPopup = None
 
     def Init(self):
         self.tab = ttk.Frame(self.gui.tabMain)
@@ -27,10 +30,18 @@ class TabAnalysis(Tab):
         self.radioMultiAlgos_Single.grid(row=3, column=0, columnspan=3, sticky="nw")
         self.radioMultiAlgos_MultiParams.grid(row=4, column=0, columnspan=3, sticky="nw")
         self.radioMultiAlgos_Multi.grid(row=5, column=0, columnspan=3, sticky="nw")
-        self.varFrame = tk.StringVar()
-        self.comboFrame = ttk.Combobox(self.frameOptions, textvariable=self.varFrame, state="readonly")
-        self.comboFrame.grid(row=6, column=1)
-        tk.Label(self.frameOptions, text="Frame").grid(row=6, column=0, sticky="news")
+
+        self.treeAlgorithm = ttk.Treeview(self.frameOptions, columns="Algorithm")
+        self.treeAlgorithm.heading("#0", text="Frame")
+        self.treeAlgorithm.heading("Algorithm", text="Algorithm")
+        self.treeAlgorithm.bind("<<TreeviewSelect>>", lambda _: self.Invalidate_SelectedROI())
+        self.treeAlgorithm.grid(row=6, column=0, sticky="news")
+        
+        self.varAlgorithm = tk.StringVar()
+        self.comboAlgorithm = ttk.Combobox(self.frameOptions, textvariable=self.varFrame, state="readonly")
+        self.comboAlgorithm['values'] = ["Threshold (Deprecated)", "Hysteresis thresholding (Polygonal)", "Hysteresis thresholding (Circular)"]
+        self.comboAlgorithm.grid(row=7, column=1)
+        tk.Label(self.frameOptions, text="Algorithm").grid(row=7, column=0, sticky="news")
 
         self.InvalidateSignal()
 
@@ -39,6 +50,8 @@ class TabAnalysis(Tab):
             pass
         if TabUpdateEvent.NEWSIGNAL in events:
             self.InvalidateSignal()
+        if "TABAnalysis_AlgorithmChange" in events:
+            pass
     
     def InvalidateSignal(self):
         self.comboFrame['values'] = []
@@ -51,7 +64,24 @@ class TabAnalysis(Tab):
         self.lblSignalReady["text"] = "Signal available"
         self.lblSignalReady["fg"] = "green"
         self.comboFrame['values'] = list(signalPeaks.astype(str))
+
+    def InvalidateAlgorithm(self):
+        self.detectionAlgorithm = None
+        match self.varMultiAlgos.get():
+            case "Single":
+                self.comboFrame["state"] = "disabled"
+            case "MultiParams":
+                self.comboFrame["state"] = "readonly"
+            case "Multi":
+                self.comboFrame["state"] = "readonly"
+            case _:
+                raise RuntimeError("Unexpected value for varMultiAlgos") 
         
+    def InvalidateAlgorithmFrameSelection(self):
+        selectionIndex = None
+        if len(self.treeROIs.selection()) != 1:
+            return
+        selectionIndex = self.treeROIs.selection()[0]
 
     def RadioMultiAlgos_Changed(self):
         match self.varMultiAlgos.get():
@@ -63,3 +93,4 @@ class TabAnalysis(Tab):
                 self.comboFrame["state"] = "readonly"
             case _:
                 raise RuntimeError("Unexpected value for varMultiAlgos")
+        self.InvalidateAlgorithm()

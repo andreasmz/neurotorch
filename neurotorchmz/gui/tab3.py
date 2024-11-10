@@ -2,7 +2,7 @@ from neurotorchmz.gui.window import Neurotorch_GUI, Tab, TabUpdateEvent
 import neurotorchmz.external.trace_selector_connector as ts_con
 import neurotorchmz.utils.synapse_detection_integration as detection
 from neurotorchmz.utils.synapse_detection import SingleframeSynapse
-from neurotorchmz.gui.components import EntryPopup, VirtualFile, Job
+from neurotorchmz.gui.components import EntryPopup, VirtualFile, Job, ScrolledFrame
 
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
@@ -32,24 +32,11 @@ class Tab3(Tab):
     def Init(self):
         self.tab = ttk.Frame(self._gui.tabMain)
         self._gui.tabMain.add(self.tab, text="Synapse ROI Finder")
+        self.frameToolsContainer = ScrolledFrame(self.tab)
+        self.frameToolsContainer.pack(side=tk.LEFT, fill="y", anchor=tk.NW)
+        self.frameTools = self.frameToolsContainer.frame
 
-        self.frameToolsContainer = tk.Frame(self.tab, borderwidth=10)
-        self.frameToolsContainer.pack(side=tk.LEFT, fill="y", expand=True, anchor=tk.W)
-        self.canvasFrameTools = tk.Canvas(self.frameToolsContainer, background="blue")
-        self.scrollFrameTools = ttk.Scrollbar(self.frameToolsContainer)
-        self.frameTools = tk.Frame(self.canvasFrameTools)
-        self.frameTools.bind(
-            "<Configure>",
-            lambda e: self.canvasFrameTools.configure(
-                scrollregion=self.canvasFrameTools.bbox("all")
-            )
-        )
-        self.canvasFrameTools.create_window((0, 0), window=self.frameTools, anchor="nw")
-        self.canvasFrameTools.configure(yscrollcommand=self.scrollFrameTools.set)
-        self.canvasFrameTools.pack(side=tk.LEFT, fill="y", expand=True)
-        self.scrollFrameTools.pack(fill="y", expand=True)
-
-        self.frameOptions = ttk.LabelFrame(self.frameTools, text="Options")
+        self.frameOptions = ttk.LabelFrame(self.frameTools, text="Algorithm")
         self.frameOptions.grid(row=0, column=0, sticky="news")
         self.lblAlgorithm = tk.Label(self.frameOptions, text="Algorithm")
         self.lblAlgorithm.grid(row=0, column=0, columnspan=2)
@@ -123,9 +110,6 @@ class Tab3(Tab):
         self.canvas1.draw()
 
         #tk.Grid.rowconfigure(self.frameTools, 3, weight=1)
-
-        self.treeROIInfo2 = ttk.Treeview(self.frameTools, columns=("Value"))
-        #self.treeROIInfo2.grid(row=4, column=1, sticky="news")
 
         self.Update(["tab3_algorithmChanged"])
 

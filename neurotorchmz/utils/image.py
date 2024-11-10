@@ -2,12 +2,10 @@ import collections
 from typing import Callable, Literal
 import numpy as np
 import psutil
-from scipy.ndimage import convolve, gaussian_filter
+from scipy.ndimage import gaussian_filter
 import threading
-from enum import Enum
-import time
 import pims
-import os, sys
+import os
 import logging
 import gc
 

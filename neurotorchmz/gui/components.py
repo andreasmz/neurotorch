@@ -192,6 +192,37 @@ class Job:
             case _:
                 raise RuntimeError(f"The job was in an unkown JobState {self._state}")
 
+class ComboPopup(ttk.Combobox):
+    def __init__(self, tv, callback, rowid, column, val, comboVals, **kw):
+        super().__init__(tv, **kw)
+        self.tv = tv
+        self.callback = callback
+        self.rowid = rowid
+        self.column = column
+        self.oldval = val
+
+        self.insert(0, val) 
+
+        self.focus_force()
+        self.select_all()
+        self.bind("<Return>", self.on_return)
+        #self.bind("<Control-a>", self.select_all)
+        self.bind("<Escape>", lambda *ignore: self.destroy())
+
+
+    def on_return(self, event):
+        val = self.get()
+        if self.oldval != val:
+            try:
+                self.callback({"RowID": self.rowid, "Column": self.column, "OldValue" : self.oldval, "NewVal": val})
+            except:
+                pass
+        self.destroy()
+
+
+    def select_all(self, *ignore):
+        self.selection_range(0, 'end')
+        return 'break'
 
 class EntryPopup(ttk.Entry):
     def __init__(self, tv, callback, rowid, column, val, **kw):
@@ -269,3 +300,24 @@ class IntStringVar:
             self.IntVar.set(strval)
             if self.callback is not None:
                 self.callback()
+
+
+class ScrolledFrame(ttk.Frame):
+    def __init__(self, parent, *args, **kw):
+        ttk.Frame.__init__(self, parent, *args, **kw)
+        self.scrollbar = ttk.Scrollbar(self, orient="vertical")
+        self.canvas = tk.Canvas(self, yscrollcommand=self.scrollbar.set)
+        self.frame = ttk.Frame(self.canvas)
+        self.scrollbar.config(command=self.canvas.yview)
+        self.scrollbar.pack(side=tk.RIGHT, fill="y", expand=False)
+        self.canvas.create_window(0, 0, window=self.frame, anchor="nw")
+        self.canvas.pack(side=tk.LEFT, fill="y")
+        
+        def _configure_frame(e):
+            """ The scrollview is initially not set. Therefore, the user can scroll without limits to the left or right. Also, the canvas does not fit to content width """
+            size = (self.frame.winfo_reqwidth(), self.frame.winfo_reqheight()) # Size of frame content
+            if self.canvas["scrollregion"] != ("0 0 %s %s" % size): # Change scroll region if necessary
+                self.canvas.config(scrollregion="0 0 %s %s" % size)
+            if self.canvas.winfo_width() != self.frame.winfo_reqwidth(): # Change canvas width if necessary (height is autoset by fill=y)
+                self.canvas.config(width=self.frame.winfo_reqwidth())
+        self.frame.bind("<Configure>", _configure_frame)
