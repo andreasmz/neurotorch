@@ -1,9 +1,53 @@
+<p align="center">
+    <img src="doc/media/neurotorch_coverimage_24_11.jpeg" style="max-width: 600px;">
+</p> 
+
+![Python Version from PEP 621 TOML](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2Fandreasmz%2Fneurotorch%2Fmain%2Fpyproject.toml&style=flat&logo=Python)
+![Dynamic TOML Badge](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fandreasmz%2Fneurotorch%2Fmain%2Fpyproject.toml&query=%24.project.version&style=flat&label=Version&color=09bd2d)
+![Dynamic TOML Badge](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fandreasmz%2Fneurotorch%2Fmain%2Fpyproject.toml&query=%24.project.classifiers%5B1%5D&label=PyProject.toml&color=c94247)
+
+<span style="color:red;">Please note</span>: There is another project called neurotorch on GitHub/PyPI not related to this project. To avoid mix-up, the package is named _neurotorchmz_ with the _mz_ as a refrence to Mainz where the software was developed.
+
 # Neurotorch
-![Neurotorch Logo](https://github.com/andreasmz/neurotorch/blob/main/doc/neurotorch_logo.jpg)
 
-Neurotorch is a simple program to analyze microscopic images containing tagged neuron images, for example with bind to Glutamate release. It provides various tools containing the following
-* Signal finding: Detect the frames where neurons fire
-* ROI finding: Auto-detect ROIs (Regions of Interest)
-* Synapse analysing: Use the detected ROIs and analyze each signal frame independently
+Neurotorch is a tool designed to extract regions of synaptic activity in neurons tagges with iGluSnFR, but is in general capable to find any kind of local brightness increase due to synaptic activity. It works with microscopic image series / videos and is able to open an variety of formats (for details see below)
+- **Fiji/ImageJ**: Full connectivity provided. Open files in ImageJ and send them to Neurotorch and vice versa.
+- **Stimulation extraction**: Find the frames where stimulation was applied
+- **ROI finding**: Auto detect regions with high synaptic activity. Export data directly or send the ROIs back to ImageJ
+- **Image analysis**: Analyze each frame of the image and get a visual impression where signal of synapse activity was detected
+- **API**: You can access the core functions of Neurotorch also by importing it as an python module
 
-Neurotorch is able to connect to a local ImageJ installation, but can also be run as standalone program. Image Files can be accessed from ImageJ or opened directly in Neurotorch. ROIs and the Diff Image can be back exported to ImageJ, while the measurement of the ROIs can be saved as CSV directly in Neurotorch. Also, Neurotorch can be imported as an regular module giving access to it's API for example from Jupyter Notebooks.
+### Installation
+
+You need python to run Neurotorch. Also it is recommended to create a virtual enviorenment to not mess up with your other python packages, for example using (miniconda)[https://docs.anaconda.com/miniconda/]. When inside your virtual enviorenment, simply type
+```bash
+pip install neurotorchmz
+```
+To update your installation, type
+```bash
+pip install neurotorchmz --upgrade
+```
+
+### Documentation
+
+There is [neurotorch_documentation.pdf](doc/neurotorch_documentation.pdf) on the GitHub repository, but you can also access it from inside Neurotorch on the tab 'Welcome to Neurotorch'
+
+### About
+
+Neurotorch was developed at the AG Heine (Johannes Gutenberg Universität, Mainz/Germany) and is currently under active development.
+
+### Impressions
+Please note: Neurotorch is under continuous development. Therefore the visuals provided here may be outdated in future versions.
+
+<p align="center">
+    <img src="doc/media/readme/neurotorch_tabImage_01.png" style="max-width: 600px;"> <br>
+    <em>First impression of an file opened in Neurotorch. For specific file formats (here nd2), a variety of metadata can be extracted</em>
+</p> 
+<p align="center">
+    <img src="doc/media/readme/neurotorch_tabSignal_01.png" style="max-width: 600px;"> <br>
+    <em>Use the tab 'Signal' to find the timepoints with stimulation (marked in the plot on the left site with yellow dots). You can also use this tab to view the video frame by frame</em>
+</p> 
+<p align="center">
+    <img src="doc/media/readme/neurotorch_tabROIFinder_01.png" style="max-width: 600px;"> <br>
+    <em>Extraction of regions with high synaptic activity. For the choosen image with good enough signal to noise ratio, all settings were determined automatically by the program and nothing more than pressing 'Detect' was necessary to get this screen. The ROIs are marked in the images with red boundaries while the selected ROI displayed also with the mean value over time is marked with yellow boundaries</em>
+</p> 
