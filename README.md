@@ -19,7 +19,7 @@ Neurotorch is a tool designed to extract regions of synaptic activity in neurons
 
 ### Installation
 
-You need python to run Neurotorch. Also it is recommended to create a virtual enviorenment to not mess up with your other python packages, for example using (miniconda)[https://docs.anaconda.com/miniconda/]. When inside your virtual enviorenment, simply type
+You need python to run Neurotorch. Also it is recommended to create a virtual enviorenment to not mess up with your other python packages, for example using [miniconda](https://docs.anaconda.com/miniconda/). When inside your virtual enviorenment, simply type
 ```bash
 pip install neurotorchmz
 ```
@@ -36,6 +36,16 @@ There is [neurotorch_documentation.pdf](doc/neurotorch_documentation.pdf) on the
 
 Neurotorch was developed at the AG Heine (Johannes Gutenberg Universität, Mainz/Germany) and is currently under active development.
 
+### Development roadmap
+
+Currently in active development:
+- [ ] Integration of plugins: Rather than providing an direct binding to TraceSelector, it will be implemented as a plugin
+
+Ideas for future releases:
+- [ ] Synapse analysis tab: Same algorithm as in the Synapse ROI finder, but for each signal frame separately
+
+
+
 ### Impressions
 Please note: Neurotorch is under continuous development. Therefore the visuals provided here may be outdated in future versions.
 
@@ -51,3 +61,9 @@ Please note: Neurotorch is under continuous development. Therefore the visuals p
     <img src="doc/media/readme/neurotorch_tabROIFinder_01.png" style="max-width: 600px;"> <br>
     <em>Extraction of regions with high synaptic activity. For the choosen image with good enough signal to noise ratio, all settings were determined automatically by the program and nothing more than pressing 'Detect' was necessary to get this screen. The ROIs are marked in the images with red boundaries while the selected ROI displayed also with the mean value over time is marked with yellow boundaries</em>
 </p> 
+
+### Release notes
+
+>### 24.11.4 (under development)
+>- **Introduction of Plugins**: Added the ability to add plugins to neurotorch
+>- **Various bugfixes**
