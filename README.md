@@ -64,6 +64,7 @@ Please note: Neurotorch is under continuous development. Therefore the visuals p
 
 ### Release notes
 
->### 24.11.4 (under development)
+>### 24.11.4
 >- **Introduction of Plugins**: Added the ability to add plugins to neurotorch
+>- **Cache**: Added 'Clear cache' option to denoise menu
 >- **Various bugfixes**
