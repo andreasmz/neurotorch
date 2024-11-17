@@ -2,10 +2,10 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from typing import Callable, Literal
 
-from neurotorchmz.utils.image import ImgObj, ImageProperties
-from neurotorchmz.gui.components import IntStringVar
-from neurotorchmz.gui.window import Neurotorch_GUI, TabUpdateEvent
-from neurotorchmz.utils.synapse_detection import *
+from .image import ImgObj, ImageProperties
+from ..gui.components import IntStringVar
+from ..gui.window import Neurotorch_GUI, TabUpdateEvent
+from .synapse_detection import *
 
 # While synapse_detection.py provides detection algorithms, this file contains the actual implementation into Neurotorch GUI
 

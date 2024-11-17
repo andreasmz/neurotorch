@@ -1,11 +1,11 @@
+from .image import ImgObj
+from .synapse_detection import *
+from ..gui.settings import Neurotorch_Settings as Settings
+from ..gui.window import Neurotorch_GUI
+from ..gui.components import Job
+
+
 import traceback
-from neurotorchmz.gui.settings import Neurotorch_Settings as Settings
-from neurotorchmz.gui.window import Neurotorch_GUI
-from neurotorchmz.utils.image import ImgObj
-from neurotorchmz.gui.components import Job
-from neurotorchmz.utils.synapse_detection import *
-
-
 import tkinter as tk
 from tkinter import messagebox, filedialog
 import os, threading

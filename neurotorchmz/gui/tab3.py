@@ -1,8 +1,8 @@
-from neurotorchmz.gui.window import Neurotorch_GUI, Tab, TabUpdateEvent
-import neurotorchmz.external.trace_selector_connector as ts_con
-import neurotorchmz.utils.synapse_detection_integration as detection
-from neurotorchmz.utils.synapse_detection import SingleframeSynapse
-from neurotorchmz.gui.components import EntryPopup, VirtualFile, Job, ScrolledFrame
+from .window import Neurotorch_GUI, Tab, TabUpdateEvent
+from .components import EntryPopup, VirtualFile, Job, ScrolledFrame
+from ..utils import synapse_detection_integration as detection
+from ..utils.synapse_detection import SingleframeSynapse
+
 
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
@@ -401,14 +401,15 @@ class Tab3(Tab):
         data.to_csv(path_or_buf=f, lineterminator="\n")
         
     def OpenInTraceSelector(self):
-        if ts_con.ts_mainWindow is None:
+        pass
+        """if ts_con.ts_mainWindow is None:
             messagebox.showerror("Neurotorch", "Please first start Trace Selector")
             return
         _buffer = self.ExportCSVMultiM(toStream=True)
         if (_buffer is None):
             self.root.bell()
             return
-        ts_con.OpenStream(_buffer)
+        ts_con.OpenStream(_buffer)"""
         
     def TreeRois_onDoubleClick(self, event):
         try: 

@@ -10,12 +10,15 @@ import logging
 
 matplotlib.use('TkAgg')
 
-import neurotorchmz.utils.update as Update
-import neurotorchmz.external.trace_selector_connector as ts_con
-from neurotorchmz.utils.image import ImgObj
-from neurotorchmz.gui.components import Job, Statusbar
-from neurotorchmz.utils.signalDetection import SignalObj
-from neurotorchmz.gui.settings import Neurotorch_Settings as Settings
+from .components import Job, Statusbar
+from .settings import Neurotorch_Settings as Settings
+from ..utils.update import Updater
+from ..utils.image import ImgObj
+from ..utils.signalDetection import SignalObj
+from ..utils.plugin_manager import PluginManager
+#import neurotorchmz.external.trace_selector_connector as ts_con
+
+
 
 class Edition(Enum):
     NEUROTORCH = 1
@@ -104,9 +107,11 @@ class Neurotorch_GUI:
         self.tabs["Tab1"] = Tab1(self)
         self.tabs["Tab2"] = Tab2(self)
         self.tabs["Tab3"] = Tab3(self)
-        self.tabs["TabAnalysis"] = TabAnalysis(self)
+        #self.tabs["TabAnalysis"] = TabAnalysis(self)
         for t in self.tabs.values(): t.Init()
         self.tabMain.select(self.tabs["Tab1"].tab)
+
+        self.plugin_mng = PluginManager()
 
         self.tabMain.pack(expand=1, fill="both")
 
@@ -247,10 +252,10 @@ class Neurotorch_GUI:
             ts_con.StartTraceSelector()
 
     def MenuNeurotorchAbout(self):
-        Update.Updater.CheckForUpdate()
+        Updater.CheckForUpdate()
         _strUpdate = ""
-        _github_version = Update.Updater.version_github
-        _local_version = Update.Updater.version
+        _github_version = Updater.version_github
+        _local_version = Updater.version
         if _github_version is not None:
             if _local_version == _github_version:
                 _strUpdate = " (newest version)"
@@ -259,9 +264,9 @@ class Neurotorch_GUI:
         messagebox.showinfo("Neurotorch", f"© Andreas Brilka 2024\nYou are running Neurotorch {_local_version}{_strUpdate}")
 
     def MenuNeurotorchUpdate(self):
-        Update.Updater.CheckForUpdate()
-        _github_version = Update.Updater.version_github
-        _local_version = Update.Updater.version
+        Updater.CheckForUpdate()
+        _github_version = Updater.version_github
+        _local_version = Updater.version
         if _github_version is None:
             messagebox.showerror("Neurotorch", f"The server can't be contacted to check for an update. Please try again later")
             return
@@ -270,7 +275,7 @@ class Neurotorch_GUI:
             return
         if not messagebox.askyesno("Neurotorch", f"Version {_github_version} is available for download (You have {_local_version}). Do you want to update?"):
             return
-        Update.Updater.DownloadUpdate()
+        Updater.DownloadUpdate()
 
 
     def MenuDebugLoadPeaks(self):

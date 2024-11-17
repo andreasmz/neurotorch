@@ -1,5 +1,5 @@
-from neurotorchmz.gui.window import Neurotorch_GUI, Tab, TabUpdateEvent
-from neurotorchmz.utils.image import ImgObj
+from .window import Neurotorch_GUI, Tab, TabUpdateEvent
+from ..utils.image import ImgObj
 
 import tkinter as tk
 from tkinter import ttk, messagebox

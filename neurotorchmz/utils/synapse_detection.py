@@ -4,7 +4,7 @@ import math
 from tkinter import messagebox
 import uuid
 
-from neurotorchmz.utils.image import ImgObj
+from .image import ImgObj
 
 # A Synapse Fire at a specific time. Must include a location (at least a estimation) to be display in the TreeView
 class ISynapseROI:

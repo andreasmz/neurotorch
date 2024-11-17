@@ -1,7 +1,7 @@
 import json
 import os
 
-from neurotorchmz.gui.settings import Neurotorch_Settings as Settings
+from ..gui.settings import Neurotorch_Settings as Settings
 
 class _ResourceManager():
 

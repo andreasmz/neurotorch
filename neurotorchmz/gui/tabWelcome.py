@@ -1,5 +1,5 @@
-from neurotorchmz.gui.window import Neurotorch_GUI, Tab
-from neurotorchmz.gui.settings import Neurotorch_Settings as Settings
+from .window import Neurotorch_GUI, Tab
+from .settings import Neurotorch_Settings as Settings
 
 import tkinter as tk
 from tkinter import ttk, messagebox

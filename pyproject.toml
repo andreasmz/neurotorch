@@ -5,7 +5,7 @@ authors = [
   { name="Andreas Brilka"},
 ]
 
-description = "Designed to detect Glutamate release in neurons using iGluSnFR in synapses, but in general capable to detect any kind of transient brightness increase in videos containing microscopic images. Developed at the AG Heine (Johannes Gutenberg Universität Mainz)"
+description = "Neurotorch is a tool designed to extract regions of synaptic activity in neurons tagges with iGluSnFR, but is in general capable to find any kind of local brightness increase due to synaptic activity"
 license = "MIT"
 readme = "README.md"
 requires-python = ">=3.11"

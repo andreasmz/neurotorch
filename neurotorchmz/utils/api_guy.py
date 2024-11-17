@@ -1,4 +1,4 @@
-from neurotorchmz.gui.window import Neurotorch_GUI
+from ..gui.window import Neurotorch_GUI
 
 class API_GUI():
 

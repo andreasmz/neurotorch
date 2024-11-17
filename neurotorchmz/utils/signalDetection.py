@@ -1,7 +1,7 @@
 from typing import Callable, Literal
 import numpy as np
 from scipy.signal import find_peaks
-from neurotorchmz.utils.image import ImgObj, AxisImage, ImageProperties
+from .image import ImgObj, AxisImage, ImageProperties
 
 class SignalObj:
 

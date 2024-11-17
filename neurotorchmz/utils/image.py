@@ -9,7 +9,7 @@ import os
 import logging
 import gc
 
-from  neurotorchmz.gui.components import Job, JobState    
+from  ..gui.components import Job, JobState    
 
 
 class ImageProperties:

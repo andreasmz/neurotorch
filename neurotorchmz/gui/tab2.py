@@ -1,7 +1,7 @@
-from neurotorchmz.gui.window import Neurotorch_GUI, Tab, TabUpdateEvent
-import neurotorchmz.utils.resourcemanager as rsm
-from neurotorchmz.utils.signalDetection import SigDetect_DiffMax, SigDetect_DiffStd, ISignalDetectionAlgorithm
-from neurotorchmz.gui.components import IntStringVar
+from .window import Neurotorch_GUI, Tab, TabUpdateEvent
+from ..utils import resourcemanager as rsm
+from ..utils.signalDetection import SigDetect_DiffMax, SigDetect_DiffStd, ISignalDetectionAlgorithm
+from ..gui.components import IntStringVar
 
 import tkinter as tk
 from tkinter import ttk, messagebox
