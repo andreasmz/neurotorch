@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="doc/media/neurotorch_coverimage_24_11.jpeg" style="max-width: 600px;">
+    <img src="https://raw.githubusercontent.com/andreasmz/neurotorch/main/doc/media/neurotorch_coverimage_24_11.jpeg" style="max-width: 600px;">
 </p> 
 
 ![Python Version from PEP 621 TOML](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2Fandreasmz%2Fneurotorch%2Fmain%2Fpyproject.toml&style=flat&logo=Python)
@@ -32,7 +32,7 @@ pip install neurotorchmz --upgrade
 
 ### Documentation
 
-There is [neurotorch_documentation.pdf](doc/neurotorch_documentation.pdf) on the GitHub repository, but you can also access it from inside Neurotorch on the tab 'Welcome to Neurotorch'
+There is [neurotorch_documentation.pdf](https://raw.githubusercontent.com/andreasmz/neurotorch/main/doc/neurotorch_documentation.pdf) on the GitHub repository, but you can also access it from inside Neurotorch on the tab 'Welcome to Neurotorch'
 
 ### About
 
@@ -53,19 +53,23 @@ Ideas for future releases:
 Please note: Neurotorch is under continuous development. Therefore the visuals provided here may be outdated in future versions.
 
 <p align="center">
-    <img src="doc/media/readme/neurotorch_tabImage_01.png" style="max-width: 600px;"> <br>
+    <img src="https://raw.githubusercontent.com/andreasmz/neurotorch/main/doc/media/readme/neurotorch_tabImage_01.png" style="max-width: 600px;"> <br>
     <em>First impression of an file opened in Neurotorch. For specific file formats (here nd2), a variety of metadata can be extracted</em>
 </p> 
 <p align="center">
-    <img src="doc/media/readme/neurotorch_tabSignal_01.png" style="max-width: 600px;"> <br>
+    <img src="https://raw.githubusercontent.com/andreasmz/neurotorch/main/doc/media/readme/neurotorch_tabSignal_01.png" style="max-width: 600px;"> <br>
     <em>Use the tab 'Signal' to find the timepoints with stimulation (marked in the plot on the left site with yellow dots). You can also use this tab to view the video frame by frame</em>
 </p> 
 <p align="center">
-    <img src="doc/media/readme/neurotorch_tabROIFinder_01.png" style="max-width: 600px;"> <br>
+    <img src="https://raw.githubusercontent.com/andreasmz/neurotorch/main/doc/media/readme/neurotorch_tabROIFinder_01.png" style="max-width: 600px;"> <br>
     <em>Extraction of regions with high synaptic activity. For the choosen image with good enough signal to noise ratio, all settings were determined automatically by the program and nothing more than pressing 'Detect' was necessary to get this screen. The ROIs are marked in the images with red boundaries while the selected ROI displayed also with the mean value over time is marked with yellow boundaries</em>
 </p> 
 
 ### Release notes
+
+
+>### 24.11.5 (21.11.2024)
+>- **Bugfix** The documentation was not included properly
 
 >### 24.11.4 (21.11.2024)
 >- **Introduction of Plugins**: Added the ability to add plugins to neurotorch and introduced TraceSelector as preinstalled plugin

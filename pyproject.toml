@@ -1,6 +1,6 @@
 [project]
 name = "Neurotorchmz"
-version = "24.11.4"
+version = "24.11.5"
 authors = [
   { name="Andreas Brilka"},
 ]
@@ -53,4 +53,4 @@ exclude = [
 ]
 
 [tool.hatch.build.targets.wheel.force-include]
-"doc/neurotorch_documentation.pdf" = "neurotorchmz/neurotorchmz_documentation.pdf"
+"doc/neurotorch_documentation.pdf" = "neurotorchmz/neurotorch_documentation.pdf"
