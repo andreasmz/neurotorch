@@ -1,3 +1,5 @@
+__version__ = "24.11.4"
+
 from .gui.window import Neurotorch_GUI
 from .utils.api_guy import API_GUI as _api_gui_class
 import threading
