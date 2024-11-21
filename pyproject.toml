@@ -1,6 +1,6 @@
 [project]
 name = "Neurotorchmz"
-version = "24.11.3"
+version = "24.11.4"
 authors = [
   { name="Andreas Brilka"},
 ]

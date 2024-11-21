@@ -9,7 +9,7 @@ import os
 import logging
 import gc
 
-from  ..gui.components import Job, JobState    
+from  ..gui.components import Job    
 
 
 class ImageProperties:
@@ -217,12 +217,12 @@ class ImgObj:
         self._imgDiffProps: ImageProperties = None
         self._imgDiffConvFunc : Callable = self.Conv_GaussianBlur
         self._imgDiffConvArgs : tuple = (2,)
-        self._imgDiffConv: np.ndarray = {}
+        self._imgDiffConv: dict[str, np.ndarray] = {}
         self._imgDiffConvProps: ImageProperties = {}
         self._imgDiffSpatial: AxisImage= None
         self._imgDiffTemporal: AxisImage = None
-        self._imgDiffCSpatial: dict[AxisImage] = {}
-        self._imgDiffCTemporal: dict[AxisImage] = {}
+        self._imgDiffCSpatial: dict[str, AxisImage] = {}
+        self._imgDiffCTemporal: dict[str, AxisImage] = {}
 
         self._customImages = {}
         self._customImagesProps = {}
@@ -397,6 +397,11 @@ class ImgObj:
         self._imgDiff = image
         self._imgDiff_mode = "Normal"
         return True
+    
+    def imgDiffView(self, mode) -> AxisImage | None:
+        if self.imgDiff_Mode == "Convoluted":
+            return self.imgDiff_ConvView(mode)
+        return self.imgDiff_NormalView(mode)
 
     @property
     def imgDiffProps(self) -> ImageProperties | None:
@@ -404,10 +409,10 @@ class ImgObj:
             return self.imgDiff_ConvProps
         return self.imgDiff_NormalProps
     
-    def imgDiffView(self, mode) -> AxisImage | None:
-        if self.imgDiff_Mode == "Convoluted":
-            return self.imgDiff_ConvView(mode)
-        return self.imgDiff_NormalView(mode)
+    @property
+    def pims_metadata(self) -> collections.OrderedDict | None:
+        return self._pimsmetadata
+    
     
     def GetCustomImage(self, name: str):
         if name in self._customImages.keys():
@@ -426,9 +431,15 @@ class ImgObj:
         self._customImagesProps = ImageProperties(self._customImages[name])
     
 
-    @property
-    def pims_metadata(self) -> collections.OrderedDict | None:
-        return self._pimsmetadata
+    def ClearCache(self):
+        """Clears all currently not actively used internal variables (currently only the convoluted imgDiff)"""
+        for internalvar, property in [(self._imgDiffConv, self.imgDiff_Conv),
+                                       (self._imgDiffConvProps, self.imgDiff_ConvProps),
+                                       (self._imgDiffCSpatial, self.imgDiff_ConvView(ImgObj.SPATIAL)),
+                                       (self._imgDiffCTemporal, self.imgDiff_ConvView(ImgObj.TEMPORAL))]:
+            for k in list(internalvar.keys()).copy():
+                if internalvar[k] is not property:
+                    del internalvar[k]
 
     def _IsValidImagestack(image):
         if not isinstance(image, np.ndarray):

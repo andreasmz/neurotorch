@@ -16,7 +16,6 @@ from ..utils.update import Updater
 from ..utils.image import ImgObj
 from ..utils.signalDetection import SignalObj
 from ..utils.plugin_manager import PluginManager
-#import neurotorchmz.external.trace_selector_connector as ts_con
 
 
 
@@ -26,15 +25,10 @@ class Edition(Enum):
 
 class Neurotorch_GUI:
     def __init__(self):
-        loggingHandler = logging.StreamHandler()
-        loggingHandler.setFormatter(logging.Formatter("%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s"))
-        logging.getLogger().addHandler(loggingHandler)
         self.root = None
         self.tabs : dict[str: Tab] = {}
         self._imgObj = None
         self.signal = SignalObj(self.GetImageObject)
-
-        # Deprecate
         self.ijH = None
 
     def GUI(self, edition:Edition=Edition.NEUROTORCH):
@@ -69,6 +63,7 @@ class Neurotorch_GUI:
         self.menuDenoise.add_command(label="Disable denoising", command=lambda: self.MenuImageDenoise(None, None))
         self.menuDenoise.add_command(label="Gaussian kernel (σ=2, recommended)", command=lambda: self.MenuImageDenoise('Gaussian', (2,)))
         self.menuDenoise.add_separator()
+        self.menuDenoise.add_command(label="Clear cache", command=self.MenuImage_ClearCache)
         self.menuDenoise.add_command(label="Gaussian kernel (σ=0.5)", command=lambda: self.MenuImageDenoise('Gaussian', (0.5,)))
         self.menuDenoise.add_command(label="Gaussian kernel (σ=0.8)", command=lambda: self.MenuImageDenoise('Gaussian', (0.8,)))
         self.menuDenoise.add_command(label="Gaussian kernel (σ=1)", command=lambda: self.MenuImageDenoise('Gaussian', (1,)))
@@ -239,6 +234,9 @@ class Neurotorch_GUI:
             raise ValueError(f"Mode parameter has an unkown value '{mode}'")
         self.NewImageProvided()
 
+    def MenuImage_ClearCache(self):
+        self.ImageObject.ClearCache()
+
     def MenuImageDenoiseImg(self, enable: bool):
         if self.ImageObject is None:
             self.root.bell()
@@ -249,7 +247,7 @@ class Neurotorch_GUI:
 
     def MenuImageTraceSelector(self):
         if messagebox.askokcancel("Neurotorch", "This is currently an experimental feature. Are you sure you want to continue?"):
-            ts_con.StartTraceSelector()
+            pass
 
     def MenuNeurotorchAbout(self):
         Updater.CheckForUpdate()
