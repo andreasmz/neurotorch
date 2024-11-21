@@ -10,9 +10,9 @@ import logging
 
 matplotlib.use('TkAgg')
 
+from .. import __version__
 from .components import Job, Statusbar
 from .settings import Neurotorch_Settings as Settings
-from ..utils.update import Updater
 from ..utils.image import ImgObj
 from ..utils.signalDetection import SignalObj
 from ..utils.plugin_manager import PluginManager
@@ -250,16 +250,7 @@ class Neurotorch_GUI:
             pass
 
     def MenuNeurotorchAbout(self):
-        Updater.CheckForUpdate()
-        _strUpdate = ""
-        _github_version = Updater.version_github
-        _local_version = Updater.version
-        if _github_version is not None:
-            if _local_version == _github_version:
-                _strUpdate = " (newest version)"
-            else:
-                _strUpdate = f" (version {_github_version} available for download)"
-        messagebox.showinfo("Neurotorch", f"© Andreas Brilka 2024\nYou are running Neurotorch {_local_version}{_strUpdate}")
+        messagebox.showinfo("Neurotorch", f"© Andreas Brilka 2024\nYou are running Neurotorch {__version__}")
 
     def MenuNeurotorchUpdate(self):
         Updater.CheckForUpdate()
