@@ -258,11 +258,6 @@ class EntryPopup(ttk.Entry):
         return 'break'
 
 
-class VirtualFile(StringIO):
-    def endswith(self, value, start=None, end=None):
-        return "_virtualFile.csv".endswith(value, start, end)
-
-
 class IntStringVar:
     def __init__(self, root, IntVar: tk.IntVar):
         self.IntVar = IntVar

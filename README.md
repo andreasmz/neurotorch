@@ -23,6 +23,8 @@ You need python to run Neurotorch. Also it is recommended to create a virtual en
 ```bash
 pip install neurotorchmz
 ```
+Also, you need to install OpenJDK and Apache Maven to run PyImageJ. An easy solution is to use the bundled Build from Microsoft you can find [here](https://www.microsoft.com/openjdk)
+
 To update your installation, type
 ```bash
 pip install neurotorchmz --upgrade
@@ -39,7 +41,8 @@ Neurotorch was developed at the AG Heine (Johannes Gutenberg Universität, Mainz
 ### Development roadmap
 
 Currently in active development:
-- [ ] Integration of plugins: Rather than providing an direct binding to TraceSelector, it will be implemented as a plugin
+- [x] **released** Integration of plugins: Rather than providing an direct binding to TraceSelector, it will be implemented as a plugin
+- [ ] New ROI finding algorithm based on local maxima
 
 Ideas for future releases:
 - [ ] Synapse analysis tab: Same algorithm as in the Synapse ROI finder, but for each signal frame separately
@@ -64,7 +67,7 @@ Please note: Neurotorch is under continuous development. Therefore the visuals p
 
 ### Release notes
 
->### 24.11.4
->- **Introduction of Plugins**: Added the ability to add plugins to neurotorch
+>### 24.11.4 (21.11.2024)
+>- **Introduction of Plugins**: Added the ability to add plugins to neurotorch and introduced TraceSelector as preinstalled plugin
 >- **Cache**: Added 'Clear cache' option to denoise menu
 >- **Various bugfixes**

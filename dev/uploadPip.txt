@@ -1,0 +1,4 @@
+cd neurotorch # In the folder with the pyproject.toml
+python -m build 
+pip install twine
+python -m twine upload --repository neurotorchmz dist/v24.11.4/* --config-file .pypirc

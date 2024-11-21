@@ -1,5 +1,5 @@
 from .window import Neurotorch_GUI, Tab, TabUpdateEvent
-from .components import EntryPopup, VirtualFile, Job, ScrolledFrame
+from .components import EntryPopup, Job, ScrolledFrame
 from ..utils import synapse_detection_integration as detection
 from ..utils.synapse_detection import SingleframeSynapse
 
@@ -81,8 +81,6 @@ class Tab3(Tab):
         self.btnExportROIsImageJ.grid(row=0, column=0)
         self.btnExportCSVMultiM = tk.Button(self.frameBtnsExport, text="Export CSV (Multi Measure)", command=self.ExportCSVMultiM)
         self.btnExportCSVMultiM.grid(row=0, column=1)
-        self.btnOpenInTraceSelector = tk.Button(self.frameBtnsExport, text="Open in Trace Selector", command=self.OpenInTraceSelector)
-        self.btnOpenInTraceSelector.grid(row=1, column=0)
 
         self.frameROIProperties = tk.LabelFrame(self.frameTools, text="ROI Properties")
         self.frameROIProperties.grid(row=3, column=0, sticky="news")
@@ -372,7 +370,7 @@ class Tab3(Tab):
             return
         self._gui.ijH.ExportROIs([s.synapse for s in self.detectionResult.synapses if isinstance(s, detection.SingleframeSynapse)])
 
-    def ExportCSVMultiM(self, toStream = False):
+    def ExportCSVMultiM(self, toStream = False, dropFrame=False):
         if self.detectionResult.synapses is None or len(self.detectionResult.synapses) == 0 or self._gui.ImageObject.img is None:
             self.root.bell()
             return None
@@ -391,25 +389,14 @@ class Tab3(Tab):
             data[name] = _signal
         data = data.round(4)
         data.index += 1
+
         if toStream:
-            _buffer = VirtualFile()
-            data.to_csv(_buffer, lineterminator="\n")
-            return _buffer
+            return data.to_csv(lineterminator="\n",index=(not dropFrame))
+        
         f = filedialog.asksaveasfile(mode='w', title="Save Multi Measure", filetypes=(("CSV", "*.csv"), ("All files", "*.*")), defaultextension=".csv")
         if f is None:
             return None
         data.to_csv(path_or_buf=f, lineterminator="\n")
-        
-    def OpenInTraceSelector(self):
-        pass
-        """if ts_con.ts_mainWindow is None:
-            messagebox.showerror("Neurotorch", "Please first start Trace Selector")
-            return
-        _buffer = self.ExportCSVMultiM(toStream=True)
-        if (_buffer is None):
-            self.root.bell()
-            return
-        ts_con.OpenStream(_buffer)"""
         
     def TreeRois_onDoubleClick(self, event):
         try: 

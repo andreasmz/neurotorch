@@ -1,5 +1,4 @@
-import os, sys
-import json
+import os
 import platformdirs
 import pathlib
 import configparser
@@ -23,6 +22,7 @@ class Neurotorch_Settings:
         Neurotorch_Settings.UserPath = os.path.join(Neurotorch_Settings.ParentPath, "user")
         Neurotorch_Settings.MediaPath = os.path.join(Neurotorch_Settings.ParentPath, "media")
         Neurotorch_Settings.ResourcesPath = os.path.join(Neurotorch_Settings.ParentPath, "resources")
+        Neurotorch_Settings.PluginPath = os.path.join(Neurotorch_Settings.ParentPath, "plugins")
         Neurotorch_Settings.DataPath = platformdirs.user_data_path("Neurotorch", "AndreasB")
         Neurotorch_Settings.ConfigPath = os.path.join(Neurotorch_Settings.DataPath, 'neurtorch_config.ini')
         Neurotorch_Settings.config = configparser.ConfigParser()

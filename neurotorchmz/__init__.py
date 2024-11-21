@@ -1,6 +1,6 @@
 __version__ = "24.11.4"
 
-from .gui.window import Neurotorch_GUI
+from .gui.window import Neurotorch_GUI, Edition
 from .utils.api_guy import API_GUI as _api_gui_class
 import threading
 
@@ -12,16 +12,12 @@ def Get_API():
         return None
     return _apiObj
 
-def Start():
+def Start(edition:Edition = Edition.NEUROTORCH):
     global neutorch_GUI, _apiObj
-    neutorch_GUI = Neurotorch_GUI()
+    neutorch_GUI = Neurotorch_GUI(__version__)
     _apiObj = _api_gui_class(neutorch_GUI)
-    neutorch_GUI.GUI()
+    neutorch_GUI.GUI(edition)
 
 def Start_Background():
     task = threading.Thread(target=Start)
     task.start()
-    
-if __name__ == "__main__":
-    Start()
-

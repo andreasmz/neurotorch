@@ -23,7 +23,7 @@ class TabWelcome(Tab):
         self.frame.bind("<Configure>", self._FrameResizeEvent)
         self.frame.pack(expand=True, fill="both")
 
-        self.coverimg = Image.open(os.path.join(Settings.MediaPath, "chaptgpt_neurotorch_coverimage_4.webp"))
+        self.coverimg = Image.open(os.path.join(Settings.MediaPath, "neurotorch_coverimage_4.webp"))
         self.canvas = tk.Canvas(self.frame, background="black")
         self.canvas.pack(expand=True, fill="both")
         self.frameBottom_L = tk.Frame(self.frame)
@@ -66,7 +66,7 @@ class TabWelcome(Tab):
         self.canvas.create_image(xOffset, yOffset, image=self.image, anchor="nw", tags="IMG")
 
     def BtnOpenDocs(self):
-        _path = os.path.join(*[Settings.ParentPath, "Neurotorch Documentation.pdf"])
+        _path = os.path.join(*[Settings.ParentPath, "neurotorch_documentation.pdf"])
         print("Opening Documentation at", _path)
         subprocess.Popen([_path],shell=True)
 

@@ -9,22 +9,21 @@ from typing import Literal
 import logging
 
 matplotlib.use('TkAgg')
-
-from .. import __version__
 from .components import Job, Statusbar
 from .settings import Neurotorch_Settings as Settings
 from ..utils.image import ImgObj
 from ..utils.signalDetection import SignalObj
-from ..utils.plugin_manager import PluginManager
 
 
 
 class Edition(Enum):
     NEUROTORCH = 1
     NEUROTORCH_LIGHT = 2
+    NEUROTORCH_DEBUG = 10
 
 class Neurotorch_GUI:
-    def __init__(self):
+    def __init__(self, version):
+        self._version_ = version
         self.root = None
         self.tabs : dict[str: Tab] = {}
         self._imgObj = None
@@ -37,6 +36,7 @@ class Neurotorch_GUI:
         from neurotorchmz.gui.tab2 import Tab2
         from neurotorchmz.gui.tab3 import Tab3
         from neurotorchmz.gui.tabAnalysis import TabAnalysis
+        from ..utils.plugin_manager import PluginManager
         self.edition = edition
         self.root = tk.Tk()
         self.SetWindowTitle("")
@@ -72,24 +72,27 @@ class Neurotorch_GUI:
         self.menuDenoise.add_command(label="Gaussian kernel (σ=2.5)", command=lambda: self.MenuImageDenoise('Gaussian', (2.5,)))
         self.menuDenoise.add_command(label="Gaussian kernel (σ=3)", command=lambda: self.MenuImageDenoise('Gaussian', (3,)))
         self.menuDenoise.add_command(label="Gaussian kernel (σ=5)", command=lambda: self.MenuImageDenoise('Gaussian', (5,)))
-        self.menuDenoiseImg = tk.Menu(self.menuImage,tearoff=0)
-        self.menuImage.add_cascade(label="Denoise Image", menu=self.menuDenoiseImg)
-        self.menuDenoiseImg.add_command(label="On", command=lambda:self.MenuImageDenoiseImg(True))
-        self.menuDenoiseImg.add_command(label="Off", command=lambda:self.MenuImageDenoiseImg(False))
-        self.menuImage.add_command(label="Start Trace Selector", command=self.MenuImageTraceSelector)
+        if edition == Edition.NEUROTORCH_DEBUG:
+            self.menuDenoiseImg = tk.Menu(self.menuImage,tearoff=0)
+            self.menuImage.add_cascade(label="Denoise Image", menu=self.menuDenoiseImg)
+            self.menuDenoiseImg.add_command(label="On", command=lambda:self.MenuImageDenoiseImg(True))
+            self.menuDenoiseImg.add_command(label="Off", command=lambda:self.MenuImageDenoiseImg(False))
 
-        if (edition == Edition.NEUROTORCH):
+        if (edition != Edition.NEUROTORCH_LIGHT):
             from neurotorchmz.utils.pyimagej import ImageJHandler
             self.ijH = ImageJHandler(self)
             self.ijH.MenubarImageJH(self.menubar)
+
+        self.menuPlugins = tk.Menu(self.menubar,tearoff=0)
+        self.menubar.add_cascade(label="Plugins",menu=self.menuPlugins)
         
         self.menuNeurotorch = tk.Menu(self.menubar,tearoff=0)
         self.menubar.add_cascade(label="Neurotorch",menu=self.menuNeurotorch)
         self.menuNeurotorch.add_command(label="About", command=self.MenuNeurotorchAbout)
-        self.menuNeurotorch.add_command(label="Update", command=self.MenuNeurotorchUpdate)
 
         self.menuDebug = tk.Menu(self.menubar,tearoff=0)
-        self.menubar.add_cascade(label="Debug", menu=self.menuDebug)
+        if edition == Edition.NEUROTORCH_DEBUG:
+            self.menubar.add_cascade(label="Debug", menu=self.menuDebug)
         self.menuDebug.add_command(label="Save diffImg peak frames", command=self.MenuDebugSavePeaks)
         self.menuDebug.add_command(label="Load diffImg peak frames", command=self.MenuDebugLoadPeaks)
         self.menuDebug.add_separator()
@@ -106,7 +109,7 @@ class Neurotorch_GUI:
         for t in self.tabs.values(): t.Init()
         self.tabMain.select(self.tabs["Tab1"].tab)
 
-        self.plugin_mng = PluginManager()
+        self.plugin_mng = PluginManager(self)
 
         self.tabMain.pack(expand=1, fill="both")
 
@@ -250,21 +253,7 @@ class Neurotorch_GUI:
             pass
 
     def MenuNeurotorchAbout(self):
-        messagebox.showinfo("Neurotorch", f"© Andreas Brilka 2024\nYou are running Neurotorch {__version__}")
-
-    def MenuNeurotorchUpdate(self):
-        Updater.CheckForUpdate()
-        _github_version = Updater.version_github
-        _local_version = Updater.version
-        if _github_version is None:
-            messagebox.showerror("Neurotorch", f"The server can't be contacted to check for an update. Please try again later")
-            return
-        if _local_version == _github_version:
-            messagebox.showinfo("Neurotorch", f"You are running the newest version")
-            return
-        if not messagebox.askyesno("Neurotorch", f"Version {_github_version} is available for download (You have {_local_version}). Do you want to update?"):
-            return
-        Updater.DownloadUpdate()
+        messagebox.showinfo("Neurotorch", f"© Andreas Brilka 2024\nYou are running Neurotorch {self._version_}")
 
 
     def MenuDebugLoadPeaks(self):
