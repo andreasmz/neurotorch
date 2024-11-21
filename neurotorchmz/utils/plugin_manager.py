@@ -15,3 +15,4 @@ class PluginManager:
                 f.write("#Import here relative (!) your plugins")
         sys.path.insert(1, str(self.pluginParentFolder))
         import plugins
+        sys.path.remove(str(self.pluginParentFolder))
