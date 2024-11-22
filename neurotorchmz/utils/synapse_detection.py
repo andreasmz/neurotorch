@@ -298,6 +298,7 @@ class LocalMax(DetectionAlgorithm):
         self.maxima_mask = None
         self.maxima_labeled = None
         self.maxima_labeled_expanded = None
+        self.maxima_labeled_expaned_adjusted = None
         self.maxima = None
         self.combined_labeled = None
         self.region_props = None
@@ -315,6 +316,12 @@ class LocalMax(DetectionAlgorithm):
             radius = kwargs["radius"]
         except KeyError:
             return None
+        warningCallback = None if "warning_callback" not in kwargs else kwargs["warning_callback"]
+        
+        if lowerThreshold >= upperThreshold:
+            if warningCallback is not None:
+                warningCallback(mode="error", message="Lower threshold must be smaller than upper threshold")
+                return None
         
         if mode == "Diff":
             if frame is None:
@@ -329,52 +336,53 @@ class LocalMax(DetectionAlgorithm):
 
         self.imgThresholded = (_img >= lowerThreshold)
         self.imgThresholded_labeled = measure.label(self.imgThresholded, connectivity=1)
-        #print(np.max(self.imgThresholded_labeled))
-
-        #self.imgMaximumFiltered = maximum_filter(_img, size=minDistance, mode="constant")
-        #self.imgMaximumFiltered = (self.imgMaximumFiltered >= upperThreshold) * self.imgMaximumFiltered
-        
-        #print(np.max(self.imgMaximumFiltered))
-
-        #self.maxima_mask = np.logical_and(self.imgMaximumFiltered == _img, self.imgMaximumFiltered != 0)
-        #self.maxima  = np.where(self.maxima_mask)
-        self.maxima = peak_local_max(_img, min_distance=minDistance, threshold_abs=upperThreshold)
-        #self.maxima_labeled = measure.label(self.maxima_mask)
+        self.maxima = peak_local_max(_img, min_distance=minDistance, threshold_abs=upperThreshold) # ((Y, X), ..)
+        #print(self.maxima)
+        #ind = np.lexsort((self.maxima[:,1], self.maxima[:,0]))
+        #self.maxima = self.maxima[ind]
+        #print(self.maxima)
         self.maxima_labeled = np.empty(shape=_img.shape, dtype=int)
         for i in range(self.maxima.shape[0]):
-            y, x = self.maxima[i, 1], self.maxima[i, 0]
-            self.maxima_labeled[x,y] = i+1
+            y,x = self.maxima[i, 0], self.maxima[i, 1]
+            self.maxima_labeled[y,x] = i+1
         self.maxima_labeled_expanded = expand_labels(self.maxima_labeled, distance=expandSize)
-
-        #self.combined_labeled = np.logical_and((self.maxima_labeled_expanded != 0), self.imgThresholded_labeled)
-        #self.combined_labeled = measure.label(self.combined_labeled, connectivity=1)
-
-        #labels = []
-        #self._labels = labels
-
         self.labeledImage = np.empty(shape=_img.shape, dtype=int)
+
+        self.maxima_labeled_expaned_adjusted = np.empty(shape=_img.shape, dtype=int)
 
         for i in range(self.maxima.shape[0]):
             y,x = self.maxima[i]
             th_label = self.imgThresholded_labeled[y,x]
             maxima_label = self.maxima_labeled_expanded[y,x]
+            assert th_label != 0
+            assert maxima_label != 0
             _slice = np.logical_and((self.maxima_labeled_expanded == maxima_label), (self.imgThresholded_labeled == th_label))
-            self.labeledImage += _slice*(i+1)
-            # Maybe test here for label == 0 --> Error
-            #labels.append(self.combined_labeled[y,x])
-
-        #self.labeledImage = np.isin(self.combined_labeled, labels)*self.combined_labeled
-
-        print(np.unique(self.labeledImage))
+            if np.count_nonzero(_slice) >= minArea:
+                self.labeledImage += _slice*(i+1)
+                self.maxima_labeled_expaned_adjusted += (self.maxima_labeled_expanded == maxima_label)*maxima_label
 
         self.region_props = measure.regionprops(self.labeledImage, intensity_image=_img)
 
         synapses = []
         for i in range(len(self.region_props)):
             region = self.region_props[i]
-            if region.area >= minArea:
+            if radius < 0:
+                contours = measure.find_contours(np.pad(region.image_filled, 1, constant_values=0), 0.9)
+                contour = contours[0]
+                for c in contours: # Find the biggest contour and assume its the one wanted
+                    if c.shape[0] > contour.shape[0]:
+                        contour = c
+
+                contour = contour[:, ::-1] # contours has shape ((Y, X), (Y, X), ...). Switch it to ((X, Y),...) 
+                startX = region.bbox[1] - 1 #bbox has shape (Y1, X1, Y2, X2)
+                startY = region.bbox[0] - 1 # -1 As correction for the padding
+                contour[:, 0] = contour[:, 0] + startX
+                contour[:, 1] = contour[:, 1] + startY
+                synapse = PolygonalSynapseROI().SetPolygon(contour, region)
+            else:
                 y, x = region.centroid_weighted
                 x, y = int(x), int(y)
                 synapse = CircularSynapseROI().SetLocation(x, y).SetRadius(radius)
-                synapses.append(synapse)
+            synapses.append(synapse)
+        synapses.sort(key=lambda x: (x.location[0], x.location[1]))
         return synapses 

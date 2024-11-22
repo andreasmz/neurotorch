@@ -366,19 +366,19 @@ class LocalMax_Integration(LocalMax, IDetectionAlgorithmIntegration):
         self.varMinArea = IntStringVar(self.root, tk.IntVar(value=20)).SetStringVarBounds(0,1000)
         self.varMinArea.SetCallback(self._UpdateMinAreaText)
         self.varMinDistance = IntStringVar(self.root, tk.IntVar(value=20)).SetStringVarBounds(0,1000)
-        self.varRadius = IntStringVar(self.root, tk.IntVar(value=6)).SetStringVarBounds(0,50)
+        self.varRadius = IntStringVar(self.root, tk.IntVar(value=6)).SetStringVarBounds(-1,50)
         self.scaleLowerThreshold = ttk.Scale(self.optionsFrame, from_=1, to=200, variable=self.varLowerThreshold.IntVar)
         self.scaleUpperThreshold = ttk.Scale(self.optionsFrame, from_=1, to=200, variable=self.varUpperThreshold.IntVar)
         self.scaleExpandSize = ttk.Scale(self.optionsFrame, from_=1, to=200, variable=self.varExpandSize.IntVar)
         self.scaleMinArea = ttk.Scale(self.optionsFrame, from_=0, to=500, variable=self.varMinArea.IntVar)
         self.scaleMinDistance = ttk.Scale(self.optionsFrame, from_=1, to=50, variable=self.varMinDistance.IntVar)
-        self.scaleRadius = ttk.Scale(self.optionsFrame, from_=1, to=20, variable=self.varRadius.IntVar)
+        self.scaleRadius = ttk.Scale(self.optionsFrame, from_=-1, to=20, variable=self.varRadius.IntVar)
         self.numLowerThreshold = tk.Spinbox(self.optionsFrame, width=6, textvariable=self.varLowerThreshold.StringVar, from_=0, to=1000)
         self.numUpperThreshold = tk.Spinbox(self.optionsFrame, width=6, textvariable=self.varUpperThreshold.StringVar, from_=0, to=1000)
         self.numExpandSize = tk.Spinbox(self.optionsFrame, width=6, textvariable=self.varExpandSize.StringVar, from_=0, to=1000)
         self.numMinArea = tk.Spinbox(self.optionsFrame, width=6, textvariable=self.varMinArea.StringVar, from_=0, to=1000)
         self.numMinDistance = tk.Spinbox(self.optionsFrame, width=6, textvariable=self.varMinDistance.StringVar, from_=0, to=1000)
-        self.numRadius = tk.Spinbox(self.optionsFrame, width=6, textvariable=self.varRadius.StringVar, from_=0, to=50)
+        self.numRadius = tk.Spinbox(self.optionsFrame, width=6, textvariable=self.varRadius.StringVar, from_=-1, to=50)
         self.scaleLowerThreshold.grid(row=4, column=1, sticky="news")
         self.scaleUpperThreshold.grid(row=5, column=1, sticky="news")
         self.scaleExpandSize.grid(row=6, column=1, sticky="news")
@@ -477,24 +477,17 @@ class LocalMax_Integration(LocalMax, IDetectionAlgorithmIntegration):
     def Plot_DetectionRaw(self, ax):
         if self.labeledImage is None or self.maxima is None or self.region_props is None:
             return
-        _labeled = (self.maxima_labeled_expanded != 0)
+        _labeled = (self.maxima_labeled_expaned_adjusted != 0)
         ax.imshow(_labeled, alpha=_labeled*0.5, cmap="inferno")
         _labeled2 = (self.labeledImage != 0)
         ax.imshow(_labeled2, alpha=_labeled2*0.5, cmap="gist_gray")
-
         
         for i in range(self.maxima.shape[0]):
             x, y = self.maxima[i, 1], self.maxima[i, 0]
             label = self.labeledImage[y,x]
-            _found = False
             for region in self.region_props:
                 if region.label == label:
                     y2, x2 = region.centroid_weighted
                     p = patches.Arrow(x,y, (x2-x), (y2-y))
-                    _found = True
+                    ax.add_patch(p)
                     break
-                
-            if not _found:
-                p = patches.Circle((x,y), 1)
-            ax.add_patch(p)    
-            #ax.scatter(x, y, marker="1", color="red")
