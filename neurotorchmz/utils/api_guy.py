@@ -1,4 +1,8 @@
 from ..gui.window import Neurotorch_GUI
+from ..gui.tab3 import Tab3
+from ..utils.synapse_detection import *
+from ..gui.components import Job
+import threading
 
 class API_GUI():
 
@@ -28,3 +32,18 @@ class API_GUI():
     @property
     def TabROI_DetectionResult(self):
         return self.gui.tab3.detectionResult
+
+
+    def SetDetectionResult(self, synapses: list[ISynapse]):
+        tab3: Tab3 = self.gui.tabs["Tab3"]
+        tab3.detectionResult.modified = False
+
+        def _Detect(job: Job):
+            job.SetProgress(0, "Detect ROIs")
+            tab3.detectionResult.SetISynapses(synapses)
+            job.SetStopped("Detecting ROIs")
+            tab3.Invalidate_ROIs()
+
+        job = Job(steps=1)
+        self.gui.statusbar.AddJob(job)
+        threading.Thread(target=_Detect, args=(job,), daemon=True).start()

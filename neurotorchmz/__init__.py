@@ -1,4 +1,4 @@
-__version__ = "24.11.4"
+__version__ = "24.11.5_alpha"
 
 from .gui.window import Neurotorch_GUI, Edition
 from .utils.api_guy import API_GUI as _api_gui_class

@@ -1,6 +1,8 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from typing import Callable, Literal
+import matplotlib.pyplot as plt
+from matplotlib import patches
 
 from .image import ImgObj, ImageProperties
 from ..gui.components import IntStringVar
@@ -15,6 +17,7 @@ class IDetectionAlgorithmIntegration:
         # The algorithm is choosing on its own what data to use. For this, an IMGObject is provided
         self.imgObj = None
         self.root = None
+        self.provides_rawPlot = False
 
     def OptionsFrame(self, root, gui:Neurotorch_GUI, updateCallback, imgObj_Callable: Callable) -> tk.LabelFrame:
         """
@@ -55,6 +58,8 @@ class IDetectionAlgorithmIntegration:
         """
         return None
 
+    def Plot_DetectionRaw(self, ax):
+        return None
 
 
 class Thresholding_Integration(Tresholding, IDetectionAlgorithmIntegration):
@@ -312,3 +317,184 @@ class APD_CircleAprox_Integration(APD_Integration):
                 continue
             synapses_return.append(CircularSynapseROI().SetLocation(s.location[0], s.location[1]).SetRadius(radius))
         return synapses_return
+    
+
+class LocalMax_Integration(LocalMax, IDetectionAlgorithmIntegration):
+
+    def __init__(self):
+        super().__init__()
+        self.provides_rawPlot = True
+
+    def OptionsFrame(self, root, gui:Neurotorch_GUI, updateCallback, imgObj_Callable: Callable):
+        self.root = root
+        self.gui = gui
+        self.imgObjCallback = imgObj_Callable
+        self.updatecallback = updateCallback
+        self.optionsFrame = tk.LabelFrame(self.root, text="Options")
+
+        tk.Label(self.optionsFrame, text="DO NOT use this algorithm yet!\n It is still under development!").grid(row=0, column=0, columnspan=3)
+        tk.Label(self.optionsFrame, text="Auto paramters").grid(row=2, column=0, sticky="ne")
+        tk.Label(self.optionsFrame, text="Image Source").grid(row=3, column=0, sticky="ne")
+        tk.Label(self.optionsFrame, text="Lower Threshold").grid(row=4, column=0, sticky="ne")
+        tk.Label(self.optionsFrame, text="Upper Threshold").grid(row=5, column=0, sticky="ne")
+        tk.Label(self.optionsFrame, text="Expand size").grid(row=6, column=0, sticky="ne")
+        tk.Label(self.optionsFrame, text="Min. Area").grid(row=7, column=0, sticky="ne")
+        tk.Label(self.optionsFrame, text="Min. peak Distance").grid(row=8, column=0, sticky="ne")
+        tk.Label(self.optionsFrame, text="Radius").grid(row=9, column=0, sticky="ne")
+        tk.Label(self.optionsFrame, text="px").grid(row=7, column=3, sticky="nw")
+        tk.Label(self.optionsFrame, text="px").grid(row=8, column=3, sticky="nw")
+        tk.Label(self.optionsFrame, text="px").grid(row=9, column=3, sticky="nw")
+        
+        self.lblMinAreaInfo = tk.Label(self.optionsFrame, text="")
+        self.lblMinAreaInfo.grid(row=10, column=0, columnspan=3)
+
+        self.varAutoParams = tk.IntVar(value=1)
+        self.checkAutoParams = tk.Checkbutton(self.optionsFrame, variable=self.varAutoParams)
+        self.checkAutoParams.grid(row=2, column=1, sticky="nw")
+        self.comboImageVar = tk.StringVar(value="DiffMax")
+        self.comboImageVar.trace_add("write", self._ComboImage_Changed)
+        self.comboImage = ttk.Combobox(self.optionsFrame, textvariable=self.comboImageVar, state="readonly")
+        self.comboImage['values'] = ["Diff", "DiffMax", "DiffStd", "DiffMax without Signal"]
+        self.comboImage.grid(row=3, column=1, sticky="news")
+        self.comboFrameVar = tk.StringVar()
+        self.comboFrameVar.trace_add("write", self._ComboImage_Changed)
+        self.comboFrame = ttk.Combobox(self.optionsFrame, textvariable=self.comboFrameVar, state="disabled", width=5)
+        self.comboFrame.grid(row=3, column=2, sticky="news")
+        self.varLowerThreshold = IntStringVar(self.root, tk.IntVar(value=10)).SetStringVarBounds(0,1000)
+        self.varUpperThreshold = IntStringVar(self.root, tk.IntVar(value=40)).SetStringVarBounds(0,1000)
+        self.varExpandSize = IntStringVar(self.root, tk.IntVar(value=20)).SetStringVarBounds(0,1000)
+        self.varMinArea = IntStringVar(self.root, tk.IntVar(value=20)).SetStringVarBounds(0,1000)
+        self.varMinArea.SetCallback(self._UpdateMinAreaText)
+        self.varMinDistance = IntStringVar(self.root, tk.IntVar(value=20)).SetStringVarBounds(0,1000)
+        self.varRadius = IntStringVar(self.root, tk.IntVar(value=6)).SetStringVarBounds(0,50)
+        self.scaleLowerThreshold = ttk.Scale(self.optionsFrame, from_=1, to=200, variable=self.varLowerThreshold.IntVar)
+        self.scaleUpperThreshold = ttk.Scale(self.optionsFrame, from_=1, to=200, variable=self.varUpperThreshold.IntVar)
+        self.scaleExpandSize = ttk.Scale(self.optionsFrame, from_=1, to=200, variable=self.varExpandSize.IntVar)
+        self.scaleMinArea = ttk.Scale(self.optionsFrame, from_=0, to=500, variable=self.varMinArea.IntVar)
+        self.scaleMinDistance = ttk.Scale(self.optionsFrame, from_=1, to=50, variable=self.varMinDistance.IntVar)
+        self.scaleRadius = ttk.Scale(self.optionsFrame, from_=1, to=20, variable=self.varRadius.IntVar)
+        self.numLowerThreshold = tk.Spinbox(self.optionsFrame, width=6, textvariable=self.varLowerThreshold.StringVar, from_=0, to=1000)
+        self.numUpperThreshold = tk.Spinbox(self.optionsFrame, width=6, textvariable=self.varUpperThreshold.StringVar, from_=0, to=1000)
+        self.numExpandSize = tk.Spinbox(self.optionsFrame, width=6, textvariable=self.varExpandSize.StringVar, from_=0, to=1000)
+        self.numMinArea = tk.Spinbox(self.optionsFrame, width=6, textvariable=self.varMinArea.StringVar, from_=0, to=1000)
+        self.numMinDistance = tk.Spinbox(self.optionsFrame, width=6, textvariable=self.varMinDistance.StringVar, from_=0, to=1000)
+        self.numRadius = tk.Spinbox(self.optionsFrame, width=6, textvariable=self.varRadius.StringVar, from_=0, to=50)
+        self.scaleLowerThreshold.grid(row=4, column=1, sticky="news")
+        self.scaleUpperThreshold.grid(row=5, column=1, sticky="news")
+        self.scaleExpandSize.grid(row=6, column=1, sticky="news")
+        self.scaleMinArea.grid(row=7, column=1, sticky="news")
+        self.scaleMinDistance.grid(row=8, column=1, sticky="news")
+        self.scaleRadius.grid(row=9, column=1, sticky="news")
+        self.numLowerThreshold.grid(row=4, column=2)
+        self.numUpperThreshold.grid(row=5, column=2)
+        self.numExpandSize.grid(row=6, column=2)
+        self.numMinArea.grid(row=7, column=2)
+        self.numMinDistance.grid(row=8, column=2)
+        self.numRadius.grid(row=9, column=2)
+
+        self._UpdateMinAreaText()
+        self.OptionsFrame_Update()
+
+        return self.optionsFrame
+    
+    def OptionsFrame_Update(self):
+        self.CalcAutoParams()
+
+    def CalcAutoParams(self):
+        pass
+
+    def _UpdateMinAreaText(self):
+        A = self.varMinArea.IntVar.get()
+        r = round(np.sqrt(A/np.pi),2)
+        self.lblMinAreaInfo["text"] = f"A circle with radius {r} px has the same area" 
+
+    def _ComboImage_Changed(self, val1, val2, val3):
+        self.OptionsFrame_Update()
+        self.updatecallback(["tab3_replotImages"])
+
+    def _varChanged_Update(self, val1, val2, val3):
+        self.updatecallback(["tab3_replotImages"])
+
+    
+    def DetectAutoParams(self, frame: int = None) -> list[ISynapseROI]:
+        lowerThreshold = self.varLowerThreshold.IntVar.get()
+        upperThreshold = self.varUpperThreshold.IntVar.get()
+        expandSize = self.varExpandSize.IntVar.get()
+        minArea = self.varMinArea.IntVar.get()
+        minDistance = self.varMinDistance.IntVar.get()
+        radius = self.varRadius.IntVar.get()
+        mode = self.comboImageVar.get()
+        if mode == "DiffMax without Signal":
+            mode = "DiffMax"
+        imgObj = self.imgObjCallback()
+        if frame is None and mode == "Diff":
+            _frame = self.comboFrameVar.get()
+            if _frame.isdigit(): 
+                _frame = int(self.comboFrameVar.get())
+                if _frame >= 0 and _frame < imgObj.imgDiff.shape[0]:
+                    frame = _frame
+        return self.Detect(imgObj, frame, imgMode=mode, 
+                           lowerThreshold=lowerThreshold, 
+                           upperThreshold=upperThreshold, 
+                           expandSize=expandSize,
+                           minArea=minArea,
+                           minDistance=minDistance, 
+                           radius=radius,
+                           warning_callback=self._Callback)
+    
+    def _Callback(self, mode: Literal["ask", "info", "warning", "error"], message=""):
+        if mode == "ask":
+            return messagebox.askyesno("Neurotorch", message)
+        elif mode == "info":
+            messagebox.showinfo("Neurotorch", message)
+        elif mode == "warning":
+            messagebox.showwarning("Neurotorch", message)
+        elif mode == "error":
+            messagebox.showerror("Neurotorch", message)
+
+    def Img_Input(self) -> np.ndarray | None:
+        imgObj: ImgObj = self.imgObjCallback()
+        if imgObj is None or imgObj.imgDiff is None:
+            return False
+        match(self.comboImageVar.get()):
+            case "DiffMax" | "DiffMax without Signal":
+                return imgObj.imgDiffView(ImgObj.SPATIAL).Max
+            case "DiffStd":
+                return imgObj.imgDiffView(ImgObj.SPATIAL).Std
+            case "Diff":
+                if not self.comboFrameVar.get().isdigit():
+                    return False
+                _frame = int(self.comboFrameVar.get())
+                if _frame < 0 or _frame > imgObj.imgDiff.shape[0]:
+                    return False
+                return imgObj.imgDiff[_frame]
+            case _:
+                return None
+            
+    def Img_Detection_Raw(self):
+        return self.combined_labeled
+    
+    def Plot_DetectionRaw(self, ax):
+        if self.labeledImage is None or self.maxima is None or self.region_props is None:
+            return
+        _labeled = (self.maxima_labeled_expanded != 0)
+        ax.imshow(_labeled, alpha=_labeled*0.5, cmap="inferno")
+        _labeled2 = (self.labeledImage != 0)
+        ax.imshow(_labeled2, alpha=_labeled2*0.5, cmap="gist_gray")
+
+        
+        for i in range(self.maxima.shape[0]):
+            x, y = self.maxima[i, 1], self.maxima[i, 0]
+            label = self.labeledImage[y,x]
+            _found = False
+            for region in self.region_props:
+                if region.label == label:
+                    y2, x2 = region.centroid_weighted
+                    p = patches.Arrow(x,y, (x2-x), (y2-y))
+                    _found = True
+                    break
+                
+            if not _found:
+                p = patches.Circle((x,y), 1)
+            ax.add_patch(p)    
+            #ax.scatter(x, y, marker="1", color="red")

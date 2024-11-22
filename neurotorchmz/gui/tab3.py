@@ -28,6 +28,7 @@ class Tab3(Tab):
         self.roiPatches2 = {}
         self.treeROIs_entryPopup = None
         self.ax2Image = None
+        self.ax2_colorbar = None
 
     def Init(self):
         self.tab = ttk.Frame(self._gui.tabMain)
@@ -44,11 +45,13 @@ class Tab3(Tab):
         self.radioAlgo1 = tk.Radiobutton(self.frameOptions, variable=self.radioAlgoVar, indicatoron=True, text="Threshold (Deprecated)", value="threshold", command=lambda:self.Invalidate_Algorithm())
         self.radioAlgo2 = tk.Radiobutton(self.frameOptions, variable=self.radioAlgoVar, indicatoron=True, text="Hysteresis thresholding (Polygonal)", value="apd", command=lambda:self.Invalidate_Algorithm())
         self.radioAlgo3 = tk.Radiobutton(self.frameOptions, variable=self.radioAlgoVar, indicatoron=True, text="Hysteresis thresholding (Circular)", value="apd_aprox", command=lambda:self.Invalidate_Algorithm())
+        self.radioAlgo4 = tk.Radiobutton(self.frameOptions, variable=self.radioAlgoVar, indicatoron=True, text="Local Max", value="local_max", command=lambda:self.Invalidate_Algorithm())
         self.radioAlgo1.grid(row=1, column=0, sticky="nw")
         self.radioAlgo2.grid(row=2, column=0, sticky="nw")
         self.radioAlgo3.grid(row=3, column=0, columnspan=2, sticky="nw")
+        self.radioAlgo4.grid(row=4, column=0, columnspan=2, sticky="nw")
         self.btnDetect = tk.Button(self.frameOptions, text="Detect", command=self.Detect)
-        self.btnDetect.grid(row=4, column=0)
+        self.btnDetect.grid(row=5, column=0)
 
         self.detectionAlgorithm = detection.IDetectionAlgorithmIntegration()
         self.frameAlgoOptions = self.detectionAlgorithm.OptionsFrame(self.frameTools, self._gui, self.Update, self._gui.GetImageObject)
@@ -140,6 +143,10 @@ class Tab3(Tab):
                     self.detectionAlgorithm.OptionsFrame_Update()
                     return
                 self.detectionAlgorithm = detection.APD_CircleAprox_Integration()
+            case "local_max":
+                if type(self.detectionAlgorithm) == detection.LocalMax_Integration:
+                    return
+                self.detectionAlgorithm = detection.LocalMax_Integration()
             case _:
                 self.detectionAlgorithm = None
                 return
@@ -150,6 +157,9 @@ class Tab3(Tab):
             self.frameAlgoOptions.grid(row=1, column=0, sticky="news")
 
     def ClearImagePlot(self):
+        if self.ax2_colorbar is not None:
+            self.ax2_colorbar.remove()
+            self.ax2_colorbar = None
         for ax in [self.ax1, self.ax2, self.ax3, self.ax4]: 
             ax.clear()
             ax.set_axis_off()
@@ -164,25 +174,31 @@ class Tab3(Tab):
         imgObj = self._gui.ImageObject
 
         self.ax2Image = None    
+        if self.ax2_colorbar is not None:
+            self.ax2_colorbar.remove()
+            self.ax2_colorbar = None
         for ax in [self.ax1, self.ax2]: 
-            for axImg in ax.get_images(): axImg.remove()
+            for axImg in ax.get_images(): 
+                axImg.remove()
             ax.set_axis_off()
+        
         
         if imgObj is None or imgObj.img is None or imgObj.imgDiff is None:
             self.Invalidate_ROIs()
             return
         
         self.ax1.imshow(imgObj.imgView(imgObj.SPATIAL).Mean, cmap="Greys_r") 
-        if self.detectionAlgorithm.Img_Input() is False:
-            pass
-        elif self.detectionAlgorithm.Img_Input() is None:
-            self.ax2Image = self.ax2.imshow(imgObj.imgDiffView(imgObj.SPATIAL).Max, cmap="inferno")
-        else:
-            self.ax2Image = self.ax2.imshow(self.detectionAlgorithm.Img_Input(), cmap="inferno")
-        self.ax1.set_axis_on()
-        self.ax2.set_axis_on()
+        if self.detectionAlgorithm.Img_Input() is not False:
+            if self.detectionAlgorithm.Img_Input() is None:
+                self.ax2Image = self.ax2.imshow(imgObj.imgDiffView(imgObj.SPATIAL).Max, cmap="inferno")
+            else:
+                self.ax2Image = self.ax2.imshow(self.detectionAlgorithm.Img_Input(), cmap="inferno")
+            self.ax2_colorbar = self.figure1.colorbar(self.ax2Image, ax=self.ax2)
+            self.ax1.set_axis_on()
+            self.ax2.set_axis_on()
 
         self.Invalidate_ROIs()
+
 
 
     def Invalidate_ROIs(self):
@@ -238,7 +254,9 @@ class Tab3(Tab):
                 self.roiPatches[synapseuuid] = c
                 self.roiPatches2[synapseuuid] = c2
 
-        if self.detectionAlgorithm.Img_Detection_Raw() is not None:
+        if self.detectionAlgorithm.provides_rawPlot:
+            self.detectionAlgorithm.Plot_DetectionRaw(self.ax2)
+        elif self.detectionAlgorithm.Img_Detection_Raw() is not None:
             self.ax2.imshow(self.detectionAlgorithm.Img_Detection_Raw()!=0, alpha=(self.detectionAlgorithm.Img_Detection_Raw() != 0).astype(int)*0.5, cmap="gist_gray")
 
         self.Invalidate_SelectedROI()
