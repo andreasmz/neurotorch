@@ -18,6 +18,6 @@ def Start(edition:Edition = Edition.NEUROTORCH):
     _apiObj = _api_gui_class(neutorch_GUI)
     neutorch_GUI.GUI(edition)
 
-def Start_Background():
-    task = threading.Thread(target=Start)
+def Start_Background(edition:Edition = Edition.NEUROTORCH):
+    task = threading.Thread(target=Start, args=(edition,))
     task.start()
