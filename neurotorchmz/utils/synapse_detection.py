@@ -3,7 +3,6 @@ from skimage import measure
 from skimage.segmentation import expand_labels
 import math
 import uuid
-from scipy.ndimage import maximum_filter
 from skimage.feature import peak_local_max
 
 from .image import ImgObj
@@ -175,7 +174,7 @@ class DetectionResult:
 
 class DetectionAlgorithm:
 
-    def Detect(self, imgObject: ImgObj, frame:int = None, **kwargs) -> list[ISynapseROI]:
+    def Detect(self, img: np.ndarray, **kwargs) -> list[ISynapseROI]:
         return None
     
     def Reset(self):
@@ -193,9 +192,7 @@ class Tresholding(DetectionAlgorithm):
         self.imgLabeled = None
         self.imgRegProps = None
 
-    def Detect(self, imgObject: ImgObj, frame:int = None, **kwargs) -> list[ISynapseROI]:
-        if imgObject.imgDiff is None:
-            return None
+    def Detect(self, img:np.ndarray, **kwargs) -> list[ISynapseROI]:
         try:
             threshold = kwargs["threshold"]
             radius = kwargs["radius"]
@@ -204,10 +201,7 @@ class Tresholding(DetectionAlgorithm):
             return None
 
         minArea = math.pi*(radius**2)*minROISize
-        if frame is None:
-            self.imgThresholded = (imgObject.imgDiffView(ImgObj.SPATIAL).Max >= threshold).astype(int)
-        else:
-            self.imgThresholded = (imgObject.imgDiff[frame] >= threshold).astype(int)
+        self.imgThresholded = (img >= threshold).astype(int)
         self.imgLabeled = measure.label(self.imgThresholded, connectivity=2)
         self.imgRegProps = measure.regionprops(self.imgLabeled)
         synapses = []
@@ -218,8 +212,7 @@ class Tresholding(DetectionAlgorithm):
                 synapses.append(s)
         return synapses
 
-#Advanced Polygonal Detection
-class APD(DetectionAlgorithm):
+class HysteresisTh(DetectionAlgorithm):
     def __init__(self): 
         super().__init__()
         self.Reset()
@@ -230,31 +223,19 @@ class APD(DetectionAlgorithm):
         self.region_props = None
         self.thresholdFiltered_img = None
 
-    def Detect(self, imgObject: ImgObj, frame = None, **kwargs) -> list[ISynapseROI]:
+    def Detect(self, img:np.ndarray, **kwargs) -> list[ISynapseROI]:
         try:
-            mode = kwargs["imgMode"]
             lowerThreshold = kwargs["lowerThreshold"]
             upperThreshold = kwargs["upperThreshold"]
             minArea = kwargs["minArea"]
         except KeyError:
             return None
-        
-        if mode == "Diff":
-            if frame is None:
-                return None
-            _img = imgObject.imgDiff[frame]
-        elif mode == "DiffMax":
-            _img = imgObject.imgDiffView(ImgObj.SPATIAL).Max
-        elif mode == "DiffStd":
-            _img = imgObject.imgDiffView(ImgObj.SPATIAL).Std
-        else:
-            return None
 
-        self.thresholded_img = (_img > lowerThreshold).astype(int)
+        self.thresholded_img = (img > lowerThreshold).astype(int)
         self.thresholded_img[self.thresholded_img > 0] = 1
         self.labeled_img = measure.label(self.thresholded_img, connectivity=1)
-        self.region_props = measure.regionprops(self.labeled_img, intensity_image=_img)
-        self.thresholdFiltered_img = np.empty(shape=_img.shape)
+        self.region_props = measure.regionprops(self.labeled_img, intensity_image=img)
+        self.thresholdFiltered_img = np.empty(shape=img.shape)
         labels_ok = []
 
         synapses = []
@@ -304,13 +285,13 @@ class LocalMax(DetectionAlgorithm):
         self.region_props = None
         self.labeledImage = None
 
-    def Detect(self, imgObject: ImgObj, frame = None, **kwargs) -> list[ISynapseROI]:
+    def Detect(self, img:np.ndarray, **kwargs) -> list[ISynapseROI]:
         self.Reset()
         try:
-            mode = kwargs["imgMode"]
             lowerThreshold = kwargs["lowerThreshold"]
             upperThreshold = kwargs["upperThreshold"]
             expandSize = kwargs["expandSize"]
+            maxPeakCount = kwargs["maxPeakCount"]
             minArea = kwargs["minArea"]
             minDistance = kwargs["minDistance"]
             radius = kwargs["radius"]
@@ -318,37 +299,22 @@ class LocalMax(DetectionAlgorithm):
             return None
         warningCallback = None if "warning_callback" not in kwargs else kwargs["warning_callback"]
         
-        if lowerThreshold >= upperThreshold:
-            if warningCallback is not None:
-                warningCallback(mode="error", message="Lower threshold must be smaller than upper threshold")
-                return None
         
-        if mode == "Diff":
-            if frame is None:
-                return None
-            _img = imgObject.imgDiff[frame]
-        elif mode == "DiffMax":
-            _img = imgObject.imgDiffView(ImgObj.SPATIAL).Max
-        elif mode == "DiffStd":
-            _img = imgObject.imgDiffView(ImgObj.SPATIAL).Std
-        else:
-            return None
+        if lowerThreshold >= upperThreshold:
+            lowerThreshold = upperThreshold
 
-        self.imgThresholded = (_img >= lowerThreshold)
+        self.imgThresholded = (img >= lowerThreshold)
         self.imgThresholded_labeled = measure.label(self.imgThresholded, connectivity=1)
-        self.maxima = peak_local_max(_img, min_distance=minDistance, threshold_abs=upperThreshold) # ((Y, X), ..)
-        #print(self.maxima)
-        #ind = np.lexsort((self.maxima[:,1], self.maxima[:,0]))
-        #self.maxima = self.maxima[ind]
-        #print(self.maxima)
-        self.maxima_labeled = np.empty(shape=_img.shape, dtype=int)
+        _numpeaks = maxPeakCount if maxPeakCount > 0 else np.inf
+        self.maxima = peak_local_max(img, min_distance=minDistance, threshold_abs=upperThreshold, num_peaks=_numpeaks) # ((Y, X), ..)
+        self.maxima_labeled = np.empty(shape=img.shape, dtype=int)
         for i in range(self.maxima.shape[0]):
             y,x = self.maxima[i, 0], self.maxima[i, 1]
             self.maxima_labeled[y,x] = i+1
         self.maxima_labeled_expanded = expand_labels(self.maxima_labeled, distance=expandSize)
-        self.labeledImage = np.empty(shape=_img.shape, dtype=int)
+        self.labeledImage = np.empty(shape=img.shape, dtype=int)
 
-        self.maxima_labeled_expaned_adjusted = np.empty(shape=_img.shape, dtype=int)
+        self.maxima_labeled_expaned_adjusted = np.empty(shape=img.shape, dtype=int)
 
         for i in range(self.maxima.shape[0]):
             y,x = self.maxima[i]
@@ -361,7 +327,7 @@ class LocalMax(DetectionAlgorithm):
                 self.labeledImage += _slice*(i+1)
                 self.maxima_labeled_expaned_adjusted += (self.maxima_labeled_expanded == maxima_label)*maxima_label
 
-        self.region_props = measure.regionprops(self.labeledImage, intensity_image=_img)
+        self.region_props = measure.regionprops(self.labeledImage, intensity_image=img)
 
         synapses = []
         for i in range(len(self.region_props)):
@@ -384,5 +350,5 @@ class LocalMax(DetectionAlgorithm):
                 x, y = int(x), int(y)
                 synapse = CircularSynapseROI().SetLocation(x, y).SetRadius(radius)
             synapses.append(synapse)
-        synapses.sort(key=lambda x: (x.location[0], x.location[1]))
+        synapses.sort(key=lambda x: (x.location[1], x.location[0]))
         return synapses 

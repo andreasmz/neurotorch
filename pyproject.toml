@@ -1,6 +1,6 @@
 [project]
 name = "Neurotorchmz"
-version = "24.11.5"
+version = "24.11.6"
 authors = [
   { name="Andreas Brilka"},
 ]
@@ -32,6 +32,7 @@ dependencies = [
   "fsspec>=2024.9.0",
   "requests>=2.32.3",
   "platformdirs>=4.3.6",
+  "tkinter-tooltip"
 ]
 
 

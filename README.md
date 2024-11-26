@@ -42,7 +42,7 @@ Neurotorch was developed at the AG Heine (Johannes Gutenberg Universität, Mainz
 
 Currently in active development:
 - [x] **released** Integration of plugins: Rather than providing an direct binding to TraceSelector, it will be implemented as a plugin
-- [ ] New ROI finding algorithm based on local maxima
+- [x] New ROI finding algorithm based on local maxima
 
 Ideas for future releases:
 - [ ] Synapse analysis tab: Same algorithm as in the Synapse ROI finder, but for each signal frame separately
@@ -66,6 +66,17 @@ Please note: Neurotorch is under continuous development. Therefore the visuals p
 </p> 
 
 ### Release notes
+
+>### 24.11.6 (27.11.2024)
+>- **New detection algorithm**: Added the Local Maximum Algorithm with much better performance than 
+>- **GUI**: Massively improved the GUI settings by applying a consistent layout
+>- **Detection Algorithms**: Complete rewrite of the detection algorithms integration and adjusting of some parameters
+>- **New Tooltip feature**: Introduced tooltips and a new libary to handle string ressources in Neurotorch
+>- **Normalized Std, Mean and Median**: By default, for ROI detection now normalized values are used
+>- **Colorbar**: Added colorbar to all plots
+>- **Improved signal removing**: Fixed and improved some inconsistencies creating the imgDiff
+>- **Image Source**: Now for all algorithms the image source can be selected (not just Hysteresis Thresholding)
+>- **Massive code review**: Massive review of code and improved stability, for example event system, image loading or Tab ROIFinder plotting
 
 
 >### 24.11.5 (21.11.2024)

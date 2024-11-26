@@ -1,11 +1,19 @@
 import tkinter as tk
 from tkinter import ttk
-from io import StringIO
+from typing import Literal
+from tktooltip import ToolTip
+import tksvg
 import time
 from enum import Enum
 import psutil
 
+from .settings import Neurotorch_Resources as Resource
+
+
 class Statusbar:
+    """
+        Implements the Status Bar into the GUI displaying the currently running jobs, system usage and the custom status text
+    """
     timerLowSpeed = 1000 # ms
     timerHighSpeed = 100 # ms
     lowerTimerSpeed = 2000 #ms
@@ -94,11 +102,16 @@ class Statusbar:
         self.root.after(Statusbar.lowerTimerSpeed, self._LowerTimerTick)
     
 class JobState(Enum):
+    """
+        Enum for the class Job
+    """
     RUNNING = 1
     STOPPED = 2
     TIMEOUT = 3
 class Job:
-
+    """
+        Implements a currently running task whith n steps, which can be progressed using SetProgress()
+    """
     def __init__(self, steps, timeout=60*5, showSteps=True):
         """
             steps: Number of steps or 0 for continuous jobs
@@ -192,39 +205,11 @@ class Job:
             case _:
                 raise RuntimeError(f"The job was in an unkown JobState {self._state}")
 
-class ComboPopup(ttk.Combobox):
-    def __init__(self, tv, callback, rowid, column, val, comboVals, **kw):
-        super().__init__(tv, **kw)
-        self.tv = tv
-        self.callback = callback
-        self.rowid = rowid
-        self.column = column
-        self.oldval = val
-
-        self.insert(0, val) 
-
-        self.focus_force()
-        self.select_all()
-        self.bind("<Return>", self.on_return)
-        #self.bind("<Control-a>", self.select_all)
-        self.bind("<Escape>", lambda *ignore: self.destroy())
-
-
-    def on_return(self, event):
-        val = self.get()
-        if self.oldval != val:
-            try:
-                self.callback({"RowID": self.rowid, "Column": self.column, "OldValue" : self.oldval, "NewVal": val})
-            except:
-                pass
-        self.destroy()
-
-
-    def select_all(self, *ignore):
-        self.selection_range(0, 'end')
-        return 'break'
 
 class EntryPopup(ttk.Entry):
+    """
+        Implements editabled ttk Treeview entries
+    """
     def __init__(self, tv, callback, rowid, column, val, **kw):
         ttk.Style().configure('pad.TEntry', padding='1 1 1 1')
         super().__init__(tv, style='pad.TEntry', **kw)
@@ -240,7 +225,7 @@ class EntryPopup(ttk.Entry):
         self.select_all()
         self.bind("<Return>", self.on_return)
         #self.bind("<Control-a>", self.select_all)
-        self.bind("<Escape>", lambda *ignore: self.destroy())
+        self.bind("<Escape>", lambda *val1: self.destroy())
 
 
     def on_return(self, event):
@@ -253,15 +238,86 @@ class EntryPopup(ttk.Entry):
         self.destroy()
 
 
-    def select_all(self, *ignore):
+    def select_all(self, *val1):
         self.selection_range(0, 'end')
         return 'break'
 
+class GridSetting:
+    """
+        Implements a helper class to quickly add a label, a spinner and a spinbox for numbers in a grid layout
+    """
+    
+    def __init__(self, 
+                 parent, 
+                 row: int,
+                 text:str, 
+                 default:int = 0, 
+                 min_:int = 0, 
+                 max_:int = 1000, 
+                 scaleMin:int = 0, 
+                 scaleMax:int = 100,
+                 tooltip: str = "",
+                 unit:str = "",
+                 type_: Literal["Int", "Checkbox"] = "Int"):
+        self._visible = False
+        self.parent = parent
+        self.row = row
+        self.unit = unit
+        self.var = IntStringVar(default)
+        self.type: Literal["Int", "Checkbox"] = type_
+
+        self.label = ttk.Label(self.parent, text=text)
+        if tooltip is not None and tooltip != "":
+            self.toolTip = ToolTip(self.label, msg=tooltip, follow=True, delay=0.1)
+        match self.type:
+            case "Int":
+                self.scale = ttk.Scale(self.parent, from_=scaleMin, to=scaleMax, variable=self.var.IntVar)
+                self.spinbox = tk.Spinbox(self.parent, from_=min_, to=max_, textvariable=self.var.StringVar, width=6)
+                self.lblUnit = tk.Label(self.parent, text=unit)
+            case "Checkbox":
+                self.check = ttk.Checkbutton(self.parent, variable=self.var.IntVar)
+            case _:
+                raise ValueError(f"Invalid type {self.type}")
+
+        self.SetVisibility(True)
+
+    def Get(self):
+        return self.var.IntVar.get()
+    
+    def SetVisibility(self, visibility:bool):
+        if visibility == self._visible:
+            return
+        if visibility:
+            self.label.grid(row=self.row, column=0, sticky="ne")
+            match self.type:
+                case "Int":
+                    self.scale.grid(row=self.row, column=1, sticky="news")
+                    self.spinbox.grid(row=self.row, column=2, sticky="news")
+                    if self.unit is not None and self.unit != "":
+                        self.lblUnit.grid(row=self.row, column=3, sticky="nw")
+                case "Checkbox":
+                    self.check.grid(row=self.row, column=1, sticky="nw")
+                case _:
+                    raise ValueError(f"Invalid type {self.type}")
+        else:
+            self.label.grid_forget()
+            match self.type:
+                case "Int":
+                    self.scale.grid_forget()
+                    self.spinbox.grid_forget()
+                    if self.unit is not None and self.unit != "":
+                        self.lblUnit.grid_forget()
+                case "Checkbox":
+                    self.check.grid_forget()
+                case _:
+                    raise ValueError(f"Invalid type {self.type}")
+        self._visible = visibility
+
 
 class IntStringVar:
-    def __init__(self, root, IntVar: tk.IntVar):
-        self.IntVar = IntVar
-        self.StringVar = tk.StringVar(root, value=self.IntVar.get())
+    def __init__(self, default):
+        self.IntVar = tk.IntVar(value=default)
+        self.StringVar = tk.StringVar(value=default)
         self.IntVar.trace_add("write", self._IntVarUpdate)
         self.StringVar.trace_add("write", self._StringVarUpdate)
         self.callback = None
@@ -298,6 +354,10 @@ class IntStringVar:
 
 
 class ScrolledFrame(ttk.Frame):
+    """
+        Implements a scrollable frame
+    """
+
     def __init__(self, parent, *args, **kw):
         ttk.Frame.__init__(self, parent, *args, **kw)
         self.scrollbar = ttk.Scrollbar(self, orient="vertical")
@@ -309,7 +369,7 @@ class ScrolledFrame(ttk.Frame):
         self.canvas.pack(side=tk.LEFT, fill="y")
         
         def _configure_frame(e):
-            """ The scrollview is initially not set. Therefore, the user can scroll without limits to the left or right. Also, the canvas does not fit to content width """
+            # The scrollview is initially not set. Therefore, the user can scroll without limits to the left or right. Also, the canvas does not fit to content width """
             size = (self.frame.winfo_reqwidth(), self.frame.winfo_reqheight()) # Size of frame content
             if self.canvas["scrollregion"] != ("0 0 %s %s" % size): # Change scroll region if necessary
                 self.canvas.config(scrollregion="0 0 %s %s" % size)

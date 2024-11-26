@@ -1,12 +1,12 @@
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, filedialog
 import subprocess
 import pathlib
 import threading
 
 from ..gui.window import Neurotorch_GUI
 from ..gui.settings import Neurotorch_Settings as Settings
-from ..gui.tab3 import Tab3
+from ..gui.tab3 import TabROIFinder
 
 class TraceSelector:
     def __init__(self, gui: Neurotorch_GUI):
@@ -17,16 +17,22 @@ class TraceSelector:
 
         self.menuTC = tk.Menu(self.gui.root, tearoff=0)
         self.gui.menuPlugins.add_cascade(label="Trace Selector", menu=self.menuTC)
+        self.menuTC.add_command(label="Locate Environment", command=self.Locate)
         self.menuTC.add_command(label="Start", command=self.StartTrace_Selector)
         self.menuTC.add_command(label="Terminate", command=self.TerminateTrace_Selector)
         self.menuTC.add_separator()
         self.menuTC.add_command(label="Open CSV in Trace Selector", command=self.Open)
 
-        self.tab3: Tab3 = self.gui.tabs["Tab3"]
+        self.tab3: TabROIFinder = self.gui.tabs[TabROIFinder]
 
         self.btnOpenInTraceSelector = tk.Button(self.tab3.frameBtnsExport, text="Open in Trace Selector", command=self.Open)
         self.btnOpenInTraceSelector.grid(row=1, column=0)
 
+    def Locate(self):
+        path = filedialog.askopenfilename(parent=self.gui.root, title="Neurotorch - Please select the python interpeter installed with Trace Selector", 
+                filetypes=(("Python EXE with Trace Selector installed", "*.*")) )
+        if path is not None and path != "":
+            Settings.SetSetting("traceselectorPythonPath", path)
 
     def StartTrace_Selector(self):
         if self.proc is not None:
@@ -40,15 +46,15 @@ class TraceSelector:
             messagebox.showerror("Neurotorch", "Trace Selector is still running and can't be terminated")
 
         pythonpath = Settings.GetSettings("traceselectorPythonPath")
-        modulepath = Settings.GetSettings("traceselectorScriptPath")
-        if not pythonpath or not modulepath:
+        if not pythonpath:
             self.gui.root.bell()
             messagebox.showerror("Neurotorch", "You didn't specified the path to Trace Selector in the AppData config file (on Windows: AppData/Local/AndreasB/Neurotorch/neurtorch_config.ini you must set traceselectorPythonPath and traceselectorScriptPath)")
 
-        args = [pythonpath, modulepath]
+        args = [pythonpath, "-m", "trace_selector"]
         self.proc = subprocess.Popen(args, stdout=subprocess.PIPE, stdin=subprocess.PIPE, text=True)
         self.pipeThread = threading.Thread(target=self.PipeThread)
         self.pipeThread.start()
+        print("Started Trace Selector")
 
     def TerminateTrace_Selector(self):
         if self.proc is None:
@@ -60,14 +66,11 @@ class TraceSelector:
         messagebox.showinfo("Neurotorch", "Terminated Trace Selector")
 
     def PipeThread(self):
-        return True
-        # Currently not necessary
         if self.proc is None or self.proc.stdout is None:
             return
-        i = 0
         while (line := self.proc.stdout.readline().strip("\n")) != "":
-            print(i, line)
-            i += 1
+            print("[Trace Selector]", line)
+        print("Trace Selector stopped")
 
     def Open(self):
         if self.proc is None:

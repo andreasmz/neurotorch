@@ -1,6 +1,7 @@
-from .window import Neurotorch_GUI, Tab, TabUpdateEvent
+from .window import *
 from .components import EntryPopup, Job, ScrolledFrame
 from ..utils import synapse_detection_integration as detection
+from ..utils.image import *
 from ..utils.synapse_detection import SingleframeSynapse
 
 
@@ -14,9 +15,11 @@ import matplotlib.patches as patches
 from matplotlib.ticker import MaxNLocator
 import numpy as np
 import pandas as pd
-import time
 
-class Tab3(Tab):
+class TabROIFinder_AlgorithmChangedEvent(TabUpdateEvent):
+    pass
+
+class TabROIFinder(Tab):
     def __init__(self, gui: Neurotorch_GUI):
         super().__init__(gui)
         self.tab_name = "Tab ROI Finder"
@@ -28,6 +31,7 @@ class Tab3(Tab):
         self.roiPatches2 = {}
         self.treeROIs_entryPopup = None
         self.ax2Image = None
+        self.ax1_colorbar = None
         self.ax2_colorbar = None
 
     def Init(self):
@@ -37,24 +41,40 @@ class Tab3(Tab):
         self.frameToolsContainer.pack(side=tk.LEFT, fill="y", anchor=tk.NW)
         self.frameTools = self.frameToolsContainer.frame
 
-        self.frameOptions = ttk.LabelFrame(self.frameTools, text="Algorithm")
+        self.frameOptions = ttk.LabelFrame(self.frameTools, text="Algorithm and image")
         self.frameOptions.grid(row=0, column=0, sticky="news")
         self.lblAlgorithm = tk.Label(self.frameOptions, text="Algorithm")
-        self.lblAlgorithm.grid(row=0, column=0, columnspan=2)
-        self.radioAlgoVar = tk.StringVar(value="apd")
+        self.lblAlgorithm.grid(row=0, column=0, columnspan=2, sticky="nw")
+        self.radioAlgoVar = tk.StringVar(value="local_max")
         self.radioAlgo1 = tk.Radiobutton(self.frameOptions, variable=self.radioAlgoVar, indicatoron=True, text="Threshold (Deprecated)", value="threshold", command=lambda:self.Invalidate_Algorithm())
-        self.radioAlgo2 = tk.Radiobutton(self.frameOptions, variable=self.radioAlgoVar, indicatoron=True, text="Hysteresis thresholding (Polygonal)", value="apd", command=lambda:self.Invalidate_Algorithm())
-        self.radioAlgo3 = tk.Radiobutton(self.frameOptions, variable=self.radioAlgoVar, indicatoron=True, text="Hysteresis thresholding (Circular)", value="apd_aprox", command=lambda:self.Invalidate_Algorithm())
-        self.radioAlgo4 = tk.Radiobutton(self.frameOptions, variable=self.radioAlgoVar, indicatoron=True, text="Local Max", value="local_max", command=lambda:self.Invalidate_Algorithm())
-        self.radioAlgo1.grid(row=1, column=0, sticky="nw")
-        self.radioAlgo2.grid(row=2, column=0, sticky="nw")
-        self.radioAlgo3.grid(row=3, column=0, columnspan=2, sticky="nw")
-        self.radioAlgo4.grid(row=4, column=0, columnspan=2, sticky="nw")
+        self.radioAlgo2 = tk.Radiobutton(self.frameOptions, variable=self.radioAlgoVar, indicatoron=True, text="Hysteresis thresholding", value="hysteresis", command=lambda:self.Invalidate_Algorithm())
+        self.radioAlgo3 = tk.Radiobutton(self.frameOptions, variable=self.radioAlgoVar, indicatoron=True, text="Local Max", value="local_max", command=lambda:self.Invalidate_Algorithm())
+        self.radioAlgo1.grid(row=1, column=0, sticky="nw", columnspan=3)
+        self.radioAlgo2.grid(row=2, column=0, sticky="nw", columnspan=3)
+        self.radioAlgo3.grid(row=3, column=0, sticky="nw", columnspan=3)
+
+        tk.Label(self.frameOptions, text="Image Source").grid(row=10, column=0, sticky="ne")
+        self.varImage = tk.StringVar(value="DiffMax")
+        self.varImage.trace_add("write", lambda _1,_2,_3: self.ComboImage_Changed())
+        self.comboImage = ttk.Combobox(self.frameOptions, textvariable=self.varImage, state="readonly")
+        self.comboImage['values'] = ["Diff", "DiffMax", "DiffStd", "DiffMax without Signal"]
+        self.comboImage.grid(row=10, column=1, sticky="news")
+        self.varImageFrame = tk.StringVar()
+        self.varImageFrame.trace_add("write", lambda _1,_2,_3: self.ComboImage_Changed())
+        self.comboFrame = ttk.Combobox(self.frameOptions, textvariable=self.varImageFrame, state="disabled", width=5)
+        self.comboFrame.grid(row=10, column=2, sticky="news")
+        tk.Label(self.frameOptions, text="Diff. Img Overlay").grid(row=11, column=0)
+        self.varPlotOverlay = tk.IntVar(value=0)
+        self.varPlotOverlay.trace_add("write", lambda _1,_2,_3: self.Invalidate_ROIs())
+        self.checkPlotOverlay = ttk.Checkbutton(self.frameOptions, variable=self.varPlotOverlay)
+        self.checkPlotOverlay.grid(row=11, column=1, sticky="nw")
+
+
         self.btnDetect = tk.Button(self.frameOptions, text="Detect", command=self.Detect)
-        self.btnDetect.grid(row=5, column=0)
+        self.btnDetect.grid(row=15, column=0)
 
         self.detectionAlgorithm = detection.IDetectionAlgorithmIntegration()
-        self.frameAlgoOptions = self.detectionAlgorithm.OptionsFrame(self.frameTools, self._gui, self.Update, self._gui.GetImageObject)
+        self.frameAlgoOptions = self.detectionAlgorithm.OptionsFrame(self.frameTools)
         self.frameAlgoOptions.grid(row=1, column=0, sticky="news")
 
         self.frameROIS = tk.LabelFrame(self.frameTools, text="ROIs")
@@ -112,39 +132,35 @@ class Tab3(Tab):
 
         #tk.Grid.rowconfigure(self.frameTools, 3, weight=1)
 
-        self.Update(["tab3_algorithmChanged"])
+        self.Update(TabROIFinder_AlgorithmChangedEvent())
 
-    def Update(self, events: list[TabUpdateEvent|str]):
-        if TabUpdateEvent.NEWIMAGE in events:    
+    def Update(self, event: TabUpdateEvent):
+        if isinstance(event, ImageChangedEvent):
             self.detectionResult.Clear()
             self.detectionResult.modified = False
+            self.ComboImage_Changed()
             self.Invalidate_Algorithm()
             self.ClearImagePlot()
             self.Invalidate_Image()
-        elif "tab3_algorithmChanged" in events:
+        elif isinstance(event, TabROIFinder_AlgorithmChangedEvent):
             self.Invalidate_Algorithm()
-            self.Invalidate_Image()
-        elif "tab3_replotImages" in events:
             self.Invalidate_Image()
 
     def Invalidate_Algorithm(self):
         match self.radioAlgoVar.get():
             case "threshold":
                 if isinstance(self.detectionAlgorithm, detection.Thresholding_Integration):
+                    self.detectionAlgorithm.OptionsFrame_Update(self.GetCurrentDetectionSource()[1])
                     return
                 self.detectionAlgorithm = detection.Thresholding_Integration()
-            case "apd":
-                if type(self.detectionAlgorithm) == detection.APD_Integration:
-                    self.detectionAlgorithm.OptionsFrame_Update()
+            case "hysteresis":
+                if type(self.detectionAlgorithm) == detection.HysteresisTh_Integration:
+                    self.detectionAlgorithm.OptionsFrame_Update(self.GetCurrentDetectionSource()[1])
                     return
-                self.detectionAlgorithm = detection.APD_Integration()
-            case "apd_aprox":
-                if type(self.detectionAlgorithm) == detection.APD_CircleAprox_Integration:
-                    self.detectionAlgorithm.OptionsFrame_Update()
-                    return
-                self.detectionAlgorithm = detection.APD_CircleAprox_Integration()
+                self.detectionAlgorithm = detection.HysteresisTh_Integration()
             case "local_max":
                 if type(self.detectionAlgorithm) == detection.LocalMax_Integration:
+                    self.detectionAlgorithm.OptionsFrame_Update(self.GetCurrentDetectionSource()[1])
                     return
                 self.detectionAlgorithm = detection.LocalMax_Integration()
             case _:
@@ -152,11 +168,14 @@ class Tab3(Tab):
                 return
         if (self.frameAlgoOptions is not None):
             self.frameAlgoOptions.grid_forget()
-        if (self.detectionAlgorithm is not None):
-            self.frameAlgoOptions = self.detectionAlgorithm.OptionsFrame(self.frameTools, self._gui, self.Update, self._gui.GetImageObject)
-            self.frameAlgoOptions.grid(row=1, column=0, sticky="news")
+        self.frameAlgoOptions = self.detectionAlgorithm.OptionsFrame(self.frameTools)
+        self.detectionAlgorithm.OptionsFrame_Update(self.GetCurrentDetectionSource()[1])
+        self.frameAlgoOptions.grid(row=1, column=0, sticky="news")
 
     def ClearImagePlot(self):
+        if self.ax1_colorbar is not None:
+            self.ax1_colorbar.remove()
+            self.ax1_colorbar = None
         if self.ax2_colorbar is not None:
             self.ax2_colorbar.remove()
             self.ax2_colorbar = None
@@ -167,13 +186,17 @@ class Tab3(Tab):
         self.ax1.yaxis.set_major_locator(MaxNLocator(integer=True))
         self.ax2.xaxis.set_major_locator(MaxNLocator(integer=True))
         self.ax2.yaxis.set_major_locator(MaxNLocator(integer=True))
-        self.ax1.set_title("Input Image (Mean)")
-        self.ax2.set_title("Difference Image (Max)")
+        self.ax1.set_title("Image (Mean)")
+        self.ax2.set_title("Diff Image")
 
     def Invalidate_Image(self):
         imgObj = self._gui.ImageObject
 
+        self.ax2.set_title("Diff Image")
         self.ax2Image = None    
+        if self.ax1_colorbar is not None:
+            self.ax1_colorbar.remove()
+            self.ax1_colorbar = None
         if self.ax2_colorbar is not None:
             self.ax2_colorbar.remove()
             self.ax2_colorbar = None
@@ -182,28 +205,25 @@ class Tab3(Tab):
                 axImg.remove()
             ax.set_axis_off()
         
-        
         if imgObj is None or imgObj.img is None or imgObj.imgDiff is None:
             self.Invalidate_ROIs()
             return
         
-        self.ax1.imshow(imgObj.imgView(imgObj.SPATIAL).Mean, cmap="Greys_r") 
-        if self.detectionAlgorithm.Img_Input() is not False:
-            if self.detectionAlgorithm.Img_Input() is None:
-                self.ax2Image = self.ax2.imshow(imgObj.imgDiffView(imgObj.SPATIAL).Max, cmap="inferno")
-            else:
-                self.ax2Image = self.ax2.imshow(self.detectionAlgorithm.Img_Input(), cmap="inferno")
+        ax1Img = self.ax1.imshow(imgObj.imgView(imgObj.SPATIAL).Mean, cmap="Greys_r") 
+        self.ax1.set_axis_on()
+        self.ax1_colorbar = self.figure1.colorbar(ax1Img, ax=self.ax1)
+
+        _ax2Title, ax2_ImgProp = self.GetCurrentDetectionSource()
+        self.ax2.set_title(_ax2Title)
+        if ax2_ImgProp is not None:
+            self.ax2Image = self.ax2.imshow(ax2_ImgProp.img, cmap="inferno")
             self.ax2_colorbar = self.figure1.colorbar(self.ax2Image, ax=self.ax2)
-            self.ax1.set_axis_on()
             self.ax2.set_axis_on()
 
         self.Invalidate_ROIs()
 
 
-
     def Invalidate_ROIs(self):
-        imgObj = self._gui.ImageObject
-
         for axImg in self.ax2.get_images():
             if axImg != self.ax2Image: axImg.remove()
         for p in reversed(self.ax1.patches): p.remove()
@@ -225,9 +245,8 @@ class Tab3(Tab):
             self.Invalidate_SelectedROI()
             return
 
-        _imgReady = True
-        if imgObj is None or imgObj.img is None or imgObj.imgDiff is None:
-            _imgReady = False
+        _ax1HasImage = len(self.ax1.get_images()) > 0
+        _ax2HasImage = len(self.ax2.get_images()) > 0
         
         for i in range(len(self.detectionResult.synapses)):
             synapse = self.detectionResult.synapses[i]
@@ -247,17 +266,21 @@ class Tab3(Tab):
                 c = patches.Circle(synapseROI.location, 3, color="red", fill=False)
                 c2 = patches.Circle(synapseROI.location, 3, color="green", fill=False)
             
-            if _imgReady:
+            if _ax1HasImage:
                 self.ax1.add_patch(c)
-                if self.detectionAlgorithm.Img_Detection_Raw() is None:
-                    self.ax2.add_patch(c2)
                 self.roiPatches[synapseuuid] = c
+            if _ax2HasImage:
+                self.ax2.add_patch(c2)
                 self.roiPatches2[synapseuuid] = c2
 
-        if self.detectionAlgorithm.provides_rawPlot:
-            self.detectionAlgorithm.Plot_DetectionRaw(self.ax2)
-        elif self.detectionAlgorithm.Img_Detection_Raw() is not None:
-            self.ax2.imshow(self.detectionAlgorithm.Img_Detection_Raw()!=0, alpha=(self.detectionAlgorithm.Img_Detection_Raw() != 0).astype(int)*0.5, cmap="gist_gray")
+        if self.varPlotOverlay.get() == 1:
+            _overlays, _patches = self.detectionAlgorithm.Img_DetectionOverlay()
+            if _overlays is not None:
+                for _overlay in _overlays:
+                    self.ax2.imshow(_overlay!=0, alpha=(_overlay != 0).astype(int)*0.5, cmap="gist_gray")
+            if _patches is not None:
+                for p in _patches:
+                    self.ax2.add_patch(p)
 
         self.Invalidate_SelectedROI()
 
@@ -339,11 +362,15 @@ class Tab3(Tab):
         if self.detectionAlgorithm is None or self._gui.ImageObject.imgDiff is None:
             self._gui.root.bell()
             return
+        if self.GetCurrentDetectionSource()[1] is None:
+            self._gui.root.bell()
+            return 
+
         self.detectionResult.modified = False
 
         def _Detect(job: Job):
             job.SetProgress(0, "Detect ROIs")
-            self.detectionResult.SetISynapses(SingleframeSynapse.ROIsToSynapses(self.detectionAlgorithm.DetectAutoParams()))
+            self.detectionResult.SetISynapses(SingleframeSynapse.ROIsToSynapses(self.detectionAlgorithm.DetectAutoParams(self.GetCurrentDetectionSource()[1])))
             job.SetStopped("Detecting ROIs")
             self.Invalidate_ROIs()
 
@@ -351,6 +378,34 @@ class Tab3(Tab):
         self._gui.statusbar.AddJob(job)
         threading.Thread(target=_Detect, args=(job,), daemon=True).start()
 
+    # Helper function
+
+    def GetCurrentDetectionSource(self) -> tuple[str, ImageProperties|None]:
+        imgObj = self._gui.ImageObject
+        signal = self._gui.signal
+        if imgObj is None or imgObj.img is None or imgObj.imgDiff is None:
+            return ("Diff. Image", None)
+        
+        match(self.varImage.get()):
+            case "Diff":
+                if self.varImageFrame.get() == "":
+                    return("INVALID FRAME",  None)
+                _frame = int(self.varImageFrame.get()) - 1
+                if _frame < 0 or _frame >= imgObj.imgDiff.shape[0]:
+                    return("INVALID FRAME",  None)
+                return (f"Diff. Image (Frame {_frame + 1})", imgObj.imgDiff_FrameProps(_frame))
+            case "DiffMax":
+                return ("Diff. Image (Max.)", imgObj.imgDiffView(ImgObj.SPATIAL).MaxProps)
+            case "DiffStd":
+                return ("Diff. Image (Std.)", imgObj.imgDiffView(ImgObj.SPATIAL).StdNormedProps)
+            case "DiffMax without Signal":
+                if signal.imgObj_Sliced is None:
+                    return("NO SIGNAL", None)  
+                elif signal.imgObj_Sliced is False:
+                    return("SIGNAL SLICED ALL FRAMES", None)  
+                return ("Diff. Image (Max) without signal", signal.imgObj_Sliced.imgDiffView(ImgObj.SPATIAL).MaxProps)
+            case _:
+                return ("UNEXPECTED IMAGE SOURCE", None)
 
 
     # GUI Functions
@@ -415,6 +470,17 @@ class Tab3(Tab):
         if f is None:
             return None
         data.to_csv(path_or_buf=f, lineterminator="\n")
+
+    def ComboImage_Changed(self):
+        if self.varImage.get() != "Diff" or self._gui.signal.peaks is None:
+            self.comboFrame['values'] = []
+            self.comboFrame["state"] = "disabled"
+            self.varImageFrame.set("")
+        else:
+            self.comboFrame['values'] = [str(f+1) for f in list(self._gui.signal.peaks)]
+            self.comboFrame["state"] = "normal"
+        self.Invalidate_Algorithm()
+        self.Invalidate_Image()
         
     def TreeRois_onDoubleClick(self, event):
         try: 

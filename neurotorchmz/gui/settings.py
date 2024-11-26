@@ -2,7 +2,8 @@ import os
 import platformdirs
 import pathlib
 import configparser
-
+import json
+from PIL import Image
 
 class Neurotorch_Settings:
 
@@ -53,4 +54,35 @@ class Neurotorch_Settings:
         with open(Neurotorch_Settings.ConfigPath, 'w') as configfile:
             Neurotorch_Settings.config.write(configfile)
 
+class Neurotorch_Resources:
+
+    _path_stringsJSON = None
+    _json: dict = None
+
+    def _CreateStatic():
+        Neurotorch_Resources._path_stringsJSON = os.path.join(*[Neurotorch_Settings.ResourcesPath, "strings.json"])
+        if not os.path.exists(Neurotorch_Resources._path_stringsJSON):
+            return
+        with open(Neurotorch_Resources._path_stringsJSON) as f:
+            Neurotorch_Resources._json = json.load(f)
+
+    def GetString(path:str) -> str:
+        if Neurotorch_Resources._json is None:
+            return ""
+        _folder = Neurotorch_Resources._json
+        for key in path.split("/"):
+            if key not in _folder.keys():
+                return ""
+            _folder = _folder[key]
+        if type(_folder) == str:
+            return _folder
+        return path
+    
+    def GetImage(relativepath: str):
+        _path = os.path.abspath(os.path.join(Neurotorch_Settings.MediaPath, *relativepath.split("/")))
+        if not os.path.exists(_path):
+            return None
+        return Image.open(_path)
+
 Neurotorch_Settings._CreateStatic()
+Neurotorch_Resources._CreateStatic()

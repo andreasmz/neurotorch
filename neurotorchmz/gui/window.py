@@ -24,17 +24,20 @@ class Edition(Enum):
 class Neurotorch_GUI:
     def __init__(self, version):
         self._version_ = version
+        loggingHandler = logging.StreamHandler()
+        loggingHandler.setFormatter(logging.Formatter("%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s"))
+        logging.getLogger().addHandler(loggingHandler)
         self.root = None
-        self.tabs : dict[str: Tab] = {}
+        self.tabs : dict[type: Tab] = {}
         self._imgObj = None
         self.signal = SignalObj(self.GetImageObject)
         self.ijH = None
 
     def GUI(self, edition:Edition=Edition.NEUROTORCH):
-        import neurotorchmz.gui.tabWelcome as tabWelcome
-        from neurotorchmz.gui.tab1 import Tab1
-        from neurotorchmz.gui.tab2 import Tab2
-        from neurotorchmz.gui.tab3 import Tab3
+        from neurotorchmz.gui.tabWelcome import TabWelcome
+        from neurotorchmz.gui.tab1 import TabImage
+        from neurotorchmz.gui.tab2 import TabSignal
+        from neurotorchmz.gui.tab3 import TabROIFinder
         from neurotorchmz.gui.tabAnalysis import TabAnalysis
         from ..utils.plugin_manager import PluginManager
         self.edition = edition
@@ -93,29 +96,22 @@ class Neurotorch_GUI:
         self.menuDebug = tk.Menu(self.menubar,tearoff=0)
         if edition == Edition.NEUROTORCH_DEBUG:
             self.menubar.add_cascade(label="Debug", menu=self.menuDebug)
+        self.menuDebug.add_command(label="Activate debugging to console", command=self.MenuDebug_EnableDebugging)    
         self.menuDebug.add_command(label="Save diffImg peak frames", command=self.MenuDebugSavePeaks)
         self.menuDebug.add_command(label="Load diffImg peak frames", command=self.MenuDebugLoadPeaks)
-        self.menuDebug.add_separator()
-        self.menuDebug.add_command(label="Activate debugging to console", command=self.MenuDebug_EnableDebugging)
-        self.menuDebug.add_command(label="Dump memory usage", command=self.MenuDebug_MemoryDump)
-        self.menuDebug.add_command(label="Print all imported modules", command=self.MenuDebug_ImportedModules)
 
         self.tabMain = ttk.Notebook(self.root)
-        self.tabWelcome = tabWelcome.TabWelcome(self)
-        self.tabs["Tab1"] = Tab1(self)
-        self.tabs["Tab2"] = Tab2(self)
-        self.tabs["Tab3"] = Tab3(self)
-        #self.tabs["TabAnalysis"] = TabAnalysis(self)
+        self.tabs[TabWelcome] = TabWelcome(self)
+        self.tabs[TabImage] = TabImage(self)
+        self.tabs[TabSignal] = TabSignal(self)
+        self.tabs[TabROIFinder] = TabROIFinder(self)
         for t in self.tabs.values(): t.Init()
-        self.tabMain.select(self.tabs["Tab1"].tab)
+        self.tabMain.select(self.tabs[TabImage].tab)
 
         self.plugin_mng = PluginManager(self)
 
-        self.tabMain.pack(expand=1, fill="both")
-
-        # Debug
         self.root.protocol("WM_DELETE_WINDOW", self.OnClosing)
-
+        self.tabMain.pack(expand=1, fill="both")
         self.root.mainloop()
 
     # Image Object functions and properties
@@ -144,38 +140,40 @@ class Neurotorch_GUI:
     
     def NewImageProvided(self):
         def _Update(job: Job):
+            job.SetProgress(0, text="Updating GUI")
             #Preload
-            job.SetProgress(0, text="Calculating image preview")
-            if self.ImageObject is not None and self.ImageObject.imgDiff is not None:
-                self.ImageObject.imgView(ImgObj.SPATIAL).Mean
-                job.SetProgress(1, text="Calculating imgDiff")
-                self.ImageObject.imgDiff
-                job.SetProgress(2, text="Calculating imgDiff previews")
+            if self.ImageObject is not None:
+                job.SetProgress(0, text="Updating GUI: Precache the image views")
                 self.ImageObject.imgView(ImgObj.SPATIAL).Mean
                 self.ImageObject.imgView(ImgObj.SPATIAL).Std
+                job.SetProgress(1, text="Updating GUI: Precache the image views")
                 self.ImageObject.imgDiffView(ImgObj.SPATIAL).Max
-                self.ImageObject.imgDiffView(ImgObj.SPATIAL).Std
-            job.SetProgress(3, text="Updating GUI (Statusbar)")
+                self.ImageObject.imgDiffView(ImgObj.SPATIAL).StdNormed
+                job.SetProgress(2, text="Updating GUI: Precache the image views")
+                self.ImageObject.imgDiffView(ImgObj.TEMPORAL).Max
+                self.ImageObject.imgDiffView(ImgObj.TEMPORAL).Std
+                job.SetProgress(3, text="Updating GUI: Statusbar")
 
-            if self.ImageObject is not None:
+                self.SetWindowTitle(self.ImageObject.name or "")
                 if self.ImageObject.img is not None:
                     _size = round(sys.getsizeof(self.ImageObject.img)/(1024**2),2)
                     self.statusbar.StatusText = f"Image of shape {self.ImageObject.img.shape} and size {_size} MB"
-                self.SetWindowTitle(self.ImageObject.name)
+                else:
+                    self.statusbar.StatusText = ""
             else:
                 self.statusbar.StatusText = ""
                 self.SetWindowTitle("")
             for t in self.tabs.values(): 
-                job.SetProgress(3, text=f"Updating GUI ({t.tab_name})")
-                t.Update([TabUpdateEvent.NEWIMAGE, TabUpdateEvent.NEWSIGNAL])
+                job.SetProgress(4, text=f"Updating GUI: {t.tab_name}")
+                t.Update(ImageChangedEvent())
             job.SetStopped("Updating GUI")
 
-        job = Job(steps=4)
+        job = Job(steps=5, showSteps=True)
         self.statusbar.AddJob(job)
         threading.Thread(target=_Update, args=(job,), daemon=True).start()
 
     def SignalChanged(self):
-        for t in self.tabs.values(): t.Update([TabUpdateEvent.NEWSIGNAL])
+        for t in self.tabs.values(): t.Update(SignalChangedEvent())
 
 
     # General GUI functions
@@ -188,12 +186,7 @@ class Neurotorch_GUI:
             self.root.title(f"NeuroTorch {text}")
 
     def OnClosing(self):
-        print("Running threads: ", end="")
-        for thread in threading.enumerate(): 
-            print(thread.name, end="")
-        print("\nClosing")
         self.root.destroy()
-        print("Exit Neurotorch")
         exit()
 
     
@@ -201,7 +194,7 @@ class Neurotorch_GUI:
 
     def MenuFileOpen(self, noisy:bool=False):
         image_path = filedialog.askopenfilename(parent=self.root, title="Open a Image File", 
-                filetypes=(("All compatible files", "*.tif *.tiff *.nd2"), ("TIF File", "*.tif *.tiff"), ("ND2 Files (NIS Elements)", "*.nd2"), ("All files", "*.*")) )
+                filetypes=(("All files", "*.*"), ("TIF File", "*.tif *.tiff"), ("ND2 Files (NIS Elements)", "*.nd2")) )
         if image_path is None or image_path == "":
             return
         self.statusbar._jobs.append(ImgObj().OpenFile(image_path, callback=self._OpenImage_Callback, errorcallback=self._OpenImage_CallbackError, convolute=noisy))
@@ -213,13 +206,15 @@ class Neurotorch_GUI:
     def _OpenImage_CallbackError(self, code, msg=""):
         match(code):
             case "FileNotFound":
-                messagebox.showerror("Neurotorch", f"The given path doesn't exist or can't be opened {msg}")
+                messagebox.showerror("Neurotorch", f"The given path doesn't exist or can't be opened. {msg}")
             case "AlreadyLoading":
-                messagebox.showerror("Neurotorch", f"Please wait until the current image is loaded {msg}")
+                messagebox.showerror("Neurotorch", f"Please wait until the current image is loaded. {msg}")
             case "ImageUnsupported":
-                messagebox.showerror("Neurotorch", f"The provided file is not supported {msg}")
+                messagebox.showerror("Neurotorch", f"The provided file is not supported. {msg}")
+            case "WrongShape":
+                messagebox.showerror("Neurotorch", f"The image has wrong shape ({msg}). It needs to have (t, y, x)")
             case _:
-                messagebox.showerror("Neurotorch", f"An unkown error happend opening this image {msg}") 
+                messagebox.showerror("Neurotorch", f"An unkown error happend opening this image. {msg}") 
     
     def MenuFileClose(self):
         self.ImageObject = None
@@ -246,11 +241,6 @@ class Neurotorch_GUI:
             return
         self.ImageObject._imgMode = 1 if enable else 0
         self.NewImageProvided()
-        
-
-    def MenuImageTraceSelector(self):
-        if messagebox.askokcancel("Neurotorch", "This is currently an experimental feature. Are you sure you want to continue?"):
-            pass
 
     def MenuNeurotorchAbout(self):
         messagebox.showinfo("Neurotorch", f"© Andreas Brilka 2024\nYou are running Neurotorch {self._version_}")
@@ -262,8 +252,10 @@ class Neurotorch_GUI:
             self.root.bell()
             return
         with open(path, 'rb') as f:
-            _img = pickle.load(f)
-            self.statusbar._jobs.append(ImgObj().SetImage_Precompute(_img, name="img_peaks.dump", callback=self._OpenImage_Callback, errorcallback=self._OpenImage_CallbackError))
+            _imgObj = ImgObj()
+            _imgObj.img = pickle.load(f)
+            _imgObj.name = "img_peaks.dump"
+            self.statusbar._jobs.append(_imgObj.PrecomputeImage(callback=self._OpenImage_Callback, errorcallback=self._OpenImage_CallbackError))
 
     def MenuDebugSavePeaks(self):
         if self.ImageObject is None or self.ImageObject.img is None or self.signal.peaks is None or len(self.signal.peaks) == 0:
@@ -290,33 +282,15 @@ class Neurotorch_GUI:
         logging.getLogger().setLevel(logging.DEBUG)
         logging.info("Activated Debugging")
 
-    def MenuDebug_MemoryDump(self):
-        logging.debug("Dump ImageObject Sizes")
-        if self._imgObj is None:
-            self.root.bell()
-            logging.debug("ImageObject is None")
-            return
-        for name, obj in {"img": self._imgObj._img, 
-                          "imgDiff": self._imgObj._imgDiff, 
-                          "imgSpatial": self._imgObj._imgSpatial}.items():
-            _size = sys.getsizeof(obj)
-            if _size < 1024:
-                _sizeFormatted = f"{_size} Bytes"
-            elif _size < 1024**2:
-                _sizeFormatted = f"{round(_size/1024, 3)} KB"
-            elif _size < 1024**3:
-                _sizeFormatted = f"{round(_size/1024**2, 3)} MB"
-            else:
-                _sizeFormatted = f"{round(_size/1024**3, 3)} GB"
-            logging.debug(f"{name}: {_sizeFormatted}")
 
-    def MenuDebug_ImportedModules(self):
-        print([k for k in sys.modules.keys() if "imagej" in k])
+class TabUpdateEvent:
+    pass
 
-class TabUpdateEvent(Enum):
-    NEWIMAGE = "newimage"
-    NEWSIGNAL = "newsignal"
-    #Customs Event should have the syntax tabName_eventName for its value
+class ImageChangedEvent(TabUpdateEvent):
+    pass
+
+class SignalChangedEvent(TabUpdateEvent):
+    pass
 
 class Tab:
 
@@ -330,9 +304,8 @@ class Tab:
         """
         pass
 
-    def Update(self, event : list[TabUpdateEvent]):
+    def Update(self, event:TabUpdateEvent):
         """
             Called by the GUI to notify the tab, that it may need to update. It is the resposibility of the tab to check for the events
-            Note that the values in the Enum TabUpdatEvent may be added dynamically during tab creation.
         """
         pass

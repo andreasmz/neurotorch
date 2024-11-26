@@ -1,6 +1,9 @@
-from .window import Neurotorch_GUI, Tab, TabUpdateEvent
+from .window import *
 from ..utils.synapse_detection_integration import *
 from .components import EntryPopup
+
+class TabAnalysis_AlgorithmChangedEvent(TabUpdateEvent):
+    pass
 
 class TabAnalysis(Tab):
     def __init__(self, gui: Neurotorch_GUI):
@@ -38,19 +41,19 @@ class TabAnalysis(Tab):
         self.treeAlgorithm.grid(row=6, column=0, sticky="news")
         
         self.varAlgorithm = tk.StringVar()
-        self.comboAlgorithm = ttk.Combobox(self.frameOptions, textvariable=self.varFrame, state="readonly")
+        self.comboAlgorithm = ttk.Combobox(self.frameOptions, textvariable=self.varAlgorithm, state="readonly")
         self.comboAlgorithm['values'] = ["Threshold (Deprecated)", "Hysteresis thresholding (Polygonal)", "Hysteresis thresholding (Circular)"]
         self.comboAlgorithm.grid(row=7, column=1)
         tk.Label(self.frameOptions, text="Algorithm").grid(row=7, column=0, sticky="news")
 
         self.InvalidateSignal()
 
-    def Update(self, events: list[TabUpdateEvent|str]):
-        if TabUpdateEvent.NEWIMAGE in events:
+    def Update(self, event: TabUpdateEvent):
+        if isinstance(event, ImageChangedEvent):
             pass
-        if TabUpdateEvent.NEWSIGNAL in events:
+        elif isinstance(event, SignalChangedEvent):
             self.InvalidateSignal()
-        if "TABAnalysis_AlgorithmChange" in events:
+        elif isinstance(event, TabAnalysis_AlgorithmChangedEvent):
             pass
     
     def InvalidateSignal(self):

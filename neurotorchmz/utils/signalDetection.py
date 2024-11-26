@@ -55,6 +55,9 @@ class SignalObj:
 
     @property
     def imgObj_Sliced(self) -> ImgObj | None:
+        """
+            Returns the sliced image object without signal or None if image or signal is not ready and False if image would be empty 
+        """
         if self._imgObjCallback is None:
             return None
         imgObj: ImgObj = self._imgObjCallback()
@@ -70,7 +73,7 @@ class SignalObj:
                 _slices = []
                 for i, p in enumerate([*self._peaks, imgObj.imgDiff.shape[0]]):
                     pStart = (self._peaks[i-1]+1 + self._peakWidth_R) if i >= 1 else 0 
-                    pStop = p - self._peakWidth_L
+                    pStop = p - self._peakWidth_L if i != len(self._peaks) else p
                     if pStop <= pStart:
                         continue
                     _slices.append(slice(pStart, pStop))

@@ -1,6 +1,7 @@
 import collections
 from typing import Callable, Literal
 import numpy as np
+import pims.bioformats
 import psutil
 from scipy.ndimage import gaussian_filter
 import threading
@@ -10,7 +11,6 @@ import logging
 import gc
 
 from  ..gui.components import Job    
-
 
 class ImageProperties:
     """
@@ -90,48 +90,59 @@ class AxisImage:
         self._img = img
         self._axis = axis
         self._Mean : ImageProperties = None
+        self._MeanNormed : ImageProperties = None
         self._Std : ImageProperties = None
+        self._StdNormed : ImageProperties = None
         self._Median : ImageProperties = None
+        self._MedianNormed : ImageProperties = None
         self._Min : ImageProperties = None
         self._Max : ImageProperties = None
 
     @property
     def Mean(self) -> np.ndarray:
         """ Mean image over the specified axis """
-        if self._img is None:
-            return None
         if self.MeanProps is None: return None
         return self._Mean.img
+
+    @property
+    def MeanNormed(self) -> np.ndarray:
+        """ Normalized Mean image (max value is garanter to be 255 or 0) over the specified axis """
+        if self.MedianNormedProps is None: return None
+        return self._MeanNormed.img
     
     @property
     def Median(self) -> np.ndarray:
         """ Median image over the specified axis """
-        if self._img is None:
-            return None
         if self.MedianProps is None: return None
         return self._Median.img
     
     @property
+    def MedianNormed(self) -> np.ndarray:
+        """ Normalized Median image (max value is garanter to be 255 or 0) over the specified axis """
+        if self.MedianNormedProps is None: return None
+        return self._MedianNormed.img
+    
+    @property
     def Std(self) -> np.ndarray:
         """ Std image over the specified axis """
-        if self._img is None:
-            return None
         if self.StdProps is None: return None
         return self._Std.img
     
     @property
+    def StdNormed(self) -> np.ndarray:
+        """ Normalized Std image (max value is garanter to be 255 or 0) over the specified axis """
+        if self.StdNormedProps is None: return None
+        return self._StdNormed.img
+    
+    @property
     def Min(self) -> np.ndarray:
         """ Minimum image over the specified axis """
-        if self._img is None:
-            return None
         if self.MinProps is None: return None
         return self._Min.img
     
     @property
     def Max(self) -> np.ndarray:
         """ Maximum image over the specified axis """
-        if self._img is None:
-            return None
         if self.MaxProps is None: return None
         return self._Max.img
 
@@ -140,30 +151,67 @@ class AxisImage:
         if self._img is None:
             return None
         if self._Mean is None:
-            self._Mean = ImageProperties(np.mean(self._img, axis=self._axis))
+            logging.debug("AxisImage: Calculating MeanProps")
+            self._Mean = ImageProperties(np.mean(self._img, axis=self._axis, dtype="float32").astype("float64")) # Use float32 for calculations (!) to lower peak memory usage
         return self._Mean
+    
+    @property
+    def MeanNormedProps(self) -> ImageProperties | None:
+        if self._img is None:
+            return None
+        if self._MeanNormed is None:
+            if self.MeanProps.max == 0:
+                self._MeanNormed = self._Mean
+            else:
+                self._MeanNormed = ImageProperties((self.Mean*255/self.MeanProps.max).astype(self._img.dtype))
+        return self._MeanNormed
     
     @property
     def MedianProps(self) -> ImageProperties | None:
         if self._img is None:
             return None
         if self._Median is None:
-            self._Median = ImageProperties(np.median(self._img, axis=self._axis))
+            logging.debug("AxisImage: Calculating MedianProps")
+            self._Median = ImageProperties(np.median(self._img, axis=self._axis, dtype="float32").astype("float64")) # Use float32 for calculations (!) to lower peak memory usage
         return self._Median
+    
+    @property
+    def MedianNormedProps(self) -> ImageProperties | None:
+        if self._img is None:
+            return None
+        if self._MedianNormed is None:
+            if self.MedianProps.max == 0:
+                self._MedianNormed = self._Median
+            else: 
+                self._MedianNormed = ImageProperties((self.Median*255/self.MedianProps.max).astype(self._img.dtype))
+        return self._MedianNormed
     
     @property
     def StdProps(self) -> ImageProperties | None:
         if self._img is None:
             return None
         if self._Std is None:
+            logging.debug("AxisImage: Calculating StdProps")
             self._Std = ImageProperties(np.std(self._img, axis=self._axis, dtype="float32").astype("float64")) # Use float32 for calculations (!) to lower peak memory usage
         return self._Std
+    
+    @property
+    def StdNormedProps(self) -> ImageProperties | None:
+        if self._img is None:
+            return None
+        if self._StdNormed is None:
+            if self.StdProps.max == 0:
+                self._StdNormed = self._Std
+            else:
+                self._StdNormed = ImageProperties((self.Std*255/self.StdProps.max).astype(self._img.dtype))
+        return self._StdNormed
     
     @property
     def MinProps(self) -> ImageProperties | None:
         if self._img is None:
             return None
         if self._Min is None:
+            logging.debug("AxisImage: Calculating MinProps")
             self._Min = ImageProperties(np.min(self._img, axis=self._axis))
         return self._Min
     
@@ -172,6 +220,7 @@ class AxisImage:
         if self._img is None:
             return None
         if self._Max is None:
+            logging.debug("AxisImage: Calculating MaxProps")
             self._Max = ImageProperties(np.max(self._img, axis=self._axis))
         return self._Max
     
@@ -227,6 +276,7 @@ class ImgObj:
         self._customImages = {}
         self._customImagesProps = {}
 
+        self._openFileThread : threading.Thread = None
         self._loadingThread : threading.Thread = None
         self._name = None
 
@@ -267,6 +317,12 @@ class ImgObj:
         if self._imgProps is None:
             self._imgProps = ImageProperties(self._img)
         return self._imgProps
+    
+    def img_FrameProps(self, frame:int) -> ImageProperties | None:
+        # Edge case, do not use caching
+        if self._img is None or frame < 0 or frame >= self._img.shape[0]:
+            return None
+        return ImageProperties(self._img[frame])
     
     @property
     def imgS(self) -> np.ndarray | None:
@@ -409,6 +465,12 @@ class ImgObj:
             return self.imgDiff_ConvProps
         return self.imgDiff_NormalProps
     
+    def imgDiff_FrameProps(self, frame:int) -> ImageProperties | None:
+        # Edge case, do not use caching
+        if self.imgDiff is None or frame < 0 or frame >= self.imgDiff.shape[0]:
+            return None
+        return ImageProperties(self.imgDiff[frame])
+    
     @property
     def pims_metadata(self) -> collections.OrderedDict | None:
         return self._pimsmetadata
@@ -460,139 +522,85 @@ class ImgObj:
         sigma = args[0]
         return gaussian_filter(self.imgDiff_Normal, sigma=sigma, axes=(1,2))
     
-    def SetImgFromAny(self, img) -> bool:
-        if len(img.shape) != 3:
-            return False
-        imgNP = np.empty(shape=img.shape, dtype=img.dtype)
-        for i in range(img.shape[0]):
-            imgNP[i] = img[i]
-        self.img = imgNP
-        return True
+    def PrecomputeImage(self, callback = None, errorcallback = None, convolute: bool = False, job:Job = None, waitCompletion:bool = False) -> Literal["AlreadyLoading", "WrongShape"] | Job:
+        if self._loadingThread is not None and self._loadingThread.is_alive():
+            errorcallback("AlreadyLoading")
+            return "AlreadyLoading"
 
-
-    def SetImage_Precompute(self, image: np.ndarray, name="", callback = None, errorcallback = None, convolute: bool = False) -> Literal["AlreadyLoading", "ImageUnsupported"] | Job:
-
-        def _Precompute(job: Job):
-            job.SetProgress(2, text="Calculating spatial Image View")
+        def _Precompute(job:Job):
+            _progIni = job.Progress
+            job.SetProgress(_progIni, text="Precalculating ImgView (Spatial Mean)")
             self.imgView(ImgObj.SPATIAL).Mean
+            job.SetProgress(_progIni, text="Precalculating ImgView (Spatial Std)")
             self.imgView(ImgObj.SPATIAL).Std
-            job.SetProgress(3, text="Calculating imgDiff")
+            gc.collect()
+            job.SetProgress(1+_progIni, text="Calculating imgDiff")
             self.imgDiff
             if convolute:
-                job.SetProgress(4, text="Applying Gaussian Filter on imgDiff")
+                job.SetProgress(2+_progIni, text="Applying Gaussian Filter on imgDiff")
                 self.imgDiff_Mode = "Convoluted"
                 self.imgDiff
-            job.SetProgress(5, text="Calculating Spatial and Temporal imgDiff View")
+            gc.collect()
+            job.SetProgress(3+_progIni, text="Precalculating ImgDiffView (Spatial Max)")
             self.imgDiffView(ImgObj.SPATIAL).Max
-            self.imgDiffView(ImgObj.SPATIAL).Std
+            job.SetProgress(3+_progIni, text="Precalculating ImgDiffView (Spatial Std)")
+            self.imgDiffView(ImgObj.SPATIAL).StdNormed
+            gc.collect()
+            job.SetProgress(3+_progIni, text="Precalculating ImgDiffView (Temporal Max)")
             self.imgDiffView(ImgObj.TEMPORAL).Max
+            job.SetProgress(3+_progIni, text="Precalculating ImgDiffView (Temporal Std)")
             self.imgDiffView(ImgObj.TEMPORAL).Std
-            job.SetProgress(6, text="Loading Image")
+            gc.collect()
             job.SetStopped("Loading Image")
             if callable is not None:
                 callback(self)
 
-        if self._loadingThread is not None and self._loadingThread.is_alive():
-            if errorcallback is not None: errorcallback("AlreadyLoading")
-            return "AlreadyLoading"
-
-        self.Clear()
-        if not isinstance(image, np.ndarray):
-            if errorcallback is not None: errorcallback("ImageUnsupported")
-            return "ImageUnsupported"
-        if len(image.shape) != 3:
-            if errorcallback is not None: errorcallback("ImageUnsupported", f"The image needs to have shape (t, y, x). Your shape is {image.shape}")
-            return "ImageUnsupported"
-        self._img = image
-        self._name = name
-        job = Job(steps=6)
+        if job is None:
+            job = Job(steps=4, showSteps=True)
         self._loadingThread = threading.Thread(target=_Precompute, args=(job,), daemon=True)
         self._loadingThread.start()
-        return job
+        if waitCompletion:
+            self._loadingThread.join()
+        else:
+            return job
 
-    def OpenFile(self, path: str, callback = None, errorcallback = None, convolute: bool = False) -> Literal["FileNotFound", "AlreadyLoading", "ImageUnsupported", "Wrong Shape"] | Job:
+    def OpenFile(self, path: str, callback = None, errorcallback = None, convolute: bool = False, waitCompletion:bool = False) -> Literal["FileNotFound", "AlreadyLoading", "ImageUnsupported", "WrongShape"] | Job:
+        if (self._loadingThread is not None and self._loadingThread.is_alive()) or (self._openFileThread is not None and self._openFileThread.is_alive()):
+            errorcallback("AlreadyLoading")
+            return "AlreadyLoading"
+        
+        if path is None or path == "":
+            errorcallback("FileNotFound")
+            return "FileNotFound"
+        self.Clear()
+        self.name = os.path.splitext(os.path.basename(path))[0]
 
-        def _Precompute(job: Job):
-            self._MemoryDump("Begin")
+        def _Load(job: Job):
             job.SetProgress(0, "Opening File")
             try:
                 _pimsImg = pims.open(path)
             except FileNotFoundError:
-                job.SetStopped("File not found")
                 if errorcallback is not None: errorcallback("FileNotFound")
                 return "FileNotFound"
             except Exception as ex:
-                job.SetStopped("Image Unsupported")
                 if errorcallback is not None: errorcallback("ImageUnsupported", ex)
                 return "ImageUnsupported"
-            self._MemoryDump("Image loading with PIMS")
-            job.SetProgress(1, "Converting Image")
-            if len(_pimsImg.shape) != 3:
-                job.SetStopped("Image Unsupported")
-                if errorcallback is not None: errorcallback("ImageUnsupported_Shape", f"The image needs to have shape (t, y, x). Your shape is {_pimsImg.shape}")
-                return "ImageUnsupported_Shape"
-            if not self.SetImgFromAny(_pimsImg):
-                if errorcallback is not None: errorcallback("ImageUnsupported", f"Can't convert your image to an numpy array")
-                return "ImageUnsupported" 
-            self._MemoryDump("Numpy conversion")
             if getattr(_pimsImg, "get_metadata_raw", None) != None:
                 self._pimsmetadata = collections.OrderedDict(sorted(_pimsImg.get_metadata_raw().items()))
-            self._MemoryDump("Before PIMS deletion")
-            del _pimsImg
-            gc.collect()
-            self._MemoryDump("After PIMS deletion")
+            if len(_pimsImg.shape) != 3:
+                if errorcallback is not None: errorcallback("WrongShape", _pimsImg.shape)
+                return "WrongShape"
+            job.SetProgress(1, "Converting image")
+            imgNP = np.empty(shape=_pimsImg.shape, dtype=_pimsImg.dtype)
+            for i in range(_pimsImg.shape[0]):
+                imgNP[i] = _pimsImg[i]
+            self.img = imgNP
+            return self.PrecomputeImage(callback=callback, errorcallback=errorcallback, convolute=convolute, job=job)
 
-            job.SetProgress(2, text="Precalculating ImgView (Spatial Mean)")
-            self.imgView(ImgObj.SPATIAL).Mean
-            job.SetProgress(2, text="Precalculating ImgView (Spatial Std)")
-            self.imgView(ImgObj.SPATIAL).Std
-            gc.collect()
-            self._MemoryDump("Precalculating ImgView")
-            job.SetProgress(3, text="Calculating imgDiff")
-            self.imgDiff
-            self._MemoryDump("ImgDiff")
-            if convolute:
-                job.SetProgress(4, text="Applying Gaussian Filter on imgDiff")
-                self.imgDiff_Mode = "Convoluted"
-                self.imgDiff
-            gc.collect()
-            job.SetProgress(5, text="Precalculating ImgDiffView (Spatial Max)")
-            self.imgDiffView(ImgObj.SPATIAL).Max
-            job.SetProgress(5, text="Precalculating ImgDiffView (Spatial Std)")
-            self.imgDiffView(ImgObj.SPATIAL).Std
-            gc.collect()
-            job.SetProgress(5, text="Precalculating ImgDiffView (Temporal Max)")
-            self.imgDiffView(ImgObj.TEMPORAL).Max
-            job.SetProgress(5, text="Precalculating ImgDiffView (Temporal Std)")
-            self.imgDiffView(ImgObj.TEMPORAL).Std
-            gc.collect()
-            self._MemoryDump("Precalculating ImgDiffView")
-            job.SetProgress(6, text="Loading Image")
-            job.SetStopped("Loading Image")
-            if callable is not None:
-                callback(self)
-
-        if self._loadingThread is not None and self._loadingThread.is_alive():
-            return "AlreadyLoading"
-
-        if path is None or path == "":
-            return "FileNotFound"
-        
-        self.Clear()
-        self.name = os.path.splitext(os.path.basename(path))[0]
         job = Job(steps=6)
-        self._loadingThread = threading.Thread(target=_Precompute, args=(job,), daemon=True)
-        self._loadingThread.start()
-        return job
-    
-    def _MemoryDump(self, msg):
-        _size = psutil.Process().memory_info().rss
-        if _size < 1024:
-            _sizeFormatted = f"{_size} Bytes"
-        elif _size < 1024**2:
-            _sizeFormatted = f"{round(_size/1024, 3)} KB"
-        elif _size < 1024**3:
-            _sizeFormatted = f"{round(_size/1024**2, 3)} MB"
+        self._openFileThread = threading.Thread(target=_Load, args=(job,), daemon=True).start()
+        if waitCompletion:
+            self._openFileThread.join()
         else:
-            _sizeFormatted = f"{round(_size/1024**3, 3)} GB"
-        logging.debug(f"Memory ({msg}): {_sizeFormatted}")
+            return job
+    

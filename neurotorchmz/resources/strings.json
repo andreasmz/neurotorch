@@ -1,7 +1,26 @@
 {
-    "tab2_description": "Use this tab to find the frames where synapses fire (called peak frames). Depending on your algorithm, a signal is calculated for every frame of your video (plotted on the left side). In this signal, the peaks are identified and marked with orange dots. You can view them using the slider on the bottom middle.",
-    "tab2_algorithms": {
-        "DiffMax": "Takes the differences between two frames (called 'diff') and calculates the maximum (called 'max') per frame. Useally a good first choice as algorithm. The peak height is proportional to most bright synapse",
-        "DiffStd": "Takes the differences between two frames (called 'diff') and calculates the standard deviation (called 'std') per frame. Use this for noisy videos as it will yield better results. The peak height is proportional to the number of synapses firing and their brightness"
+    "tab2": {
+        "description": "Use this tab to find the frames where synapses fire (called peak frames). Depending on your algorithm, a signal is calculated for every frame of your video (plotted on the left side). In this signal, the peaks are identified and marked with orange dots. You can view them using the slider on the bottom middle.",
+        "algorithms":{
+            "diffMax": "Takes the differences between two frames (called 'diff') and calculates the maximum (called 'max') per frame. Useally a good first choice as algorithm. The peak height is proportional to most bright synapse",
+            "diffStd": "Takes the differences between two frames (called 'diff') and calculates the standard deviation (called 'std') per frame. Use this for noisy videos as it will yield better results. The peak height is proportional to the number of synapses firing and their brightness"
+        },
+        "checkColorbar": "When sliding through the frames, changes to colorrange are reset. Unset this box to prevent the reset",
+        "peakProminence": "The maximum of signal is taken and multiplied with this value and used as an advanced relative threshold",
+        "peakWidth": "The ROI Finder tab offers to use as source the diffMax without signal. For this, from the diffImg all the frames with detected signal are removed plus their n neighboors to the left and right, which you can specify here"
+    },
+    "algorithms": {
+        "localMax": {
+            "description": "Find peaks as local maxima based on their center of mass\n\nThis algorithm finds local maxima above a given threshold (upper threshold) and expands them in their neighborhood of pixels above the lower threshold up to a maximum circular range (expand size). Depended if you choose a circular shape, the center will be set to the center of mass instead of the locally brightess pixel (This transition is marked in the plot with an arrow)",
+            "params": {
+                "lowerThreshold": "Set this value some factors above the expected noise. All pixels greater or equal this value are considered signal. Used to expand local maxima in their neighborhood above this value",
+                "upperThreshold": "Find only peaks with at least one pixel with signal above this threshold.\nNote: This does not mean, that the center of the ROI is this local maxima. Rather it will expanded to the center of mass",
+                "radius": "If greater 0, the detected ROIs will have circular shape and the given radius\nIf smaller 0, the algorithm will rather print out polygons",
+                "minArea": "Detected ROIs are filtered to have an area greater or equal this value",
+                "minDistance": "The minimal distance between synapses\n\nImportant note: If working with circular ROIs, setting the distance smaller than twice the radius may lead to overlapping ROIs",
+                "expandSize": "This value has two equal interpretations\na)The maximum distance to correct between the pixel with brightest signal and center of mass\nb) The maximum radius of an polygonal ROI",
+                "maxPeakCount": "If set to a value n greater than 0, the algorithm will find at most n peaks ordered by their strength. IMPORTANT: This limit is applied before other filters like the minimum area. Therefore there may be less than n results. Also it is applied to the local maximum and not the weighted center of mass"
+            }
+        }
     }
 }
