@@ -2,12 +2,9 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Literal
 from tktooltip import ToolTip
-import tksvg
 import time
 from enum import Enum
 import psutil
-
-from .settings import Neurotorch_Resources as Resource
 
 
 class Statusbar:

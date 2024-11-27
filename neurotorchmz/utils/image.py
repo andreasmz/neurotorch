@@ -278,7 +278,7 @@ class ImgObj:
 
         self._openFileThread : threading.Thread = None
         self._loadingThread : threading.Thread = None
-        self._name = None
+        self._name: str|None = None
 
     @property
     def name(self) -> str:
@@ -288,7 +288,8 @@ class ImgObj:
     
     @name.setter
     def name(self, val):
-        self._name = val
+        if val is None or isinstance(val, str):
+            self._name = val
 
     @property
     def img(self) -> np.ndarray | None:
@@ -524,7 +525,7 @@ class ImgObj:
     
     def PrecomputeImage(self, callback = None, errorcallback = None, convolute: bool = False, job:Job = None, waitCompletion:bool = False) -> Literal["AlreadyLoading", "WrongShape"] | Job:
         if self._loadingThread is not None and self._loadingThread.is_alive():
-            errorcallback("AlreadyLoading")
+            if errorcallback is not None: errorcallback("AlreadyLoading")
             return "AlreadyLoading"
 
         def _Precompute(job:Job):
@@ -563,14 +564,23 @@ class ImgObj:
             self._loadingThread.join()
         else:
             return job
+        
+    def SetImagePrecompute(self, img:np.ndarray, name:str = None, callback = None, errorcallback = None, convolute: bool = False, job:Job = None, waitCompletion:bool = False) -> Literal["FileNotFound", "AlreadyLoading", "ImageUnsupported", "WrongShape"] | Job:
+        if not ImgObj._IsValidImagestack(img):
+            if errorcallback is not None: errorcallback("ImageUnsupported")
+            return "ImageUnsupported"
+        self.img = img
+        self.name = name
+        return self.PrecomputeImage(callback=callback,errorcallback=errorcallback, convolute=convolute, job=job, waitCompletion=waitCompletion)
+
 
     def OpenFile(self, path: str, callback = None, errorcallback = None, convolute: bool = False, waitCompletion:bool = False) -> Literal["FileNotFound", "AlreadyLoading", "ImageUnsupported", "WrongShape"] | Job:
         if (self._loadingThread is not None and self._loadingThread.is_alive()) or (self._openFileThread is not None and self._openFileThread.is_alive()):
-            errorcallback("AlreadyLoading")
+            if errorcallback is not None: errorcallback("AlreadyLoading")
             return "AlreadyLoading"
         
         if path is None or path == "":
-            errorcallback("FileNotFound")
+            if errorcallback is not None: errorcallback("FileNotFound")
             return "FileNotFound"
         self.Clear()
         self.name = os.path.splitext(os.path.basename(path))[0]
@@ -595,10 +605,11 @@ class ImgObj:
             for i in range(_pimsImg.shape[0]):
                 imgNP[i] = _pimsImg[i]
             self.img = imgNP
-            return self.PrecomputeImage(callback=callback, errorcallback=errorcallback, convolute=convolute, job=job)
+            return self.PrecomputeImage(callback=callback, errorcallback=errorcallback, convolute=convolute, job=job, waitCompletion=waitCompletion)
 
         job = Job(steps=6)
-        self._openFileThread = threading.Thread(target=_Load, args=(job,), daemon=True).start()
+        self._openFileThread = threading.Thread(target=_Load, args=(job,), daemon=True)
+        self._openFileThread.start()
         if waitCompletion:
             self._openFileThread.join()
         else:

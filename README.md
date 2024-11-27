@@ -67,6 +67,10 @@ Please note: Neurotorch is under continuous development. Therefore the visuals p
 
 ### Release notes
 
+>### 24.11.7 (27.11.2024)
+>- **New API**: Better integration of the API
+>- **Bugfixes**: Fixing bug in ImageJ Implementation
+
 >### 24.11.6 (27.11.2024)
 >- **New detection algorithm**: Added the Local Maximum Algorithm with much better performance than 
 >- **GUI**: Massively improved the GUI settings by applying a consistent layout

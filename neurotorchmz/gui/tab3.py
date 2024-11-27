@@ -20,6 +20,9 @@ class TabROIFinder_AlgorithmChangedEvent(TabUpdateEvent):
     pass
 
 class TabROIFinder(Tab):
+
+    TO_STREAM = "TO_STREAM"
+
     def __init__(self, gui: Neurotorch_GUI):
         super().__init__(gui)
         self.tab_name = "Tab ROI Finder"
@@ -358,7 +361,7 @@ class TabROIFinder(Tab):
         self.figure1.tight_layout()
         self.canvas1.draw()
 
-    def Detect(self):
+    def Detect(self, waitCompletion:bool=False):
         if self.detectionAlgorithm is None or self._gui.ImageObject.imgDiff is None:
             self._gui.root.bell()
             return
@@ -376,7 +379,10 @@ class TabROIFinder(Tab):
 
         job = Job(steps=1)
         self._gui.statusbar.AddJob(job)
-        threading.Thread(target=_Detect, args=(job,), daemon=True).start()
+        _thread = threading.Thread(target=_Detect, args=(job,), daemon=True)
+        _thread.start()
+        if waitCompletion:
+            _thread.join()
 
     # Helper function
 
@@ -443,7 +449,7 @@ class TabROIFinder(Tab):
             return
         self._gui.ijH.ExportROIs([s.synapse for s in self.detectionResult.synapses if isinstance(s, detection.SingleframeSynapse)])
 
-    def ExportCSVMultiM(self, toStream = False, dropFrame=False):
+    def ExportCSVMultiM(self, path:str|None = None, dropFrame=False):
         if self.detectionResult.synapses is None or len(self.detectionResult.synapses) == 0 or self._gui.ImageObject.img is None:
             self.root.bell()
             return None
@@ -463,13 +469,13 @@ class TabROIFinder(Tab):
         data = data.round(4)
         data.index += 1
 
-        if toStream:
+        if path == TabROIFinder.TO_STREAM:
             return data.to_csv(lineterminator="\n",index=(not dropFrame))
-        
-        f = filedialog.asksaveasfile(mode='w', title="Save Multi Measure", filetypes=(("CSV", "*.csv"), ("All files", "*.*")), defaultextension=".csv")
-        if f is None:
+        if path is None:
+            path = filedialog.asksaveasfilename(title="Save Multi Measure", filetypes=(("CSV", "*.csv"), ("All files", "*.*")), defaultextension=".csv")
+        if path is None:
             return None
-        data.to_csv(path_or_buf=f, lineterminator="\n")
+        data.to_csv(path_or_buf=path, lineterminator="\n", mode="w", index=(not dropFrame))
 
     def ComboImage_Changed(self):
         if self.varImage.get() != "Diff" or self._gui.signal.peaks is None:

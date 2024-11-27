@@ -98,15 +98,16 @@ class ImageJHandler:
         if self.ij is None:
             messagebox.showerror("Neurotorch", "Please first start ImageJ")
             return
-        self._img = self.ij.py.active_xarray()
-        if self._img is None:
+        _img = self.ij.py.active_xarray()
+        _imgIP = self.ij.py.active_imageplus()
+        if _img is None or _imgIP is None:
             self.root.bell()
             return
-        
-        self._img = np.array(self._img)
-        _name = self._img.name if hasattr(self._img, 'name') else "ImageJ Img"
-
-        ImgObj().SetImage_Precompute(self._img, name=_name, callback=self._gui._OpenImage_Callback, errorcallback=self._gui._OpenImage_CallbackError)
+        _name = "ImageJ Img"
+        if hasattr(_imgIP, 'getShortTitle'):
+            _name = str(_imgIP.getShortTitle())
+        _img = np.array(_img)
+        ImgObj().SetImagePrecompute(img=_img, name=_name, callback=self._gui._OpenImage_Callback, errorcallback=self._gui._OpenImage_CallbackError)
 
     def ExportToImageJ_Img(self, asCopy = False):
         if self.ij is None:

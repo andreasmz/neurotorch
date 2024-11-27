@@ -10,16 +10,14 @@ import logging
 
 matplotlib.use('TkAgg')
 from .components import Job, Statusbar
+from .edition import Edition
 from .settings import Neurotorch_Settings as Settings
 from ..utils.image import ImgObj
 from ..utils.signalDetection import SignalObj
 
 
 
-class Edition(Enum):
-    NEUROTORCH = 1
-    NEUROTORCH_LIGHT = 2
-    NEUROTORCH_DEBUG = 10
+
 
 class Neurotorch_GUI:
     def __init__(self, version):
@@ -38,7 +36,6 @@ class Neurotorch_GUI:
         from neurotorchmz.gui.tab1 import TabImage
         from neurotorchmz.gui.tab2 import TabSignal
         from neurotorchmz.gui.tab3 import TabROIFinder
-        from neurotorchmz.gui.tabAnalysis import TabAnalysis
         from ..utils.plugin_manager import PluginManager
         self.edition = edition
         self.root = tk.Tk()
@@ -252,10 +249,9 @@ class Neurotorch_GUI:
             self.root.bell()
             return
         with open(path, 'rb') as f:
-            _imgObj = ImgObj()
-            _imgObj.img = pickle.load(f)
-            _imgObj.name = "img_peaks.dump"
-            self.statusbar._jobs.append(_imgObj.PrecomputeImage(callback=self._OpenImage_Callback, errorcallback=self._OpenImage_CallbackError))
+            _img = pickle.load(f)
+            _name = "img_peaks.dump"
+            self.statusbar._jobs.append(ImgObj().SetImagePrecompute(img=_img, name=_name, callback=self._OpenImage_Callback, errorcallback=self._OpenImage_CallbackError))
 
     def MenuDebugSavePeaks(self):
         if self.ImageObject is None or self.ImageObject.img is None or self.signal.peaks is None or len(self.signal.peaks) == 0:

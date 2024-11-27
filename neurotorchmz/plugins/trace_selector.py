@@ -78,7 +78,7 @@ class TraceSelector:
             messagebox.showwarning("Neurotorch", "Trace Selector is not running")
             return
         
-        _buffer = self.tab3.ExportCSVMultiM(toStream=True, dropFrame=True)
+        _buffer = self.tab3.ExportCSVMultiM(path=TabROIFinder.TO_STREAM, dropFrame=True)
         if (_buffer is None):
             self.gui.root.bell()
             messagebox.showerror("Neurotorch", "With this command you export the multi measure data from the tab 'Synapse ROI Finder'. Please first create data there")
