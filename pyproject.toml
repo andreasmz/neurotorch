@@ -1,6 +1,6 @@
 [project]
 name = "Neurotorchmz"
-version = "24.11.7"
+version = "24.12.1"
 authors = [
   { name="Andreas Brilka"},
 ]
@@ -12,7 +12,7 @@ requires-python = ">=3.11"
 
 classifiers = [
     "Programming Language :: Python :: 3",
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Bio-Informatics",
     "Topic :: Scientific/Engineering :: Image Processing"

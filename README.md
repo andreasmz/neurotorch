@@ -67,6 +67,12 @@ Please note: Neurotorch is under continuous development. Therefore the visuals p
 
 ### Release notes
 
+>### 24.12.1 (29.11.2024)
+>- **Sorting by signal strength**: Added the ability to sort by signal strength in local max algorithm. Also added the option to filter for a minimum signal strength
+>- **Circular ROI**: Added region props for circular ROIs in local max algorithm. Also changed the definition of a circle with radius r to be equivalent with ImageJ
+>- **Added image filters**: Added the ability for image filters and included as first the option to use img - mean(img) instead of imgDiff for detection
+>- **Minor changes**: Bugfixes (usage of numpy.empty, trace selector filedialog, matplotlib backend setting...) and improvement of speed (for example slicing the image)
+
 >### 24.11.7 (27.11.2024)
 >- **New API**: Better integration of the API
 >- **Bugfixes**: Fixing bug in ImageJ Implementation

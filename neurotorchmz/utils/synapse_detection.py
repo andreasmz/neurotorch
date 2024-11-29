@@ -4,6 +4,7 @@ from skimage.segmentation import expand_labels
 import math
 import uuid
 from skimage.feature import peak_local_max
+from skimage.draw import disk
 
 from .image import ImgObj
 
@@ -27,11 +28,12 @@ class ISynapseROI:
             return ""
         return f"{self.location[0]}, {self.location[1]}"
     
-    def GetImageSignal(self, imgObj: ImgObj) -> list[float]:
-        return []
+    def GetImageMask(self, shape:tuple|None) -> tuple[np.array, np.array]:
+        return ([], [])
     
-    def GetImageDiffSignal(self, imgObj: ImgObj) -> list[float]:
-        return []
+    def GetImageSignal(self, img: np.ndarray) -> np.array:
+        rr, cc = self.GetImageMask(img.shape[-2:])
+        return img[:, rr, cc]
     
     def ToStr(self):
         return f"({self.LocationStr()})"
@@ -45,25 +47,8 @@ class CircularSynapseROI(ISynapseROI):
         self.radius = radius
         return self
     
-    def GetImageSignal(self, imgObj: ImgObj) -> list[float]:
-        if imgObj.img is None:
-            return
-        xmax = imgObj.img.shape[2]
-        ymax = imgObj.img.shape[1]
-        point = self.location
-        radius = self.radius
-        return np.array([imgObj.img[:,y,x] for x in range(point[0]-radius,point[0]+2*radius+1) for y in range(point[1]-radius,point[1]+2*radius+1)
-                     if ((x-point[0])**2+(y-point[1])**2)<radius**2+2**(1/2) and x >= 0 and y >= 0 and x < xmax and y < ymax])
-    
-    def GetImageDiffSignal(self, imgObj: ImgObj) -> list[float]:
-        if imgObj.imgDiff is None:
-            return
-        xmax = imgObj.imgDiff.shape[2]
-        ymax = imgObj.imgDiff.shape[1]
-        point = self.location
-        radius = self.radius
-        return np.array([imgObj.imgDiff[:,y,x] for x in range(point[0]-radius,point[0]+2*radius+1) for y in range(point[1]-radius,point[1]+2*radius+1)
-                     if ((x-point[0])**2+(y-point[1])**2)<radius**2+2**(1/2) and x >= 0 and y >= 0 and x < xmax and y < ymax])
+    def GetImageMask(self, shape:tuple|None) -> tuple[np.ndarray, np.ndarray]:
+        return disk(center=(self.location[1], self.location[0]), radius=self.radius+0.5,shape=shape)
     
     def ToStr(self):
         return f"{self.location[0]}, {self.location[1]}, r={self.radius}"
@@ -82,6 +67,12 @@ class PolygonalSynapseROI(ISynapseROI):
         self.SetLocation(int(region_props.centroid_weighted[1]), int(region_props.centroid_weighted[0]))
         return self
     
+    def GetImageMask(self, shape:tuple|None) -> tuple[np.array, np.array]:
+        rr = np.array([ int(y) for y in self.regionProps.coords_scaled[:, 0] if y >= 0 and y < shape[0]])
+        cc = np.array([ int(x) for x in self.regionProps.coords_scaled[:, 1] if x >= 0 and x < shape[1]])
+        return (rr, cc)
+    
+    """
     def GetImageSignal(self, imgObj: ImgObj) -> list[float]:
         if imgObj.img is None or self.regionProps is None:
             return
@@ -91,6 +82,8 @@ class PolygonalSynapseROI(ISynapseROI):
         if imgObj.imgDiff is None or self.regionProps is None:
             return
         return np.array([imgObj.imgDiff[:,int(y),int(x)] for (y,x) in self.regionProps.coords_scaled]) 
+
+    """
 
 # A synapse contains multiple (MultiframeSynapse) or a single SynapseROI (SingleframeSynapse)
 class ISynapse:
@@ -235,7 +228,7 @@ class HysteresisTh(DetectionAlgorithm):
         self.thresholded_img[self.thresholded_img > 0] = 1
         self.labeled_img = measure.label(self.thresholded_img, connectivity=1)
         self.region_props = measure.regionprops(self.labeled_img, intensity_image=img)
-        self.thresholdFiltered_img = np.empty(shape=img.shape)
+        self.thresholdFiltered_img = np.zeros(shape=img.shape)
         labels_ok = []
 
         synapses = []
@@ -287,6 +280,7 @@ class LocalMax(DetectionAlgorithm):
 
     def Detect(self, img:np.ndarray, **kwargs) -> list[ISynapseROI]:
         self.Reset()
+        warningCallback = None if "warning_callback" not in kwargs else kwargs["warning_callback"]
         try:
             lowerThreshold = kwargs["lowerThreshold"]
             upperThreshold = kwargs["upperThreshold"]
@@ -294,27 +288,31 @@ class LocalMax(DetectionAlgorithm):
             maxPeakCount = kwargs["maxPeakCount"]
             minArea = kwargs["minArea"]
             minDistance = kwargs["minDistance"]
+            minSignal = kwargs["minSignal"]
             radius = kwargs["radius"]
+            sortBySignal = kwargs["sortBySignal"]
+            imgObj = kwargs["ImgObj"]
         except KeyError:
+            if warningCallback is not None:
+                warningCallback(mode="error", message="There was internal error in passing the algorithms parameters")           
             return None
-        warningCallback = None if "warning_callback" not in kwargs else kwargs["warning_callback"]
-        
+
         
         if lowerThreshold >= upperThreshold:
-            lowerThreshold = upperThreshold
+            upperThreshold = lowerThreshold
 
         self.imgThresholded = (img >= lowerThreshold)
         self.imgThresholded_labeled = measure.label(self.imgThresholded, connectivity=1)
-        _numpeaks = maxPeakCount if maxPeakCount > 0 else np.inf
-        self.maxima = peak_local_max(img, min_distance=minDistance, threshold_abs=upperThreshold, num_peaks=_numpeaks) # ((Y, X), ..)
-        self.maxima_labeled = np.empty(shape=img.shape, dtype=int)
+        #_numpeaks = maxPeakCount if maxPeakCount > 0 else np.inf
+        self.maxima = peak_local_max(img, min_distance=minDistance, threshold_abs=upperThreshold) # ((Y, X), ..)
+        self.maxima_labeled = np.zeros(shape=img.shape, dtype=int)
         for i in range(self.maxima.shape[0]):
             y,x = self.maxima[i, 0], self.maxima[i, 1]
             self.maxima_labeled[y,x] = i+1
         self.maxima_labeled_expanded = expand_labels(self.maxima_labeled, distance=expandSize)
-        self.labeledImage = np.empty(shape=img.shape, dtype=int)
+        self.labeledImage = np.zeros(shape=img.shape, dtype=int)
 
-        self.maxima_labeled_expaned_adjusted = np.empty(shape=img.shape, dtype=int)
+        self.maxima_labeled_expaned_adjusted = np.zeros(shape=img.shape, dtype=int)
 
         for i in range(self.maxima.shape[0]):
             y,x = self.maxima[i]
@@ -328,7 +326,7 @@ class LocalMax(DetectionAlgorithm):
                 self.maxima_labeled_expaned_adjusted += (self.maxima_labeled_expanded == maxima_label)*maxima_label
 
         self.region_props = measure.regionprops(self.labeledImage, intensity_image=img)
-
+        
         synapses = []
         for i in range(len(self.region_props)):
             region = self.region_props[i]
@@ -347,8 +345,20 @@ class LocalMax(DetectionAlgorithm):
                 synapse = PolygonalSynapseROI().SetPolygon(contour, region)
             else:
                 y, x = region.centroid_weighted
-                x, y = int(x), int(y)
+                x, y = int(round(x,0)), int(round(y,0))
                 synapse = CircularSynapseROI().SetLocation(x, y).SetRadius(radius)
-            synapses.append(synapse)
-        synapses.sort(key=lambda x: (x.location[1], x.location[0]))
+                _imgSynapse = np.zeros(shape=img.shape, dtype=img.dtype)
+                _imgSynapse[synapse.GetImageMask(img.shape)] = 1
+                _regProp = measure.regionprops(_imgSynapse, intensity_image=img)
+                synapse.SetRegionProps(_regProp[0])
+            synapse.strength = np.max(np.mean(synapse.GetImageSignal(imgObj.imgDiff), axis=1))
+            if minSignal <= 0 or synapse.strength >= minSignal:
+                synapses.append(synapse)
+        if sortBySignal or maxPeakCount > 0:
+            synapses.sort(key=lambda x: x.strength, reverse=True)
+        if maxPeakCount > 0:
+            synapses = synapses[:maxPeakCount]
+        if not sortBySignal:
+            synapses.sort(key=lambda x: (x.location[1], x.location[0]))
+            
         return synapses 

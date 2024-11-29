@@ -30,7 +30,7 @@ class TraceSelector:
 
     def Locate(self):
         path = filedialog.askopenfilename(parent=self.gui.root, title="Neurotorch - Please select the python interpeter installed with Trace Selector", 
-                filetypes=(("Python EXE with Trace Selector installed", "*.*")) )
+                filetypes=(("Python EXE with Trace Selector installed", "*.*"),) )
         if path is not None and path != "":
             Settings.SetSetting("traceselectorPythonPath", path)
 

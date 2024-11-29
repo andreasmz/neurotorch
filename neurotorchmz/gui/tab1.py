@@ -108,6 +108,8 @@ class TabImage(Tab):
                     self.treeMetadata.insert('providedImageData', 'end', text="Width [px]", values=([self.gui.ImageObject.img.shape[2]]))
                     self.treeMetadata.insert('providedImageData', 'end', text="Height [px]", values=([self.gui.ImageObject.img.shape[1]]))
                     self.treeMetadata.insert('providedImageData', 'end', text="Numpy dtype", values=([self.gui.ImageObject.img.dtype]))
+                    self.treeMetadata.insert('providedImageData', 'end', text="Maximum", values=([self.gui.ImageObject.imgProps.max]))
+                    self.treeMetadata.insert('providedImageData', 'end', text="Minimum", values=([self.gui.ImageObject.imgProps.min]))
                 else:
                     self.treeMetadata.insert('providedImageData', 'end', text="Only diffImage provided", values=(["True"]))
                 if self.gui.ImageObject.pims_metadata is not None:

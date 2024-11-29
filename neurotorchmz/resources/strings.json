@@ -1,4 +1,9 @@
 {
+    "menubar": {
+        "filters": {
+            "meanMaxDiff": "If your image has non transient increases (for example calcium sensors), it is better to use this filter. Instead off calculating the difference between frames, imgDiff[i] = img[i] - spatial_mean(img)"
+        }
+    },
     "tab2": {
         "description": "Use this tab to find the frames where synapses fire (called peak frames). Depending on your algorithm, a signal is calculated for every frame of your video (plotted on the left side). In this signal, the peaks are identified and marked with orange dots. You can view them using the slider on the bottom middle.",
         "algorithms":{
@@ -16,10 +21,12 @@
                 "lowerThreshold": "Set this value some factors above the expected noise. All pixels greater or equal this value are considered signal. Used to expand local maxima in their neighborhood above this value",
                 "upperThreshold": "Find only peaks with at least one pixel with signal above this threshold.\nNote: This does not mean, that the center of the ROI is this local maxima. Rather it will expanded to the center of mass",
                 "radius": "If greater 0, the detected ROIs will have circular shape and the given radius\nIf smaller 0, the algorithm will rather print out polygons",
+                "sortBySignal": "By default, the ROIs are sorted from top to bottom and left to right. Select this box to sort based on a signal strength estimation",
                 "minArea": "Detected ROIs are filtered to have an area greater or equal this value",
                 "minDistance": "The minimal distance between synapses\n\nImportant note: If working with circular ROIs, setting the distance smaller than twice the radius may lead to overlapping ROIs",
+                "minSignal": "The ROI must contain at least one frame exceeding with a signal exceeding this value. This value is also used for sorting by signal strength. Set to 0 to have no limit",
                 "expandSize": "This value has two equal interpretations\na)The maximum distance to correct between the pixel with brightest signal and center of mass\nb) The maximum radius of an polygonal ROI",
-                "maxPeakCount": "If set to a value n greater than 0, the algorithm will find at most n peaks ordered by their strength. IMPORTANT: This limit is applied before other filters like the minimum area. Therefore there may be less than n results. Also it is applied to the local maximum and not the weighted center of mass"
+                "maxPeakCount": "If set to a value n > 0, the algorithm will sort the ROIs by estimated signal strength and only return the n strongest"
             }
         }
     }

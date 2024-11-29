@@ -1,5 +1,5 @@
 from .window import *
-from .components import EntryPopup, Job, ScrolledFrame
+from .components import *
 from ..utils import synapse_detection_integration as detection
 from ..utils.image import *
 from ..utils.synapse_detection import SingleframeSynapse
@@ -33,6 +33,7 @@ class TabROIFinder(Tab):
         self.roiPatches = {}
         self.roiPatches2 = {}
         self.treeROIs_entryPopup = None
+        self.ax1Image = None
         self.ax2Image = None
         self.ax1_colorbar = None
         self.ax2_colorbar = None
@@ -67,17 +68,16 @@ class TabROIFinder(Tab):
         self.comboFrame = ttk.Combobox(self.frameOptions, textvariable=self.varImageFrame, state="disabled", width=5)
         self.comboFrame.grid(row=10, column=2, sticky="news")
         tk.Label(self.frameOptions, text="Diff. Img Overlay").grid(row=11, column=0)
-        self.varPlotOverlay = tk.IntVar(value=0)
-        self.varPlotOverlay.trace_add("write", lambda _1,_2,_3: self.Invalidate_ROIs())
-        self.checkPlotOverlay = ttk.Checkbutton(self.frameOptions, variable=self.varPlotOverlay)
-        self.checkPlotOverlay.grid(row=11, column=1, sticky="nw")
-
+        self.setting_plotOverlay = GridSetting(self.frameOptions, row=11, type_="Checkbox", text="Plot raw algorithm output", default=0)
+        self.setting_plotOverlay.var.IntVar.trace_add("write", lambda _1,_2,_3: self.Invalidate_ROIs())
+        self.setting_plotPixels = GridSetting(self.frameOptions, row=12, type_="Checkbox", text="Plot ROIs pixels", default=0)
+        self.setting_plotPixels.var.IntVar.trace_add("write", lambda _1,_2,_3: self.Invalidate_ROIs())
 
         self.btnDetect = tk.Button(self.frameOptions, text="Detect", command=self.Detect)
         self.btnDetect.grid(row=15, column=0)
 
         self.detectionAlgorithm = detection.IDetectionAlgorithmIntegration()
-        self.frameAlgoOptions = self.detectionAlgorithm.OptionsFrame(self.frameTools)
+        self.frameAlgoOptions = self.detectionAlgorithm.OptionsFrame(self.frameTools, self._gui.GetImageObject)
         self.frameAlgoOptions.grid(row=1, column=0, sticky="news")
 
         self.frameROIS = tk.LabelFrame(self.frameTools, text="ROIs")
@@ -171,7 +171,7 @@ class TabROIFinder(Tab):
                 return
         if (self.frameAlgoOptions is not None):
             self.frameAlgoOptions.grid_forget()
-        self.frameAlgoOptions = self.detectionAlgorithm.OptionsFrame(self.frameTools)
+        self.frameAlgoOptions = self.detectionAlgorithm.OptionsFrame(self.frameTools, self._gui.GetImageObject)
         self.detectionAlgorithm.OptionsFrame_Update(self.GetCurrentDetectionSource()[1])
         self.frameAlgoOptions.grid(row=1, column=0, sticky="news")
 
@@ -196,6 +196,7 @@ class TabROIFinder(Tab):
         imgObj = self._gui.ImageObject
 
         self.ax2.set_title("Diff Image")
+        self.ax1Image = None
         self.ax2Image = None    
         if self.ax1_colorbar is not None:
             self.ax1_colorbar.remove()
@@ -212,9 +213,9 @@ class TabROIFinder(Tab):
             self.Invalidate_ROIs()
             return
         
-        ax1Img = self.ax1.imshow(imgObj.imgView(imgObj.SPATIAL).Mean, cmap="Greys_r") 
+        self.ax1Image = self.ax1.imshow(imgObj.imgView(imgObj.SPATIAL).Mean, cmap="Greys_r") 
         self.ax1.set_axis_on()
-        self.ax1_colorbar = self.figure1.colorbar(ax1Img, ax=self.ax1)
+        self.ax1_colorbar = self.figure1.colorbar(self.ax1Image, ax=self.ax1)
 
         _ax2Title, ax2_ImgProp = self.GetCurrentDetectionSource()
         self.ax2.set_title(_ax2Title)
@@ -227,6 +228,8 @@ class TabROIFinder(Tab):
 
 
     def Invalidate_ROIs(self):
+        for axImg in self.ax1.get_images():
+            if axImg != self.ax1Image: axImg.remove()
         for axImg in self.ax2.get_images():
             if axImg != self.ax2Image: axImg.remove()
         for p in reversed(self.ax1.patches): p.remove()
@@ -258,8 +261,8 @@ class TabROIFinder(Tab):
             synapseROI: detection.ISynapseROI = synapse.synapse
             if isinstance(synapseROI, detection.CircularSynapseROI):
                 synapseuuid = self.treeROIs.insert('', 'end', iid=synapse.uuid, text=f"ROI {i+1}", values=([synapseROI.LocationStr(), synapseROI.radius]))
-                c = patches.Circle(synapseROI.location, synapseROI.radius, color="red", fill=False)
-                c2 = patches.Circle(synapseROI.location, synapseROI.radius, color="green", fill=False)
+                c = patches.Circle(synapseROI.location, synapseROI.radius+0.5, color="red", fill=False)
+                c2 = patches.Circle(synapseROI.location, synapseROI.radius+0.5, color="green", fill=False)
             elif isinstance(synapseROI, detection.PolygonalSynapseROI):
                 synapseuuid = self.treeROIs.insert('', 'end', iid=synapse.uuid, text=f"ROI {i+1}", values=([synapseROI.LocationStr(), "Polygon"]))
                 c = patches.Polygon(synapseROI.polygon, color="red", fill=False)
@@ -276,7 +279,18 @@ class TabROIFinder(Tab):
                 self.ax2.add_patch(c2)
                 self.roiPatches2[synapseuuid] = c2
 
-        if self.varPlotOverlay.get() == 1:
+        _currentSource = self.GetCurrentDetectionSource()[1].img
+        if self.setting_plotPixels.Get() == 1 and _ax1HasImage and _currentSource is not None:
+            _overlay = np.zeros(shape=_currentSource.shape, dtype=_currentSource.dtype)
+            for i in range(len(self.detectionResult.synapses)):
+                synapse = self.detectionResult.synapses[i]
+                if not isinstance(synapse, detection.SingleframeSynapse):
+                    continue
+                synapseROI: detection.ISynapseROI = synapse.synapse
+                _overlay[synapseROI.GetImageMask(_currentSource.shape)] = 1
+            self.ax1.imshow(_overlay, alpha=_overlay*0.5, cmap="viridis")
+
+        if self.setting_plotOverlay.Get() == 1 and _ax2HasImage:
             _overlays, _patches = self.detectionAlgorithm.Img_DetectionOverlay()
             if _overlays is not None:
                 for _overlay in _overlays:
@@ -330,15 +344,15 @@ class TabROIFinder(Tab):
                 continue
             synapseROI: detection.ISynapseROI = synapse.synapse
             if synapse.uuid == selectionIndex:
-                _slice = synapseROI.GetImageSignal(imgObj)
+                _slice = synapseROI.GetImageSignal(imgObj.img)
                 if len(_slice) > 0:
-                    _signal = np.mean(_slice, axis=0)
+                    _signal = np.mean(_slice, axis=1)
                     self.ax3.plot(_signal)
-                _sliceDiff = synapseROI.GetImageDiffSignal(imgObj)
+                _sliceDiff = synapseROI.GetImageSignal(imgObj.imgDiff)
                 if len(_sliceDiff) > 0:
-                    _signalMaxDiff = np.max(_sliceDiff, axis=0)
-                    _signalMeanDiff = np.mean(_sliceDiff, axis=0)
-                    _signalMinDiff = np.min(_sliceDiff, axis=0)
+                    _signalMaxDiff = np.max(_sliceDiff, axis=1)
+                    _signalMeanDiff = np.mean(_sliceDiff, axis=1)
+                    _signalMinDiff = np.min(_sliceDiff, axis=1)
                     self.ax4.plot(_signalMaxDiff, label="Max", c="blue")
                     self.ax4.plot(_signalMeanDiff, label="Mean", c="red")
                     self.ax4.plot(_signalMinDiff, label="Min", c="darkorchid")
@@ -350,14 +364,13 @@ class TabROIFinder(Tab):
                     self.treeROIInfo.insert('', 'end', text=f"Center of mass (X,Y)", values=([f"({round(p.centroid_weighted[1], 3)}, {round(p.centroid_weighted[0], 3)})"]))
                     self.treeROIInfo.insert('', 'end', text=f"Radius of circle with same size [px]", values=([f"{round(p.equivalent_diameter_area/2, 2)}"]))
                     self.treeROIInfo.insert('', 'end', text=f"Eccentricity [0,1)", values=([f"{round(p.eccentricity, 3)}"]))
-                    self.treeROIInfo.insert('', 'end', text=f"Intensity Max", values=([f"{round(p.intensity_max, 2)}"]))
-                    self.treeROIInfo.insert('', 'end', text=f"Intensity Mean", values=([f"{round(p.intensity_mean, 2)}"]))
-                    self.treeROIInfo.insert('', 'end', text=f"Intensity Min", values=([f"{round(p.intensity_min, 2)}"]))
-                    self.treeROIInfo.insert('', 'end', text=f"Intensity Std", values=([f"{round(p.intensity_std, 2)}"]))
+                    self.treeROIInfo.insert('', 'end', text=f"Signal Max", values=([f"{round(p.intensity_max, 2)}"]))
                     self.treeROIInfo.insert('', 'end', text=f"Inertia X", values=([f"{round(p.inertia_tensor[0,0], 2)}"]))
                     self.treeROIInfo.insert('', 'end', text=f"Inertia Y", values=([f"{round(p.inertia_tensor[1,1], 2)}"]))
                     self.treeROIInfo.insert('', 'end', text=f"Inertia Ratio", values=([f"{round(p.inertia_tensor[0,0]/p.inertia_tensor[1,1], 2)}"]))
                     #print(p.moments_weighted_central)
+                if hasattr(synapseROI, "strength"):
+                    self.treeROIInfo.insert('', 'end', text=f"Signal Strength", values=([f"{round(synapseROI.strength, 3)}"]))
         self.figure1.tight_layout()
         self.canvas1.draw()
 
@@ -460,10 +473,10 @@ class TabROIFinder(Tab):
             if not isinstance(synapse, detection.SingleframeSynapse):
                 continue
             synapseROI: detection.ISynapseROI = synapse.synapse
-            _slice = synapseROI.GetImageSignal(self._gui.ImageObject)
+            _slice = synapseROI.GetImageSignal(self._gui.ImageObject.img)
             if len(_slice) == 0:
                 continue
-            _signal = np.mean(_slice, axis=0)
+            _signal = np.mean(_slice, axis=1)
             name = f"ROI {i+1} {synapseROI.LocationStr().replace(",","")}"
             data[name] = _signal
         data = data.round(4)

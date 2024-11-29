@@ -386,7 +386,7 @@ class ImgObj:
     
     @property
     def imgDiff_Conv(self) -> np.ndarray | None:
-        if self.imgDiff_Normal is None or self._imgDiffConvFunc is None or self._imgDiffConvArgs is None:
+        if self.imgDiff_Normal is None or self._imgDiffConvFunc is None:
             return None
         _n = self._imgDiffConvFunc.__name__+str(self._imgDiffConvArgs)
         if _n not in self._imgDiffConv.keys():
@@ -403,7 +403,7 @@ class ImgObj:
 
     @property
     def imgDiff_ConvProps(self) -> ImageProperties | None:
-        if self.imgDiff_Conv is None or self._imgDiffConvFunc is None or self._imgDiffConvArgs is None:
+        if self.imgDiff_Conv is None or self._imgDiffConvFunc is None:
             return None
         _n = self._imgDiffConvFunc.__name__+str(self._imgDiffConvArgs)
         if _n not in self._imgDiffConvProps.keys():
@@ -511,17 +511,23 @@ class ImgObj:
             return False
         return True
     
-    def SetConvolutionFunction(self, func: Callable, args: tuple):
+    def SetConvolutionFunction(self, func: Callable, args: tuple|None):
         self._imgDiffConvFunc = func
         self._imgDiffConvArgs = args
     
-    def Conv_GaussianBlur(self, args: tuple) -> np.ndarray | None:
+    def Conv_GaussianBlur(self, args: tuple|None) -> np.ndarray | None:
         if self.imgDiff_Normal is None:
             return None
         if len(args) != 1:
             return None
         sigma = args[0]
         return gaussian_filter(self.imgDiff_Normal, sigma=sigma, axes=(1,2))
+    
+    def Conv_MeanMaxDiff(self, args: tuple|None) -> np.ndarray | None:
+        if self._img is None:
+            return None
+        
+        return (self.imgS - self.imgView(ImgObj.SPATIAL).Mean).astype(self.imgS.dtype)
     
     def PrecomputeImage(self, callback = None, errorcallback = None, convolute: bool = False, job:Job = None, waitCompletion:bool = False) -> Literal["AlreadyLoading", "WrongShape"] | Job:
         if self._loadingThread is not None and self._loadingThread.is_alive():
@@ -601,7 +607,7 @@ class ImgObj:
                 if errorcallback is not None: errorcallback("WrongShape", _pimsImg.shape)
                 return "WrongShape"
             job.SetProgress(1, "Converting image")
-            imgNP = np.empty(shape=_pimsImg.shape, dtype=_pimsImg.dtype)
+            imgNP = np.zeros(shape=_pimsImg.shape, dtype=_pimsImg.dtype)
             for i in range(_pimsImg.shape[0]):
                 imgNP[i] = _pimsImg[i]
             self.img = imgNP

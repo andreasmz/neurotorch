@@ -1,8 +1,10 @@
-__version__ = "24.11.7"
+__version__ = "24.12.1"
 
 from .gui.edition import Edition
 from .utils.api import API, _API
 import threading
+import matplotlib
+matplotlib.use('TkAgg')
 
 neutorch_GUI = None
 

@@ -1,17 +1,15 @@
 import sys, os
 import tkinter as tk
+from tkinter import ttk, messagebox, filedialog
+from tktooltip import ToolTip
 import threading
 import pickle
-import matplotlib
-from tkinter import ttk, messagebox, filedialog
-from enum import Enum
 from typing import Literal
 import logging
 
-matplotlib.use('TkAgg')
 from .components import Job, Statusbar
 from .edition import Edition
-from .settings import Neurotorch_Settings as Settings
+from .settings import (Neurotorch_Settings as Settings, Neurotorch_Resources as Resource)
 from ..utils.image import ImgObj
 from ..utils.signalDetection import SignalObj
 
@@ -61,17 +59,25 @@ class Neurotorch_GUI:
         self.menuDenoise = tk.Menu(self.menuImage,tearoff=0)
         self.menuImage.add_cascade(label="Denoise imgDiff", menu=self.menuDenoise)
         self.menuDenoise.add_command(label="Disable denoising", command=lambda: self.MenuImageDenoise(None, None))
-        self.menuDenoise.add_command(label="Gaussian kernel (σ=2, recommended)", command=lambda: self.MenuImageDenoise('Gaussian', (2,)))
-        self.menuDenoise.add_separator()
         self.menuDenoise.add_command(label="Clear cache", command=self.MenuImage_ClearCache)
+        self.menuDenoise.add_separator()
         self.menuDenoise.add_command(label="Gaussian kernel (σ=0.5)", command=lambda: self.MenuImageDenoise('Gaussian', (0.5,)))
         self.menuDenoise.add_command(label="Gaussian kernel (σ=0.8)", command=lambda: self.MenuImageDenoise('Gaussian', (0.8,)))
         self.menuDenoise.add_command(label="Gaussian kernel (σ=1)", command=lambda: self.MenuImageDenoise('Gaussian', (1,)))
         self.menuDenoise.add_command(label="Gaussian kernel (σ=1.5)", command=lambda: self.MenuImageDenoise('Gaussian', (1.5,)))
-        self.menuDenoise.add_command(label="Gaussian kernel (σ=2)", command=lambda: self.MenuImageDenoise('Gaussian', (2,)))
+        self.menuDenoise.add_command(label="Gaussian kernel (σ=2, recommended)", command=lambda: self.MenuImageDenoise('Gaussian', (2,)))
         self.menuDenoise.add_command(label="Gaussian kernel (σ=2.5)", command=lambda: self.MenuImageDenoise('Gaussian', (2.5,)))
         self.menuDenoise.add_command(label="Gaussian kernel (σ=3)", command=lambda: self.MenuImageDenoise('Gaussian', (3,)))
         self.menuDenoise.add_command(label="Gaussian kernel (σ=5)", command=lambda: self.MenuImageDenoise('Gaussian', (5,)))
+
+        self.menuFilter = tk.Menu(self.menuImage,tearoff=0)
+        self.menuImage.add_cascade(label="Apply filter", menu=self.menuFilter)
+        self.menuFilter.add_command(label="Disable filter", command=lambda: self.MenuImageDenoise(None, None))
+        self.menuFilter.add_command(label="Clear cache", command=self.MenuImage_ClearCache)
+        self.menuFilter.add_separator()
+        self.menuFilter.add_command(label="Cummulative imgDiff", command=lambda: self.MenuImageDenoise('MeanMaxDiff', None))
+        ToolTip(self.menuFile, msg=Resource.GetString("menubar/filters/meanMaxDiff"), follow=True, delay=0.5)
+
         if edition == Edition.NEUROTORCH_DEBUG:
             self.menuDenoiseImg = tk.Menu(self.menuImage,tearoff=0)
             self.menuImage.add_cascade(label="Denoise Image", menu=self.menuDenoiseImg)
@@ -216,7 +222,7 @@ class Neurotorch_GUI:
     def MenuFileClose(self):
         self.ImageObject = None
         
-    def MenuImageDenoise(self, mode: None|Literal["Gaussian"], args: None|tuple):
+    def MenuImageDenoise(self, mode: None|Literal["Gaussian", "MeanMaxDiff"], args: None|tuple):
         if self.ImageObject is None or self.ImageObject.imgDiff is None:
             self.root.bell()
             return
@@ -225,6 +231,9 @@ class Neurotorch_GUI:
         elif mode == "Gaussian":
             self.ImageObject.imgDiff_Mode = "Convoluted"
             self.ImageObject.SetConvolutionFunction(self.ImageObject.Conv_GaussianBlur, args=args)
+        elif mode == "MeanMaxDiff":
+            self.ImageObject.imgDiff_Mode = "Convoluted" 
+            self.ImageObject.SetConvolutionFunction(self.ImageObject.Conv_MeanMaxDiff, args=args)   
         else:
             raise ValueError(f"Mode parameter has an unkown value '{mode}'")
         self.NewImageProvided()

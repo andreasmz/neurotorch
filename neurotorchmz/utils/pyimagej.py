@@ -149,7 +149,7 @@ class ImageJHandler:
 
         for i, synapseROI in enumerate(rois):
             if isinstance(synapseROI, CircularSynapseROI):
-                roi = self.OvalRoi(synapseROI.location[0]+0.5-synapseROI.radius, synapseROI.location[1]+0.5-synapseROI.radius, 2*synapseROI.radius, 2*synapseROI.radius)
+                roi = self.OvalRoi(synapseROI.location[0]+1-synapseROI.radius, synapseROI.location[1]+1-synapseROI.radius, 2*synapseROI.radius+1, 2*synapseROI.radius+1)
                 roi.setName(f"ROI {i+1} {synapseROI.LocationStr().replace(",","")}")
                 self.RM.addRoi(roi)
             elif isinstance(synapseROI, PolygonalSynapseROI):
