@@ -606,6 +606,11 @@ class TabROIFinder(Tab):
             else:
                 name = f"ROI {i+1} {synapseROI.LocationStr().replace(",","")}"
                 i += 1
+            if name in data.columns:
+                for i in range(2, 10):
+                    if f"{name} ({i})" not in data.columns:
+                        name = f"{name} ({i})"
+                        break
             data[name] = _signal
         data = data.round(4)
         data.index += 1
@@ -614,7 +619,7 @@ class TabROIFinder(Tab):
             return data.to_csv(lineterminator="\n",index=(not dropFrame))
         if path is None:
             path = filedialog.asksaveasfilename(title="Save Multi Measure", filetypes=(("CSV", "*.csv"), ("All files", "*.*")), defaultextension=".csv")
-        if path is None:
+        if path is None or path == "":
             return None
         data.to_csv(path_or_buf=path, lineterminator="\n", mode="w", index=(not dropFrame))
         return True

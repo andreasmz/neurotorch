@@ -67,6 +67,9 @@ Please note: Neurotorch is under continuous development. Therefore the visuals p
 
 ### Release notes
 
+>### 24.12.3 (05.12.2024):
+>- **Bugfix**: Minor bugfix on exporting as CSV
+
 >### 24.12.2 (05.12.2024):
 >- **Import ROIs from ImageJ**: Now you can import ROIs from Fiji/ImageJ
 >- **Select ROIs by clicking on them**: When clicking into the plot of the ROI Finder tab, the nearest ROI will now be selected
