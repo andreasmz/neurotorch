@@ -67,8 +67,8 @@ Please note: Neurotorch is under continuous development. Therefore the visuals p
 
 ### Release notes
 
->### 24.12.3 (05.12.2024):
->- **Bugfix**: Minor bugfix on exporting as CSV
+>### 24.12.3 and 24.12.4 (05.12.2024):
+>- **Bugfix**: Minor bugfix on exporting as CSV and fixing importing ROIs from ImageJ
 
 >### 24.12.2 (05.12.2024):
 >- **Import ROIs from ImageJ**: Now you can import ROIs from Fiji/ImageJ

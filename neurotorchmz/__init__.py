@@ -1,4 +1,4 @@
-__version__ = "24.12.3"
+__version__ = "24.12.4"
 
 from .gui.edition import Edition
 from .utils.api import API, _API

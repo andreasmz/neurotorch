@@ -146,15 +146,15 @@ class ImageJHandler:
         rois = []
         names = []
         for roi in ij_rois:
-            name = roi.getName()
+            name = str(roi.getName())
             if not isinstance(roi, self.OvalRoi):
                 _warningFlags.append(f"{name}: Can't import non oval shapes and therefore skipped this ROIs")
                 continue
             if (roi.getFloatHeight() - roi.getFloatWidth()) > 1e-6:
                 _warningFlags.append(f"{name}: The ROI is oval, but will be imported as circular ROI")
-            x,y = roi.getXBase(), roi.getYBase()
-            h,w = roi.getFloatHeight(), roi.getFloatWidth()
-            r = (h+w)/4-1/2
+            x,y = int(roi.getXBase()), int(roi.getYBase())
+            h,w = int(roi.getFloatHeight()), int(roi.getFloatWidth())
+            r = int((h+w)/4-1/2)
             center = (x + (w-1)/2, y + (h-1)/2)
             _cr =  CircularSynapseROI().SetLocation(int(round(center[0],0)), int(round(center[1], 0))).SetRadius(r)
             rois.append(_cr)

@@ -606,9 +606,9 @@ class TabROIFinder(Tab):
             else:
                 name = f"ROI {i+1} {synapseROI.LocationStr().replace(",","")}"
                 i += 1
-            if name in data.columns:
+            if name in list(data.columns.values):
                 for i in range(2, 10):
-                    if f"{name} ({i})" not in data.columns:
+                    if f"{name} ({i})" not in list(data.columns.values):
                         name = f"{name} ({i})"
                         break
             data[name] = _signal
