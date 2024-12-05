@@ -89,14 +89,19 @@ class PolygonalSynapseROI(ISynapseROI):
 class ISynapse:
     def __init__(self):
         self.uuid = str(uuid.uuid4())
+        self.name: str|None = None
 
     def __str__(self):
-        return ""
+        return "<ISynapse Object>"
     
     def ROIsToSynapses(rois: list[ISynapseROI]):
         """
             This function should convert a list of ROIs to a list of synapses
         """
+        return None
+    
+    @property
+    def location(self) -> tuple|None:
         return None
     
 class SingleframeSynapse(ISynapse):
@@ -107,6 +112,9 @@ class SingleframeSynapse(ISynapse):
     def __init__(self, synapseROI: ISynapseROI):
         super().__init__()
         self.synapse = synapseROI
+
+    def __str__(self):
+        return f"<SingleframeSynapse @{self.location}>"
     
     def SetSynapse(self, synapseROI: ISynapseROI) -> ISynapse:
         self.synapse = synapseROI
@@ -119,6 +127,12 @@ class SingleframeSynapse(ISynapse):
         for r in rois:
             synapses.append(SingleframeSynapse(r))
         return synapses
+    
+    @property
+    def location(self) -> tuple|None:
+        if self.synapse is None:
+            return None
+        return self.synapse.location
 
 
 class MultiframeSynapse(ISynapse):
@@ -141,8 +155,7 @@ class MultiframeSynapse(ISynapse):
     
 class DetectionResult:
     def __init__(self):
-        self.synapses: list[ISynapse] = None # Contains ISynapse objects
-        self.modified = False
+        self.synapses: list[ISynapse] = None
 
     def AddISynapses(self, isynapses: list[ISynapse]):
         if isynapses is None:
@@ -164,7 +177,7 @@ class DetectionResult:
     
     def Clear(self):
         self.synapses = None
-
+        
 class DetectionAlgorithm:
 
     def Detect(self, img: np.ndarray, **kwargs) -> list[ISynapseROI]:

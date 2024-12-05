@@ -67,6 +67,16 @@ Please note: Neurotorch is under continuous development. Therefore the visuals p
 
 ### Release notes
 
+>### 24.12.2 (05.12.2024):
+>- **Import ROIs from ImageJ**: Now you can import ROIs from Fiji/ImageJ
+>- **Select ROIs by clicking on them**: When clicking into the plot of the ROI Finder tab, the nearest ROI will now be selected
+>- **Added ROI Stage**: Now it is possible to keep some or all detected ROIs in the ROI Finder tab on a stage where they won't be cleared on redetecting on loading a new image
+>- **Custom ROI names**: Now ROIs can have custom names. Use the button 'Reset Name' to remove custom names
+>- **Trace Selector**: The filename is now carried over when exporting into TraceSelector
+>- **Code improvements**: Better handling of the Tab ROI Finder Invalidation Events; New Button layout on the same tab
+>- **Bugfixes**: names and PIMS metadata were cleared when opening an image; Fixed some wrong checks for empty ImageObjects; Some crashes on exporting as CSV
+
+
 >### 24.12.1 (29.11.2024)
 >- **Sorting by signal strength**: Added the ability to sort by signal strength in local max algorithm. Also added the option to filter for a minimum signal strength
 >- **Circular ROI**: Added region props for circular ROIs in local max algorithm. Also changed the definition of a circle with radius r to be equivalent with ImageJ

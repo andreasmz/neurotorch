@@ -15,6 +15,7 @@ class Neurotorch_Settings:
     ResourcesPath = None
     DataPath = None
     ConfigPath = None
+    TempPath = None
     config : configparser.ConfigParser = None
 
     def _CreateStatic():
@@ -25,6 +26,13 @@ class Neurotorch_Settings:
         Neurotorch_Settings.ResourcesPath = os.path.join(Neurotorch_Settings.ParentPath, "resources")
         Neurotorch_Settings.PluginPath = os.path.join(Neurotorch_Settings.ParentPath, "plugins")
         Neurotorch_Settings.DataPath = platformdirs.user_data_path("Neurotorch", "AndreasB")
+        pathlib.Path(Neurotorch_Settings.DataPath).mkdir(exist_ok=True, parents=True)
+        Neurotorch_Settings.TempPath = os.path.join(Neurotorch_Settings.DataPath, "temp")
+        pathlib.Path(Neurotorch_Settings.TempPath).mkdir(exist_ok=True, parents=True)
+        for f in [os.path.join(Neurotorch_Settings.TempPath, f) for f in os.listdir(Neurotorch_Settings.TempPath)]:
+            if os.path.isfile(f):
+                os.remove(f)
+
         Neurotorch_Settings.ConfigPath = os.path.join(Neurotorch_Settings.DataPath, 'neurtorch_config.ini')
         Neurotorch_Settings.config = configparser.ConfigParser()
         Neurotorch_Settings.ReadConfig()

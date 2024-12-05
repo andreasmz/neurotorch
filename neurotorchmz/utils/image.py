@@ -589,7 +589,6 @@ class ImgObj:
             if errorcallback is not None: errorcallback("FileNotFound")
             return "FileNotFound"
         self.Clear()
-        self.name = os.path.splitext(os.path.basename(path))[0]
 
         def _Load(job: Job):
             job.SetProgress(0, "Opening File")
@@ -601,8 +600,6 @@ class ImgObj:
             except Exception as ex:
                 if errorcallback is not None: errorcallback("ImageUnsupported", ex)
                 return "ImageUnsupported"
-            if getattr(_pimsImg, "get_metadata_raw", None) != None:
-                self._pimsmetadata = collections.OrderedDict(sorted(_pimsImg.get_metadata_raw().items()))
             if len(_pimsImg.shape) != 3:
                 if errorcallback is not None: errorcallback("WrongShape", _pimsImg.shape)
                 return "WrongShape"
@@ -610,7 +607,12 @@ class ImgObj:
             imgNP = np.zeros(shape=_pimsImg.shape, dtype=_pimsImg.dtype)
             for i in range(_pimsImg.shape[0]):
                 imgNP[i] = _pimsImg[i]
+
             self.img = imgNP
+            self.name = os.path.basename(path)
+            if getattr(_pimsImg, "get_metadata_raw", None) != None:
+                self._pimsmetadata = collections.OrderedDict(sorted(_pimsImg.get_metadata_raw().items()))
+
             return self.PrecomputeImage(callback=callback, errorcallback=errorcallback, convolute=convolute, job=job, waitCompletion=waitCompletion)
 
         job = Job(steps=6)

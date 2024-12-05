@@ -1,6 +1,6 @@
 [project]
 name = "Neurotorchmz"
-version = "24.12.1"
+version = "24.12.2"
 authors = [
   { name="Andreas Brilka"},
 ]
@@ -40,7 +40,7 @@ dependencies = [
 Homepage = "https://github.com/andreasmz/neurotorch"
 Repository = "https://github.com/andreasmz/neurotorch"
 Issues = "https://github.com/andreasmz/neurotorch/issues"
-Documentation = "https://github.com/andreasmz/neurotorch/blob/main/doc/neurotorchmz_documentation.pdf"
+Documentation = "https://github.com/andreasmz/neurotorch/blob/main/doc/neurotorch_documentation.pdf"
 
 [build-system]
 requires = ["hatchling"]

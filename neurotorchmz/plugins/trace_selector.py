@@ -26,7 +26,7 @@ class TraceSelector:
         self.tab3: TabROIFinder = self.gui.tabs[TabROIFinder]
 
         self.btnOpenInTraceSelector = tk.Button(self.tab3.frameBtnsExport, text="Open in Trace Selector", command=self.Open)
-        self.btnOpenInTraceSelector.grid(row=1, column=0)
+        self.btnOpenInTraceSelector.pack(side=tk.LEFT, padx=(0,10))
 
     def Locate(self):
         path = filedialog.askopenfilename(parent=self.gui.root, title="Neurotorch - Please select the python interpeter installed with Trace Selector", 
@@ -78,14 +78,15 @@ class TraceSelector:
             messagebox.showwarning("Neurotorch", "Trace Selector is not running")
             return
         
-        _buffer = self.tab3.ExportCSVMultiM(path=TabROIFinder.TO_STREAM, dropFrame=True)
-        if (_buffer is None):
+        if self.gui.ImageObject is None:
             self.gui.root.bell()
-            messagebox.showerror("Neurotorch", "With this command you export the multi measure data from the tab 'Synapse ROI Finder'. Please first create data there")
             return
-        path = pathlib.Path(Settings.DataPath) / "temp_TraceSelectorExport.csv"
-        with open(path, "w") as f:
-            f.write(_buffer)
+        
+        name = self.gui.ImageObject.name if self.gui.ImageObject.name != "" else "Neurotorch_Export" 
+        path = pathlib.Path(Settings.TempPath) / f"{name}.csv"
+
+        if self.tab3.ExportCSVMultiM(path=path, dropFrame=True) != True:
+            messagebox.showerror("Neurotorch", "With this command you export the multi measure data from the tab 'Synapse ROI Finder'. Please first create data there")
 
         self.proc.stdin.write(f"open\t{str(path)}\n")
         self.proc.stdin.flush()

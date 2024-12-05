@@ -1,12 +1,10 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
-from typing import Callable, Literal
-import matplotlib.pyplot as plt
+from typing import Literal
 from matplotlib import patches
 
-from .image import ImgObj, ImageProperties
+from .image import ImageProperties
 from ..gui.components import *
-from ..gui.window import Neurotorch_GUI, TabUpdateEvent
 from ..gui.settings import Neurotorch_Resources as Resource
 from .synapse_detection import *
 
@@ -200,7 +198,7 @@ class LocalMax_Integration(LocalMax, IDetectionAlgorithmIntegration):
         self.checkAutoParams = ttk.Checkbutton(self.optionsFrame, variable=self.varAutoParams)
         self.checkAutoParams.grid(row=5, column=1, sticky="nw")
 
-        self.setting_radius = GridSetting(self.optionsFrame, row=10, text="Radius", unit="px", default=6, min_=0, max_=1000, scaleMin=-1, scaleMax=30, tooltip=Resource.GetString("algorithms/localMax/params/radius"))
+        self.setting_radius = GridSetting(self.optionsFrame, row=10, text="Radius", unit="px", default=6, min_=-1, max_=1000, scaleMin=-1, scaleMax=30, tooltip=Resource.GetString("algorithms/localMax/params/radius"))
         self.setting_lowerTh = GridSetting(self.optionsFrame, row=11, text="Lower threshold", unit="", default=50, min_=0, max_=2**15-1, scaleMin=1, scaleMax=400, tooltip=Resource.GetString("algorithms/localMax/params/lowerThreshold"))
         self.setting_upperTh = GridSetting(self.optionsFrame, row=12, text="Upper threshold", unit="", default=70, min_=0, max_=2**15-1, scaleMin=1, scaleMax=400, tooltip=Resource.GetString("algorithms/localMax/params/upperThreshold"))
         self.setting_sortBySignal = GridSetting(self.optionsFrame, row=13, text="Sort by signal strength", type_="Checkbox", default=1, min_=0, tooltip=Resource.GetString("algorithms/localMax/params/sortBySignal"))

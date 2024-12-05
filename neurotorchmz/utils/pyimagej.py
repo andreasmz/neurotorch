@@ -44,8 +44,6 @@ class ImageJHandler:
         self.menuExportImgDiff.add_command(label="As Wrapper (faster loading, less memory)", command=lambda: self.ExportToImageJ_ImgDiff(asCopy=False))
         self.menuExportImgDiff.add_command(label="As Copy (faster on live measurements)", command=lambda: self.ExportToImageJ_ImgDiff(asCopy=True))
 
-        #self.menuImageJ.add_command(label="Img --> ImageJ", state="disabled", command=self.ExportToImageJ_Img)
-        #self.menuImageJ.add_command(label="DiffImg --> ImageJ", state="disabled", command=self.ExportToImageJ_ImgDiff)
         self.menuImageJ.add_separator()
         self.menuImageJ.add_command(label="Locate Installation", state="normal", command=self.MenuLocateInstallation_Click)
 
@@ -138,23 +136,60 @@ class ImageJHandler:
         max = self._gui.ImageObject.imgProps.max
         self.ij.py.run_macro(f"setMinAndMax({min}, {max});")
 
-    def ExportROIs(self, rois: list[ISynapseROI]):
+    def ImportROIS(self) -> list[ISynapseROI]|None:
+        if self.ij is None:
+            messagebox.showerror("Neurotorch", "Please first start ImageJ")
+            return None
+        self.OpenRoiManager()
+        _warningFlags = []
+        ij_rois = self.RM.getRoisAsArray() 
+        rois = []
+        names = []
+        for roi in ij_rois:
+            name = roi.getName()
+            if not isinstance(roi, self.OvalRoi):
+                _warningFlags.append(f"{name}: Can't import non oval shapes and therefore skipped this ROIs")
+                continue
+            if (roi.getFloatHeight() - roi.getFloatWidth()) > 1e-6:
+                _warningFlags.append(f"{name}: The ROI is oval, but will be imported as circular ROI")
+            x,y = roi.getXBase(), roi.getYBase()
+            h,w = roi.getFloatHeight(), roi.getFloatWidth()
+            r = (h+w)/4-1/2
+            center = (x + (w-1)/2, y + (h-1)/2)
+            _cr =  CircularSynapseROI().SetLocation(int(round(center[0],0)), int(round(center[1], 0))).SetRadius(r)
+            rois.append(_cr)
+            names.append(name)
+        if len(_warningFlags) > 0:
+            if not messagebox.askyesnocancel("Neurotorch", f"Please note the following before import the ROIs:\n\n {'\n'.join(["  " + x for x in _warningFlags])}\n\nDo you want to proceed?"):
+                return None
+        return (rois, names)
+
+    def ExportROIs(self, synapses: list[ISynapse]):
         if self.ij is None:
             messagebox.showerror("Neurotorch", "Please first start ImageJ")
             return
-        if rois is None or len(rois) == 0:
+        if synapses is None or len(synapses) == 0:
             self.root.bell()
             return
         self.OpenRoiManager()
 
-        for i, synapseROI in enumerate(rois):
+        i = 0
+        for synapse in synapses:
+            if not isinstance(synapse, SingleframeSynapse):
+                continue
+            synapseROI = synapse.synapse
+            if synapse.name is not None:
+                name = synapse.name
+            else:
+                name = f"ROI {i+1} {synapseROI.LocationStr().replace(",","")}"
+                i += 1
             if isinstance(synapseROI, CircularSynapseROI):
-                roi = self.OvalRoi(synapseROI.location[0]+1-synapseROI.radius, synapseROI.location[1]+1-synapseROI.radius, 2*synapseROI.radius+1, 2*synapseROI.radius+1)
-                roi.setName(f"ROI {i+1} {synapseROI.LocationStr().replace(",","")}")
+                roi = self.OvalRoi(synapseROI.location[0]-synapseROI.radius, synapseROI.location[1]-synapseROI.radius, 2*synapseROI.radius+1, 2*synapseROI.radius+1)
+                roi.setName(name)
                 self.RM.addRoi(roi)
             elif isinstance(synapseROI, PolygonalSynapseROI):
                 roi = self.PolygonRoi(synapseROI.polygon[:, 0]+0.5, synapseROI.polygon[:, 1]+0.5, self._gui.ijH.Roi.POLYGON)
-                roi.setName(f"ROI {i+1} {synapseROI.LocationStr().replace(",","")}")
+                roi.setName(name)
                 self.RM.addRoi(roi)
             else:
                 continue
