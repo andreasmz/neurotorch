@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="https://raw.githubusercontent.com/andreasmz/neurotorch/main/doc/media/neurotorch_coverimage_24_11.jpeg" style="max-width: 600px;">
+    <img src="https://raw.githubusercontent.com/andreasmz/neurotorch/main/docs/media/neurotorch_coverimage_24_11.jpeg" style="max-width: 600px;">
 </p> 
 
 ![Python Version from PEP 621 TOML](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2Fandreasmz%2Fneurotorch%2Fmain%2Fpyproject.toml&style=flat&logo=Python)
@@ -19,11 +19,22 @@ Neurotorch is a tool designed to extract regions of synaptic activity in neurons
 
 ### Installation
 
-You need python to run Neurotorch. Also it is recommended to create a virtual enviorenment to not mess up with your other python packages, for example using [miniconda](https://docs.anaconda.com/miniconda/). When inside your virtual enviorenment, simply type
+You need Python to run Neurotorch. Also it is recommended to create a virtual enviorenment to not mess up with your other python packages, for example using [miniconda](https://docs.anaconda.com/miniconda/). When inside your virtual enviorenment, simply type
 ```bash
 pip install neurotorchmz
 ```
 Also, you need to install OpenJDK and Apache Maven to run PyImageJ. An easy solution is to use the bundled Build from Microsoft you can find [here](https://www.microsoft.com/openjdk)
+
+To run Neurotorch, type
+```bash
+python -m neurotorchmz
+```
+I recommend to create a shortcut on your Desktop where you replace the command python with the path to your python executable. You can also import it as an module to use it's API
+```python
+import neurotorchmz
+print(neurotorchmz.__version__)
+neurotorchmz.Start_Background()
+```
 
 To update your installation, type
 ```bash
@@ -32,7 +43,7 @@ pip install neurotorchmz --upgrade
 
 ### Documentation
 
-There is [neurotorch_documentation.pdf](https://raw.githubusercontent.com/andreasmz/neurotorch/main/doc/neurotorch_documentation.pdf) on the GitHub repository, but you can also access it from inside Neurotorch on the tab 'Welcome to Neurotorch'
+You can find the full documentation under [andreasmz.github.io/neurotorch](https://andreasmz.github.io/neurotorch/).
 
 ### About
 
@@ -53,15 +64,15 @@ Ideas for future releases:
 Please note: Neurotorch is under continuous development. Therefore the visuals provided here may be outdated in future versions.
 
 <p align="center">
-    <img src="https://raw.githubusercontent.com/andreasmz/neurotorch/main/doc/media/readme/neurotorch_tabImage_01.png" style="max-width: 600px;"> <br>
+    <img src="https://raw.githubusercontent.com/andreasmz/neurotorch/main/docs/media/readme/neurotorch_tabImage_01.png" style="max-width: 600px;"> <br>
     <em>First impression of an file opened in Neurotorch. For specific file formats (here nd2), a variety of metadata can be extracted</em>
 </p> 
 <p align="center">
-    <img src="https://raw.githubusercontent.com/andreasmz/neurotorch/main/doc/media/readme/neurotorch_tabSignal_01.png" style="max-width: 600px;"> <br>
+    <img src="https://raw.githubusercontent.com/andreasmz/neurotorch/main/docs/media/readme/neurotorch_tabSignal_01.png" style="max-width: 600px;"> <br>
     <em>Use the tab 'Signal' to find the timepoints with stimulation (marked in the plot on the left site with yellow dots). You can also use this tab to view the video frame by frame</em>
 </p> 
 <p align="center">
-    <img src="https://raw.githubusercontent.com/andreasmz/neurotorch/main/doc/media/readme/neurotorch_tabROIFinder_01.png" style="max-width: 600px;"> <br>
+    <img src="https://raw.githubusercontent.com/andreasmz/neurotorch/main/docs/media/readme/neurotorch_tabROIFinder_01.png" style="max-width: 600px;"> <br>
     <em>Extraction of regions with high synaptic activity. For the choosen image with good enough signal to noise ratio, all settings were determined automatically by the program and nothing more than pressing 'Detect' was necessary to get this screen. The ROIs are marked in the images with red boundaries while the selected ROI displayed also with the mean value over time is marked with yellow boundaries</em>
 </p> 
 
