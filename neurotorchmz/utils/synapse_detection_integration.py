@@ -59,9 +59,9 @@ class Thresholding_Integration(Tresholding, IDetectionAlgorithmIntegration):
         self.root = root
         self.optionsFrame = tk.LabelFrame(self.root, text="Options")
 
-        self.setting_threshold = GridSetting(self.optionsFrame, row=5, text="Threshold", unit="", default=50, min_=0, max_=2**15-1, scaleMin=1, scaleMax=200, tooltip="")
-        self.setting_radius = GridSetting(self.optionsFrame, row=6, text="Radius", unit="px", default=6, min_=0, max_=1000, scaleMin=-1, scaleMax=30, tooltip="")
-        self.setting_minAreaPercent = GridSetting(self.optionsFrame, row=7, text="Min. converage", unit="%", default=60, min_=1, max_=100, scaleMin=1, scaleMax=100, tooltip="")
+        self.setting_threshold = GridSetting(self.optionsFrame, row=5, text="Threshold", unit="", default=50, min_=0, max_=2**15-1, scaleMin=1, scaleMax=200, tooltip=Resource.GetString("algorithms/threshold/params/threshold"))
+        self.setting_radius = GridSetting(self.optionsFrame, row=6, text="Radius", unit="px", default=6, min_=0, max_=1000, scaleMin=-1, scaleMax=30, tooltip=Resource.GetString("algorithms/threshold/params/radius"))
+        self.setting_minAreaPercent = GridSetting(self.optionsFrame, row=7, text="Min. converage", unit="%", default=60, min_=1, max_=100, scaleMin=1, scaleMax=100, tooltip=Resource.GetString("algorithms/threshold/params/minCoverage"))
         return self.optionsFrame
     
     def DetectAutoParams(self, inputImageObj: ImageProperties) -> list[ISynapse]:
@@ -89,17 +89,19 @@ class HysteresisTh_Integration(HysteresisTh, IDetectionAlgorithmIntegration):
         self.checkAutoParams = ttk.Checkbutton(self.optionsFrame, variable=self.varAutoParams)
         self.checkAutoParams.grid(row=5, column=1, sticky="nw")
 
-        self.setting_lowerTh = GridSetting(self.optionsFrame, row=10, text="Lower threshold", unit="", default=50, min_=0, max_=2**15-1, scaleMin=1, scaleMax=200, tooltip="")
-        self.setting_upperTh = GridSetting(self.optionsFrame, row=11, text="Upper threshold", unit="", default=70, min_=0, max_=2**15-1, scaleMin=1, scaleMax=200, tooltip="")
-        tk.Label(self.optionsFrame, text="Polygonal ROIs").grid(row=12, column=0, sticky="ne")
+        self.setting_lowerTh = GridSetting(self.optionsFrame, row=10, text="Lower threshold", unit="", default=50, min_=0, max_=2**15-1, scaleMin=1, scaleMax=200, tooltip=Resource.GetString("algorithms/hysteresisTh/params/lowerThreshold"))
+        self.setting_upperTh = GridSetting(self.optionsFrame, row=11, text="Upper threshold", unit="", default=70, min_=0, max_=2**15-1, scaleMin=1, scaleMax=200, tooltip=Resource.GetString("algorithms/hysteresisTh/params/upperThreshold"))
+        self.lblPolygonalROIs = tk.Label(self.optionsFrame, text="Polygonal ROIs")
+        self.lblPolygonalROIs.grid(row=12, column=0, sticky="ne")
+        ToolTip(self.lblPolygonalROIs, msg=Resource.GetString("algorithms/hysteresisTh/params/polygonalROIs"), follow=True, delay=0.1)
         self.varCircularApprox = tk.IntVar(value=1)
         self.checkCircularApprox = ttk.Checkbutton(self.optionsFrame, variable=self.varCircularApprox)
         self.checkCircularApprox.grid(row=12, column=1, sticky="nw")
-        self.setting_radius = GridSetting(self.optionsFrame, row=13, text="Radius", unit="px", default=6, min_=0, max_=1000, scaleMin=1, scaleMax=30, tooltip=Resource.GetString(""))
+        self.setting_radius = GridSetting(self.optionsFrame, row=13, text="Radius", unit="px", default=6, min_=0, max_=1000, scaleMin=1, scaleMax=30, tooltip=Resource.GetString("algorithms/hysteresisTh/params/radius"))
         self.setting_radius.SetVisibility(not self.varCircularApprox.get())
         self.varCircularApprox.trace_add("write", lambda _1,_2,_3:self.setting_radius.SetVisibility(not self.varCircularApprox.get()))
         
-        self.setting_minArea = GridSetting(self.optionsFrame, row=14, text="Min. Area", unit="px", default=50, min_=1, max_=10000, scaleMin=0, scaleMax=200, tooltip=Resource.GetString(""))
+        self.setting_minArea = GridSetting(self.optionsFrame, row=14, text="Min. Area", unit="px", default=50, min_=1, max_=10000, scaleMin=0, scaleMax=200, tooltip=Resource.GetString("algorithms/hysteresisTh/params/minArea"))
         self.setting_minArea.var.IntVar.trace_add("write", lambda _1,_2,_3: self._UpdateMinAreaText())
         self.lblMinAreaInfo = tk.Label(self.optionsFrame, text="")
         self.lblMinAreaInfo.grid(row=15, column=0, columnspan=3)
@@ -187,8 +189,6 @@ class LocalMax_Integration(LocalMax, IDetectionAlgorithmIntegration):
         self.root = root
         self.imgObjCallback = imgObjCallback
         self.optionsFrame = tk.LabelFrame(self.root, text="Options")
-
-        tk.Label(self.optionsFrame, text="DO NOT use this algorithm yet!\n It is still under development!").grid(row=0, column=0, columnspan=3)
 
         self.lblImgStats = tk.Label(self.optionsFrame)
         self.lblImgStats.grid(row=1, column=0, columnspan=3)

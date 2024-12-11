@@ -14,7 +14,30 @@
         "peakProminence": "The maximum of signal is taken and multiplied with this value and used as an advanced relative threshold",
         "peakWidth": "The ROI Finder tab offers to use as source the diffMax without signal. For this, from the diffImg all the frames with detected signal are removed plus their n neighboors to the left and right, which you can specify here"
     },
+    "tab3": {
+        "imageSource": "Select what source you want to use for detection. For details see the documentation",
+        "rawAlgorithmOutput": "Check this box to display additional information on the plots if an algorithm provides this data. See the documentation for details on the specific algorithms",
+        "plotROIPixels": "Check this box to display the pixels contained in the ROI"
+    },
     "algorithms": {
+        "threshold": {
+            "description": "Find circular ROIs based on a threshold (Deprecated)\n\nIt is not recommended to use this algorithm as now better algorithms exist",
+            "params": {
+                "threshold": "Each pixel must have a signal value above this threshold",
+                "radius": "The radius of the ROI",
+                "minCoverage": "The coverage is the ratio of the ROI area in the circle defined by the radius and must exceed this value"
+            }
+        },
+        "hysteresisTh" : {
+            "description": "Find ROIs based on upper and lower threshold\n\nA ROI is detected by peaks above Upper Threshold expanded as long as they are above Lower Treshold",
+            "params": {
+                "lowerThreshold": "Set this value some factors above the expected noise. All pixels greater or equal this value are considered signal",
+                "upperThreshold": "Find only peaks with at least one pixel with signal above this threshold",
+                "polygonalROIs": "If checked, the algorithm will output polygonal ROIs. If not checked, it will output circular ROIs with the center set to the center of mass",
+                "radius": "The radius of the circular ROI",
+                "minArea": "Detected ROIs are filtered to have an area greater or equal this value"
+            }
+        },
         "localMax": {
             "description": "Find peaks as local maxima based on their center of mass\n\nThis algorithm finds local maxima above a given threshold (upper threshold) and expands them in their neighborhood of pixels above the lower threshold up to a maximum circular range (expand size). Depended if you choose a circular shape, the center will be set to the center of mass instead of the locally brightess pixel (This transition is marked in the plot with an arrow)",
             "params": {
