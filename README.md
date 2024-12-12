@@ -78,6 +78,9 @@ Please note: Neurotorch is under continuous development. Therefore the visuals p
 
 ### Release notes
 
+>### 24.12.5 (12.12.2024):
+>- **Documentation**: Included the new documentation in the build
+
 >### 24.12.3 and 24.12.4 (05.12.2024):
 >- **Bugfix**: Minor bugfix on exporting as CSV and fixing importing ROIs from ImageJ
 

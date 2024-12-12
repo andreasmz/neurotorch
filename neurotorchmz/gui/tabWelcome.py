@@ -68,9 +68,16 @@ class TabWelcome(Tab):
         self.canvas.create_image(xOffset, yOffset, image=self.image, anchor="nw", tags="IMG")
 
     def BtnOpenDocs(self):
-        _path = os.path.join(*[Settings.ParentPath, "neurotorch_documentation.pdf"])
-        print("Opening Documentation at", _path)
-        subprocess.Popen([_path],shell=True)
+        url = "https://andreasmz.github.io/neurotorch/"
+        if sys.platform=='win32':
+            os.startfile(url)
+        elif sys.platform=='darwin':
+            subprocess.Popen(['open', url])
+        else:
+            try:
+                subprocess.Popen(['xdg-open', url])
+            except OSError:
+                self.root.bell()
 
     def BtnGithub(self):
         url = "https://github.com/andreasmz/neurotorch/"
