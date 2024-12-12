@@ -118,7 +118,10 @@ class ImageJHandler:
         javaImg = self.ij.py.to_imageplus(xImg)
         if asCopy:
             javaImg = self.IJ_Plugin_Duplicator().run(javaImg)
-        self.ij.ui().show(javaImg)
+        self.ij.ui().show(javaImg)    
+        min = self._gui.ImageObject.imgProps.minClipped
+        max = self._gui.ImageObject.imgProps.max
+        self.ij.py.run_macro(f"setMinAndMax({min}, {max});")
 
     def ExportToImageJ_ImgDiff(self, asCopy = False):
         if self.ij is None:
@@ -132,8 +135,8 @@ class ImageJHandler:
         if asCopy:
             javaDiffImg = self.IJ_Plugin_Duplicator().run(javaDiffImg)
         self.ij.ui().show(javaDiffImg)
-        min = self._gui.ImageObject.imgProps.minClipped
-        max = self._gui.ImageObject.imgProps.max
+        min = self._gui.ImageObject.imgDiffProps.minClipped
+        max = self._gui.ImageObject.imgDiffProps.max
         self.ij.py.run_macro(f"setMinAndMax({min}, {max});")
 
     def ImportROIS(self) -> list[ISynapseROI]|None:

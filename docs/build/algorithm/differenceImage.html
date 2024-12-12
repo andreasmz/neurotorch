@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tab ROI Finder &mdash; Neurotorch 24.12.5 documentation</title>
+  <title>Difference Image &mdash; Neurotorch 24.12.5 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
@@ -20,8 +20,8 @@
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="ImageJ Integration" href="../imagej.html" />
-    <link rel="prev" title="Tab Signal" href="tab_signal.html" /> 
+    <link rel="next" title="Detection Algorithms" href="detection_algorithms.html" />
+    <link rel="prev" title="ImageJ Integration" href="../imagej.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -44,22 +44,19 @@
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
-<ul class="current">
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation and Usage</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../first_steps.html">First steps</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tab_image.html">Tab Image</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tab_signal.html">Tab Signal</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Tab ROI Finder</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#options">Options</a></li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="../tabs/tab_image.html">Tab Image</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tabs/tab_signal.html">Tab Signal</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tabs/tab_roifinder.html">Tab ROI Finder</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../imagej.html">ImageJ Integration</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Algorithms</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../algorithm/differenceImage.html">Difference Image</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../algorithm/detection_algorithms.html">Detection Algorithms</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../algorithm/signal_algorithms.html">Signal algorithms</a></li>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Difference Image</a></li>
+<li class="toctree-l1"><a class="reference internal" href="detection_algorithms.html">Detection Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="signal_algorithms.html">Signal algorithms</a></li>
 </ul>
 
         </div>
@@ -76,9 +73,9 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
-      <li class="breadcrumb-item active">Tab ROI Finder</li>
+      <li class="breadcrumb-item active">Difference Image</li>
       <li class="wy-breadcrumbs-aside">
-            <a href="../_sources/tabs/tab_roifinder.rst.txt" rel="nofollow"> View page source</a>
+            <a href="../_sources/algorithm/differenceImage.rst.txt" rel="nofollow"> View page source</a>
       </li>
   </ul>
   <hr/>
@@ -86,29 +83,16 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="tab-roi-finder">
-<h1>Tab ROI Finder<a class="headerlink" href="#tab-roi-finder" title="Link to this heading"></a></h1>
-<p>The ROI Finder tab is one of the core features of Neurotorch as you can find here the synapse detector.
-ROIs (regions of interest) is a term adapted from ImageJ and is defined in Neurotorch as a region in an image
-(usually a synapse or similar structure). A ROI in ImageJ can have a variety of shapes, but Neurotorch currently
-support two types: Circular and polygonal ROI.</p>
-<section id="options">
-<h2>Options<a class="headerlink" href="#options" title="Link to this heading"></a></h2>
-<p>Before you start your detection, you should carefully select proper settings
-for detection.</p>
-<ul class="simple">
-<li><p><strong>Algorithm</strong>: Here you select which algorithm you want to use for detection</p></li>
-<li><p><strong>Image Source</strong>: Every algorithm uses some aggegration of the diffImg</p></li>
-</ul>
-</section>
+  <section id="difference-image">
+<h1>Difference Image<a class="headerlink" href="#difference-image" title="Link to this heading"></a></h1>
 </section>
 
 
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="tab_signal.html" class="btn btn-neutral float-left" title="Tab Signal" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="../imagej.html" class="btn btn-neutral float-right" title="ImageJ Integration" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="../imagej.html" class="btn btn-neutral float-left" title="ImageJ Integration" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="detection_algorithms.html" class="btn btn-neutral float-right" title="Detection Algorithms" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

@@ -7,6 +7,7 @@ Neurotorch documentation
    :caption: Getting started
 
    installation
+   first_steps
    tabs/tab_image
    tabs/tab_signal
    tabs/tab_roifinder
@@ -16,6 +17,7 @@ Neurotorch documentation
    :hidden:
    :caption: Algorithms
 
+   algorithm/differenceImage
    algorithm/detection_algorithms
    algorithm/signal_algorithms
 
