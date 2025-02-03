@@ -1,3 +1,6 @@
+"""
+    Main module to initialize the Neurotorch GUI.
+"""
 import sys, os
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
@@ -6,23 +9,20 @@ import threading
 import pickle
 from typing import Literal
 import logging
+import matplotlib
+matplotlib.use('TkAgg')
 
-from .components import Job, Statusbar
+from .components.general import Job, Statusbar
 from .edition import Edition
 from .settings import (Neurotorch_Settings as Settings, Neurotorch_Resources as Resource)
 from ..utils.image import ImgObj
 from ..utils.signalDetection import SignalObj
-
-
-
+from ..utils.logger import logger
 
 
 class Neurotorch_GUI:
     def __init__(self, version):
         self._version_ = version
-        loggingHandler = logging.StreamHandler()
-        loggingHandler.setFormatter(logging.Formatter("%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s"))
-        logging.getLogger().addHandler(loggingHandler)
         self.root = None
         self.tabs : dict[type: Tab] = {}
         self._imgObj = None
@@ -34,6 +34,7 @@ class Neurotorch_GUI:
         from neurotorchmz.gui.tab1 import TabImage
         from neurotorchmz.gui.tab2 import TabSignal
         from neurotorchmz.gui.tab3 import TabROIFinder
+        from neurotorchmz.gui.tabAnalysis import TabAnalysis
         from ..utils.plugin_manager import PluginManager
         self.edition = edition
         self.root = tk.Tk()
@@ -108,6 +109,8 @@ class Neurotorch_GUI:
         self.tabs[TabImage] = TabImage(self)
         self.tabs[TabSignal] = TabSignal(self)
         self.tabs[TabROIFinder] = TabROIFinder(self)
+        if edition == Edition.NEUROTORCH_DEBUG:
+            self.tabs[TabAnalysis] = TabAnalysis(self)
         for t in self.tabs.values(): t.Init()
         self.tabMain.select(self.tabs[TabImage].tab)
 
@@ -276,16 +279,16 @@ class Neurotorch_GUI:
                 else:
                     _peaksExtended.extend([int(p),int(p+1)])
             else:
-                logging.info(f"Skipped peak {p} as it is to near to the edge")
+                logger.info(f"Skipped peak {p} as it is to near to the edge")
         _peaksExtended.extend([int(p+2)])
-        logging.info("Exported frames", _peaksExtended)
+        logger.info("Exported frames", _peaksExtended)
         savePath = os.path.join(Settings.UserPath, "img_peaks.dump")
         with open(savePath, 'wb') as f:
             pickle.dump(self.ImageObject.img[_peaksExtended, :, :], f, protocol=pickle.HIGHEST_PROTOCOL)
 
     def MenuDebug_EnableDebugging(self):
-        logging.getLogger().setLevel(logging.DEBUG)
-        logging.info("Activated Debugging")
+        logger.setLevel(logging.DEBUG)
+        logger.DEBUG("Neurotorch is now in debugging mode")
 
 
 class TabUpdateEvent:

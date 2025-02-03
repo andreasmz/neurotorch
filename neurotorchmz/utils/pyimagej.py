@@ -2,7 +2,7 @@ from .image import ImgObj
 from .synapse_detection import *
 from ..gui.settings import Neurotorch_Settings as Settings
 from ..gui.window import Neurotorch_GUI
-from ..gui.components import Job
+from ..gui.components.general import Job
 
 
 import traceback

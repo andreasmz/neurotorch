@@ -278,8 +278,37 @@ class GridSetting:
 
         self.SetVisibility(True)
 
-    def Get(self):
+    def Get(self) -> int:
         return self.var.IntVar.get()
+    
+    def Set(self, val:int):
+        self.var.IntVar.set(val)
+    
+    def SetRange(self, 
+                 min_:int = None, 
+                 max_:int = None, 
+                 scaleMin:int = None, 
+                 scaleMax:int = None,
+                 syncScale:bool = False):
+        min_ = self.spinbox.cget("from") if min_ is None else min_
+        max_ = self.spinbox.cget("to") if max_ is None else max_
+        self.spinbox.configure(from_=min_, to=max_)
+
+        if syncScale:
+            self.scale.configure(from_=min_, to=max_)
+        elif scaleMin is not None or scaleMax is not None:
+            scaleMin = self.spinbox.cget("from") if scaleMin is None else scaleMin
+            scaleMax = self.spinbox.cget("to") if scaleMax is None else scaleMax
+            self.scale.configure(from_=min_, to=max_)
+        
+        if min_ > max_:
+            self.Set(0)
+        
+        if self.Get() < min_:
+            self.Set(min_)
+        elif self.Get() > max_:
+            self.Set(max_)
+        
     
     def SetVisibility(self, visibility:bool):
         if visibility == self._visible:

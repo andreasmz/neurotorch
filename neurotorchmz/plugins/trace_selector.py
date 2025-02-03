@@ -5,6 +5,7 @@ import pathlib
 import threading
 
 from ..gui.window import Neurotorch_GUI
+from ..gui.components.treeview import SynapseTreeview
 from ..gui.settings import Neurotorch_Settings as Settings
 from ..gui.tab3 import TabROIFinder
 
@@ -25,8 +26,10 @@ class TraceSelector:
 
         self.tab3: TabROIFinder = self.gui.tabs[TabROIFinder]
 
-        self.btnOpenInTraceSelector = tk.Button(self.tab3.frameBtnsExport, text="Open in Trace Selector", command=self.Open)
-        self.btnOpenInTraceSelector.pack(side=tk.LEFT, padx=(0,10))
+        SynapseTreeview.API_rightClickHooks.append(self.AddExportCommandSynapseTreeview)
+
+    def AddExportCommandSynapseTreeview(self, contextMenu: tk.Menu, importMenu: tk.Menu, exportMenu: tk.Menu):
+        exportMenu.add_command(label="Open in Trace Selector", command=self.Open)
 
     def Locate(self):
         path = filedialog.askopenfilename(parent=self.gui.root, title="Neurotorch - Please select the python interpeter installed with Trace Selector", 
@@ -85,7 +88,7 @@ class TraceSelector:
         name = self.gui.ImageObject.name if self.gui.ImageObject.name != "" else "Neurotorch_Export" 
         path = pathlib.Path(Settings.TempPath) / f"{name}.csv"
 
-        if self.tab3.ExportCSVMultiM(path=path, dropFrame=True) != True:
+        if self.tab3.tvSynapses.ExportCSVMultiM(path=path, dropFrame=True) != True:
             messagebox.showerror("Neurotorch", "With this command you export the multi measure data from the tab 'Synapse ROI Finder'. Please first create data there")
 
         self.proc.stdin.write(f"open\t{str(path)}\n")

@@ -52,11 +52,9 @@ Neurotorch was developed at the AG Heine (Johannes Gutenberg Universität, Mainz
 ### Development roadmap
 
 Currently in active development:
-- [x] **released** Integration of plugins: Rather than providing an direct binding to TraceSelector, it will be implemented as a plugin
-- [x] New ROI finding algorithm based on local maxima
-
-Ideas for future releases:
-- [ ] Synapse analysis tab: Same algorithm as in the Synapse ROI finder, but for each signal frame separately
+- [x] **Released**: Integration of plugins: Rather than providing an direct binding to TraceSelector, it will be implemented as a plugin
+- [x] **Released**: New ROI finding algorithm based on local maxima
+- [x] **Preview**: Synapse analysis tab: Same algorithm as in the Synapse ROI finder, but for each signal frame separately
 
 
 
@@ -77,6 +75,11 @@ Please note: Neurotorch is under continuous development. Therefore the visuals p
 </p> 
 
 ### Release notes
+
+>### 25.2.1 (03.02.2025):
+>- **Synapse Analyzer Tab (Preview)**: Added a tab to find multiframe synapses (= different ROIs for each signal frame). This allows the analysis of the movement of a synapse (Plots will be added in a future release).
+>- **New ROI Listview**: Complete rewrite of the treeview element for displaying synapses/ROIs. Instead of the (ugly) list of buttons below, now all functionality has been moved to a right-click context menu. The new design architecture allows to keep the position in the list even after removing/adding synapses and offers better generalization and performance. NOTE: To access the tab, set your Neurotorch version to 'NEUROTORCH_DEBUG'.
+>- **Logging**: Started the first steps to implement a proper logging system to catch errors much earlier in the future.
 
 >### 24.12.5 (12.12.2024):
 >- **Documentation**: Included the new documentation in the build

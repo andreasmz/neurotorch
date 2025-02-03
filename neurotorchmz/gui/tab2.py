@@ -1,7 +1,7 @@
 from .window import *
 from ..utils.signalDetection import SigDetect_DiffMax, SigDetect_DiffStd, ISignalDetectionAlgorithm
 from ..gui.settings import Neurotorch_Resources as Resource
-from ..gui.components import *
+from .components.general import *
 
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -10,6 +10,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 import matplotlib.widgets as PltWidget
 from matplotlib.cm import ScalarMappable
 from matplotlib.colors import Normalize
+import numpy as np
 
 class TabSignal_AlgorithmChangedEvent(TabUpdateEvent):
     pass
@@ -137,7 +138,7 @@ class TabSignal(Tab):
     def UpdateFromSignal(self):  
         imgObj = self._gui.ImageObject
         signal = self._gui.signal.signal
-        peaks = self._gui.signal.peaks
+        peaks = np.array(self._gui.signal.peaks)
         self.axSignal.clear()
         self.axSignal.set_ylabel("Strength")
         self.axSignal.set_xlabel("Frame")

@@ -1,16 +1,21 @@
-__version__ = "24.12.4"
+__version__ = "25.1.2"
+__author__ = "Andreas Brilka"
 
 from .gui.edition import Edition
 from .utils.api import API, _API
+from .utils.logger import logger
+import logging
 import threading
-import matplotlib
-matplotlib.use('TkAgg')
 
 neutorch_GUI = None
 
 def Start(edition:Edition = Edition.NEUROTORCH):
     global neutorch_GUI, API
     from .gui.window import Neurotorch_GUI
+
+    if edition == Edition.NEUROTORCH_DEBUG:
+        logger.setLevel(logging.DEBUG)
+        logger.info("Started Neurotorch in debugging mode")
 
     neutorch_GUI = Neurotorch_GUI(__version__)
     API = _API(neutorch_GUI)

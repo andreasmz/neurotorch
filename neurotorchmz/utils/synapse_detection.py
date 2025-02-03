@@ -5,17 +5,26 @@ import math
 import uuid
 from skimage.feature import peak_local_max
 from skimage.draw import disk
+from typing import Self
+from scipy.spatial.distance import pdist
+from scipy.cluster.hierarchy import fcluster, ward
 
 from .image import ImgObj
 
 # A Synapse Fire at a specific time. Must include a location (at least a estimation) to be display in the TreeView
 class ISynapseROI:
+    CLASS_DESC = "ISynapseROI"
     def __init__(self):
-        self.location = None
+        self.location: tuple|None = None
         self.regionProps = None
         self.uuid = str(uuid.uuid4())
+        self.frame: int|None = None
 
-    def SetLocation(self, X, Y):
+    def SetFrame(self, frame: int|None):
+        self.frame = frame
+        return self
+
+    def SetLocation(self, X, Y) -> Self:
         self.location = (X, Y)
         return self
     
@@ -28,32 +37,47 @@ class ISynapseROI:
             return ""
         return f"{self.location[0]}, {self.location[1]}"
     
+    def Distance(roi1: Self, roi2: Self) -> float:
+        """ Returns the distance between the locations of the ROIs or np.inf if at least one has no location """
+        if roi1.location is None or roi2.location is None: 
+            return np.inf
+        x1, y1 = roi1.location
+        x2, y2 = roi2.location
+        return np.sqrt((x2-x1)**2 + (y2 - y1)**2)
+
+    
     def GetImageMask(self, shape:tuple|None) -> tuple[np.array, np.array]:
+        """ Returns list of coordinates inside the ROI in the format ([X0, X1, X2, ...], [Y0, Y1, Y2, ...])"""
+        # ISynapseROI is empty placeholder, therefore return no coordinates
         return ([], [])
     
-    def GetImageSignal(self, img: np.ndarray) -> np.array:
+    def GetImageSignal(self, img: np.ndarray) -> np.ndarray:
+        """"""
         rr, cc = self.GetImageMask(img.shape[-2:])
         return img[:, rr, cc]
     
     def ToStr(self):
-        return f"({self.LocationStr()})"
+        return f"ISynapseROI ({self.LocationStr()})" if self.location is not None else "ISynapseROI"
 
 class CircularSynapseROI(ISynapseROI):
+    CLASS_DESC = "Circular Synapse ROI"
     def __init__(self):
         super().__init__()
-        self.radius = None
+        self.radius: int|None = None
 
-    def SetRadius(self, radius):
+    def SetRadius(self, radius) -> Self:
         self.radius = radius
         return self
     
-    def GetImageMask(self, shape:tuple|None) -> tuple[np.ndarray, np.ndarray]:
+    def GetImageMask(self, shape:tuple|None) -> tuple[np.array, np.array]:
+        """ Returns list of coordinates inside the ROI in the format ([X0, X1, X2, ...], [Y0, Y1, Y2, ...])"""
         return disk(center=(self.location[1], self.location[0]), radius=self.radius+0.5,shape=shape)
     
     def ToStr(self):
-        return f"{self.location[0]}, {self.location[1]}, r={self.radius}"
+        return f"Circular ROI ({self.LocationStr()}) r={self.radius}" if self.location is not None and self.radius is not None else "Circular ROI"
     
 class PolygonalSynapseROI(ISynapseROI):
+    CLASS_DESC = "Polyonal Synapse ROI"
     def __init__(self):
         super().__init__()
         self.polygon = None
@@ -61,98 +85,138 @@ class PolygonalSynapseROI(ISynapseROI):
 
     def SetPolygon(self, polygon, region_props):
         # Polygon uses format [[X, Y] , [X, Y], ...]
+        # region_props uses format (Y, X)
         self.polygon = polygon
         self.regionProps = region_props
-        # region_props uses format (Y, X)
         self.SetLocation(int(region_props.centroid_weighted[1]), int(region_props.centroid_weighted[0]))
         return self
     
     def GetImageMask(self, shape:tuple|None) -> tuple[np.array, np.array]:
+        """ Returns list of coordinates inside the ROI in the format ([X0, X1, X2, ...], [Y0, Y1, Y2, ...])"""
         rr = np.array([ int(y) for y in self.regionProps.coords_scaled[:, 0] if y >= 0 and y < shape[0]])
         cc = np.array([ int(x) for x in self.regionProps.coords_scaled[:, 1] if x >= 0 and x < shape[1]])
         return (rr, cc)
-    
-    """
-    def GetImageSignal(self, imgObj: ImgObj) -> list[float]:
-        if imgObj.img is None or self.regionProps is None:
-            return
-        return np.array([imgObj.img[:,int(y),int(x)] for (y,x) in self.regionProps.coords_scaled])
-    
-    def GetImageDiffSignal(self, imgObj: ImgObj) -> list[float]:
-        if imgObj.imgDiff is None or self.regionProps is None:
-            return
-        return np.array([imgObj.imgDiff[:,int(y),int(x)] for (y,x) in self.regionProps.coords_scaled]) 
 
-    """
+    def ToStr(self) -> str:
+        return f"Polyonal ROI centered at ({self.LocationStr()})"  if self.location is not None else "Polygonal ROI"
 
 # A synapse contains multiple (MultiframeSynapse) or a single SynapseROI (SingleframeSynapse)
 class ISynapse:
     def __init__(self):
         self.uuid = str(uuid.uuid4())
         self.name: str|None = None
+        self.staged = False
+        self._rois: dict[str, ISynapseROI] = {}
 
     def __str__(self):
         return "<ISynapse Object>"
     
-    def ROIsToSynapses(rois: list[ISynapseROI]):
-        """
-            This function should convert a list of ROIs to a list of synapses
-        """
-        return None
-    
-    @property
-    def location(self) -> tuple|None:
-        return None
-    
-class SingleframeSynapse(ISynapse):
-    def __init__(self):
-        super().__init__()
-        self.synapse = None
-
-    def __init__(self, synapseROI: ISynapseROI):
-        super().__init__()
-        self.synapse = synapseROI
-
-    def __str__(self):
-        return f"<SingleframeSynapse @{self.location}>"
-    
-    def SetSynapse(self, synapseROI: ISynapseROI) -> ISynapse:
-        self.synapse = synapseROI
+    def SetName(self, name: str|None) -> Self:
+        self.name = name
         return self
     
-    def ROIsToSynapses(rois: list[ISynapseROI]):
-        synapses = []
-        if rois is None:
-            return None
-        for r in rois:
-            synapses.append(SingleframeSynapse(r))
-        return synapses
+    @property
+    def location(self) -> tuple|None:
+        return None
+    
+    @property
+    def locationStr(self) -> str:
+        return f"{self.location[0]}, {self.location[1]}" if self.location is not None else ""
+    
+    @property
+    def rois(self) -> list[ISynapseROI]:
+        return list(self._rois.values())
+    
+    @property
+    def rois_dict(self) -> dict[str, ISynapseROI]:
+        return self._rois
+    
+    def ROIDescriptionStr(self) -> str:
+        return ""
+    
+class SingleframeSynapse(ISynapse):
+
+    def __init__(self, roi: ISynapseROI = None):
+        super().__init__()
+        self.SetROI(roi)
+
+    def __str__(self):
+        if self.location is not None:
+            return f"<SingleframeSynapse @{self.location}>"
+        return f"<SingleframeSynapse>"
+    
+    def SetROI(self, roi: ISynapseROI|None = None) -> Self:
+        """ Set the ROI or remove it by passing None or no argument"""
+        if roi is None:
+            self._rois = {}
+        else:
+            self._rois = {roi.uuid: roi}
+        return self
     
     @property
     def location(self) -> tuple|None:
-        if self.synapse is None:
+        if len(self._rois) == 0:
             return None
-        return self.synapse.location
+        return self.rois[0].location
+    
+    def ROIDescriptionStr(self) -> str:
+        if len(self._rois) == 0:
+            return ""
+        return self.rois[0].ToStr()
 
 
 class MultiframeSynapse(ISynapse):
     def __init__(self):
         super().__init__()
-        self.subsynapses = {}
+        self._location:tuple|None = None
 
-    def AddSynapse(self, frame: int, synapse: ISynapseROI) -> ISynapse:
-        self.subsynapses[frame] = synapse
+    @property
+    def location(self) -> tuple|None:
+        if self._location is not None:
+            return self._location
+        X = [r.location[0] for r in self.rois if r.location is not None]
+        Y = [r.location[1] for r in self.rois if r.location is not None]
+        if len(X) != 0 and len(Y) != 0:
+            return (int(np.mean(X)), int(np.mean(Y)))
+        return None
+    
+    def SetLocation(self, X:int, Y:int) -> Self:
+        self._location = (X, Y)
         return self
     
-    def ClearSynapses(self):
-        self.subsynapses = {}
+    def RemoveExplicitLocation(self) -> Self:
+        self._location = None
+        return self
 
-    def ROIsToSynapses(rois: list[ISynapseROI]):
-        synapses = []
+    def AddROI(self, roi: ISynapseROI) -> Self:
+        self._rois[roi.uuid] = roi
+        return self
+
+    def AddROIs(self, rois: list[ISynapseROI]) -> Self:
         for r in rois:
-            synapses.append(MultiframeSynapse().AddSynapse(r))
-        return synapses
+            self.AddROI(r)
+        return self
+
+    def SetROIs(self, rois: list[ISynapseROI]) -> Self:
+        self._rois = {r.uuid: r for r in rois}
+        return self
     
+    def RemoveROI(self, roi: ISynapseROI) -> Self:
+        del self._rois[roi.uuid]
+        return self
+    
+    def ClearROIs(self) -> Self:
+        self._rois = {}
+        return self
+
+    def AddSynapse(self, frame: int, synapse: ISynapseROI) -> ISynapse:
+        self.AddROI(synapse.SetFrame(frame))
+        return self
+    
+    def ROIDescriptionStr(self) -> str:
+        return "Multiframe Synapse"
+    
+
 class DetectionResult:
     def __init__(self):
         self.synapses: list[ISynapse] = None
@@ -375,3 +439,33 @@ class LocalMax(DetectionAlgorithm):
             synapses.sort(key=lambda x: (x.location[1], x.location[0]))
             
         return synapses 
+    
+
+
+
+class SynapseClusteringAlgorithm:
+    """
+        A synapse clustering algorithm merges a list of ROIs detected from a defined list of frames to 
+        a new list of synapses.
+    """
+
+    def Cluster(rois: list[ISynapseROI]) -> list[ISynapse]:
+        pass
+
+class SimpleCustering(SynapseClusteringAlgorithm):
+
+    def Cluster(rois: list[ISynapseROI]) -> list[ISynapse]:
+        locations = [r.location for r in rois]
+        distances = pdist(locations)
+        wardmatrix = ward(distances)
+        cluster = fcluster(wardmatrix, criterion='distance', t=20)
+
+        synapses: dict[int, MultiframeSynapse] = {}
+        for label in set(cluster):
+            synapses[label] = MultiframeSynapse()
+
+        for i,r in enumerate(rois):
+            label = cluster[i]
+            synapses[label].AddROI(r)
+
+        return list(synapses.values())

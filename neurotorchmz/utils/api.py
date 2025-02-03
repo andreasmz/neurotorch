@@ -1,5 +1,5 @@
 from .synapse_detection import *
-from ..gui.components import Job
+from ..gui.components.general import Job
 import threading
 
 class _API():

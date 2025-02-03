@@ -4,7 +4,7 @@ from typing import Literal
 from matplotlib import patches
 
 from .image import ImageProperties
-from ..gui.components import *
+from ..gui.components.general import *
 from ..gui.settings import Neurotorch_Resources as Resource
 from .synapse_detection import *
 
@@ -34,7 +34,7 @@ class IDetectionAlgorithmIntegration:
         """
         pass
 
-    def DetectAutoParams(self, inputImageObj: ImageProperties) -> list[ISynapse]:
+    def DetectAutoParams(self, inputImageObj: ImageProperties) -> list[ISynapseROI]:
         """
             This function should be an wrapper for the Detect function in an DetectionAlgorithm and get the parameters from the GUI and then call
             and return the Algorithms Detect function. Only parameter frame is provided by the GUI and set to None when the mean image should be used.
@@ -64,7 +64,7 @@ class Thresholding_Integration(Tresholding, IDetectionAlgorithmIntegration):
         self.setting_minAreaPercent = GridSetting(self.optionsFrame, row=7, text="Min. converage", unit="%", default=60, min_=1, max_=100, scaleMin=1, scaleMax=100, tooltip=Resource.GetString("algorithms/threshold/params/minCoverage"))
         return self.optionsFrame
     
-    def DetectAutoParams(self, inputImageObj: ImageProperties) -> list[ISynapse]:
+    def DetectAutoParams(self, inputImageObj: ImageProperties) -> list[ISynapseROI]:
         threshold = self.setting_threshold.Get()
         radius = self.setting_radius.Get()
         minROISize = self.setting_minAreaPercent.Get()/100
@@ -138,7 +138,7 @@ class HysteresisTh_Integration(HysteresisTh, IDetectionAlgorithmIntegration):
         r = round(np.sqrt(A/np.pi),2)
         self.lblMinAreaInfo["text"] = f"A circle with radius {r} px has the same area" 
 
-    def DetectAutoParams(self, inputImageObj: ImageProperties) -> list[ISynapse]:
+    def DetectAutoParams(self, inputImageObj: ImageProperties) -> list[ISynapseROI]:
         polygon = self.varCircularApprox.get()
         radius = self.setting_radius.Get()
         lowerThreshold = self.setting_lowerTh.Get()
@@ -244,7 +244,7 @@ class LocalMax_Integration(LocalMax, IDetectionAlgorithmIntegration):
         self.lblMinAreaInfo["text"] = f"A circle with radius {r} px has the same area" 
 
     
-    def DetectAutoParams(self, inputImageObj: ImageProperties) -> list[ISynapse]:
+    def DetectAutoParams(self, inputImageObj: ImageProperties) -> list[ISynapseROI]:
         lowerThreshold = self.setting_lowerTh.Get()
         upperThreshold = self.setting_upperTh.Get()
         sortBySignal = self.setting_sortBySignal.Get()

@@ -10,7 +10,7 @@ import os
 import logging
 import gc
 
-from  ..gui.components import Job    
+from  ..gui.components.general import Job    
 
 class ImageProperties:
     """

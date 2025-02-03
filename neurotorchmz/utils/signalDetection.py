@@ -29,7 +29,7 @@ class SignalObj:
         self._peaks = None
 
     @property
-    def peaks(self) -> np.ndarray:
+    def peaks(self) -> list[int]|None:
         return self._peaks
     
     @property
@@ -50,6 +50,7 @@ class SignalObj:
         if self._signal is None:
             return
         self._peaks, _ = find_peaks(self._signal, prominence=prominenceFactor*(np.max(self._signal)-np.min(self._signal))) 
+        self._peaks = [int(p) for p in self._peaks]
         self._peaks.sort()
         self.ClearCache()
 
