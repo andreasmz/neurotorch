@@ -176,22 +176,29 @@ class ImageJHandler:
             return
         self.OpenRoiManager()
 
-        i = 0
+        if len([s for s in synapses if len(s.rois) > 1]) != 0:
+            if not messagebox.askyesnocancel("Neurotorch", "Your export selection contains synapses with more than one ROI which can not be exported. Do you want to continue anyway?"):
+                return
+        i_synapse = 1
         for synapse in synapses:
-            if not isinstance(synapse, SingleframeSynapse):
+            name = synapse.name
+            if synapse.name is None:
+                name = f"Synapse {i_synapse}"
+                i_synapse += 1
+            if not len(synapse.rois) == 1:
                 continue
-            synapseROI = synapse.synapse
-            if synapse.name is not None:
-                name = synapse.name
-            else:
-                name = f"ROI {i+1} {synapseROI.LocationStr().replace(",","")}"
-                i += 1
-            if isinstance(synapseROI, CircularSynapseROI):
-                roi = self.OvalRoi(synapseROI.location[0]-synapseROI.radius, synapseROI.location[1]-synapseROI.radius, 2*synapseROI.radius+1, 2*synapseROI.radius+1)
+            roi = synapse.rois[0]
+            if roi.location is None: continue
+            name += " (" + roi.LocationStr().replace(",","|").replace(" ","") + ")"
+            
+            if isinstance(roi, CircularSynapseROI):
+                if roi.radius is None: continue
+                roi = self.OvalRoi(roi.location[0]-roi.radius, roi.location[1]-roi.radius, 2*roi.radius+1, 2*roi.radius+1)
                 roi.setName(name)
                 self.RM.addRoi(roi)
-            elif isinstance(synapseROI, PolygonalSynapseROI):
-                roi = self.PolygonRoi(synapseROI.polygon[:, 0]+0.5, synapseROI.polygon[:, 1]+0.5, self._gui.ijH.Roi.POLYGON)
+            elif isinstance(roi, PolygonalSynapseROI):
+                if roi.polygon is None: continue
+                roi = self.PolygonRoi(roi.polygon[:, 0]+0.5, roi.polygon[:, 1]+0.5, self._gui.ijH.Roi.POLYGON)
                 roi.setName(name)
                 self.RM.addRoi(roi)
             else:

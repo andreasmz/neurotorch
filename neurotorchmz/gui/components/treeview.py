@@ -364,7 +364,7 @@ class SynapseTreeview(ttk.Treeview):
         self._updateCallback()
 
     def ExportROIsImageJ(self):
-        self._gui.ijH.ExportROIs(self._synapseCallback())
+        self._gui.ijH.ExportROIs(list(self._synapseCallback().values()))
 
     def ExportCSVMultiM(self, path:str|None = None, dropFrame=False) -> bool|None:
         synapses = self._synapseCallback()
@@ -381,7 +381,7 @@ class SynapseTreeview(ttk.Treeview):
             for i, roi in enumerate(synapse.rois):
                 name2 = name
                 if len(synapse.rois) >= 2:
-                    name2 += f" ROI {i}"
+                    name2 += f" ROI {i} "
                 name2 += "(" + roi.LocationStr().replace(",","|").replace(" ","") + ")"
                 if name2 in list(data.columns.values):
                     for i in range(2, 10):

@@ -76,6 +76,9 @@ Please note: Neurotorch is under continuous development. Therefore the visuals p
 
 ### Release notes
 
+>### 25.2.2 (03.02.2025):
+>- **ImageJ/Fiji Bugfix**: Quickfix for a bug exporting ROIs to ImageJ.
+
 >### 25.2.1 (03.02.2025):
 >- **Synapse Analyzer Tab (Preview)**: Added a tab to find multiframe synapses (= different ROIs for each signal frame). This allows the analysis of the movement of a synapse (Plots will be added in a future release).
 >- **New ROI Listview**: Complete rewrite of the treeview element for displaying synapses/ROIs. Instead of the (ugly) list of buttons below, now all functionality has been moved to a right-click context menu. The new design architecture allows to keep the position in the list even after removing/adding synapses and offers better generalization and performance. NOTE: To access the tab, set your Neurotorch version to 'NEUROTORCH_DEBUG'.
