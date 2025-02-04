@@ -78,6 +78,7 @@ Please note: Neurotorch is under continuous development. Therefore the visuals p
 
 >### 25.2.2 (03.02.2025):
 >- **ImageJ/Fiji Bugfix**: Quickfix for a bug exporting ROIs to ImageJ.
+>- **Debug mode**: Added possibility to start Neurotorch in debugging mode (for example to test new features) when running as module.
 
 >### 25.2.1 (03.02.2025):
 >- **Synapse Analyzer Tab (Preview)**: Added a tab to find multiframe synapses (= different ROIs for each signal frame). This allows the analysis of the movement of a synapse (Plots will be added in a future release).
