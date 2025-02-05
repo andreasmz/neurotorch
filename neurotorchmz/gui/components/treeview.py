@@ -275,6 +275,7 @@ class SynapseTreeview(ttk.Treeview):
         self.delete(*self.get_children(_ruuid))
         if roi.frame is not None:
             self.insert(_ruuid, 'end', iid=f"{_ruuid}_CircularSynapseROI.Frame", text="Frame", values=[roi.frame + 1])
+        
         if type(roi) == CircularSynapseROI:
             type_ = "Circular ROI"
             self.insert(_ruuid, 'end', iid=f"{_ruuid}_CircularSynapseROI.Radius", text="Radius", values=[roi.radius if roi.radius is not None else ''])
@@ -283,6 +284,21 @@ class SynapseTreeview(ttk.Treeview):
             type_ = "Polygonal ROI"
         else:
             type_ = "Undefined ROI"
+
+        if roi.regionProps is not None:
+            rp = roi.regionProps
+            rp_id = f"{_ruuid}_RegionProperties"
+            self.insert(_ruuid, 'end', iid=f"{_ruuid}_RegionProperties", text="Properties", values=[])
+            self.insert(rp_id, 'end', iid=f"{_ruuid}_RegionProperties.Area", text="Area [px]", values=[rp.area])
+            self.insert(rp_id, 'end', iid=f"{_ruuid}_RegionProperties.CircleRadius", text=f"Radius of circle with same size [px]", values=([f"{round(rp.equivalent_diameter_area/2, 2)}"]))
+            self.insert(rp_id, 'end', iid=f"{_ruuid}_RegionProperties.Eccentricity", text=f"Eccentricity [0,1)", values=([f"{round(rp.eccentricity, 3)}"]))
+            self.insert(rp_id, 'end', iid=f"{_ruuid}_RegionProperties.SignalMax", text=f"Signal Maximum", values=([f"{round(rp.intensity_max, 2)}"]))
+            self.insert(rp_id, 'end', iid=f"{_ruuid}_RegionProperties.SignalMin", text=f"Signal Minimum", values=([f"{round(rp.intensity_min, 2)}"]))
+            self.insert(rp_id, 'end', iid=f"{_ruuid}_RegionProperties.SignalMean", text=f"Signal Mean", values=([f"{round(rp.intensity_mean, 2)}"]))
+            self.insert(rp_id, 'end', iid=f"{_ruuid}_RegionProperties.SignalStd", text=f"Signal Std.", values=([f"{round(rp.intensity_std, 2)}"]))
+            self.insert(rp_id, 'end', iid=f"{_ruuid}_RegionProperties.InertiaX", text=f"Inertia X", values=([f"{round(rp.inertia_tensor[0,0], 2)}"]))
+            self.insert(rp_id, 'end', iid=f"{_ruuid}_RegionProperties.InertiaY", text=f"Inertia Y", values=([f"{round(rp.inertia_tensor[1,1], 2)}"]))
+            self.insert(rp_id, 'end', iid=f"{_ruuid}_RegionProperties.InertiaRatio", text=f"Inertia Ratio", values=([f"{round(rp.inertia_tensor[0,0]/rp.inertia_tensor[1,1], 2)}"]))
         self.item(_ruuid, text=type_, values=[f"Frame {roi.frame + 1}" if roi.frame is not None else ''])
 
     # Context Menu Clicks
@@ -291,9 +307,9 @@ class SynapseTreeview(ttk.Treeview):
         if isinstance(synapse, MultiframeSynapse):
             match class_:
                 case "CircularROI":
-                    r = CircularSynapseROI().SetRadius(6).SetLocation(0,0)
+                    r = CircularSynapseROI().SetRadius(6).SetLocation(0,0).SetFrame(0)
                 case "PolyonalROI":
-                    r = PolygonalSynapseROI()
+                    r = PolygonalSynapseROI().SetFrame(0)
                 case _:
                     return
             s: MultiframeSynapse = self._synapseCallback()[synapse.uuid]

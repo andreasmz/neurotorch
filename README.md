@@ -76,6 +76,9 @@ Please note: Neurotorch is under continuous development. Therefore the visuals p
 
 ### Release notes
 
+>### 25.2.3 (05.02.2025):
+>- **Experimental**: Added surface plot of Multiframe Synapses to Synapse Analyzer Tab.
+
 >### 25.2.2 (03.02.2025):
 >- **ImageJ/Fiji Bugfix**: Quickfix for a bug exporting ROIs to ImageJ.
 >- **Debug mode**: Added possibility to start Neurotorch in debugging mode (for example to test new features) when running as module.

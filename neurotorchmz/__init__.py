@@ -1,4 +1,4 @@
-__version__ = "25.2.2"
+__version__ = "25.2.3"
 __author__ = "Andreas Brilka"
 
 from .gui.edition import Edition

@@ -14,9 +14,12 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 import matplotlib.widgets as PltWidget
 import matplotlib.patches as patches
+from matplotlib import cm
+import matplotlib.colors as cm_colors
 from matplotlib.ticker import MaxNLocator
 import numpy as np
 import pandas as pd
+from scipy.stats import multivariate_normal
 
 class TabAnalysis_AlgorithmChangedEvent(TabUpdateEvent):
     pass
@@ -76,6 +79,8 @@ class TabAnalysis(Tab):
         self.sliderFrame.var.SetCallback(self.SliderFrameChanged)
         self.sliderPeak = GridSetting(self.frameDisplay, row=6, type_="Int", text="Peak", min_=0, max_=0, scaleMin=0, scaleMax=0)
         self.sliderPeak.var.SetCallback(self.SliderPeakChanged)
+        self.btn3DPlot = tk.Button(self.frameDisplay, text="3D Multiframe Plot", command=lambda:self.ShowExternalPlot("3D Multiframe Plot", self.Plot3DMultiframe))
+        self.btn3DPlot.grid(row=10, column=1)
 
 
         self.detectionAlgorithm = detection.IDetectionAlgorithmIntegration()
@@ -287,8 +292,11 @@ class TabAnalysis(Tab):
         frame = self.sliderFrame.Get() - 1
         
         # Plotting the ROIs
+
         for synapse in self.synapses:
             for roi in synapse.rois:
+                if roi.location is None:
+                    continue
                 if isinstance(roi, detection.CircularSynapseROI):
                     c = patches.Circle(roi.location, roi.radius+0.5, color="red", fill=False)
                     c2 = patches.Circle(roi.location, roi.radius+0.5, color="green", fill=False)
@@ -303,7 +311,7 @@ class TabAnalysis(Tab):
                 if _ax2HasImage and (roi.frame is None or roi.frame == frame):
                     self.ax2.add_patch(c2)
                     self.roiPatches2[roi.uuid] = c2
-
+                    
         self.tvSynapses._OnSelect(None)
 
     def InvalidateSelectedROI(self, synapse: ISynapse|None=None, roi: ISynapseROI|None=None):
@@ -380,6 +388,50 @@ class TabAnalysis(Tab):
             self.sliderFrame.Set(self._gui.signal.peaks[peak] + 1)
         
 
+
+    def ShowExternalPlot(self, name:str,  plotFunction):
+        dialog_figure = plt.Figure(figsize=(20,10), dpi=100)
+        if plotFunction(dialog_figure) != True:
+            return
+        
+        dialog = tk.Toplevel(self.root)
+        dialog.wm_title(f"Neurotorch: {name}")
+
+        dialog_canvas = FigureCanvasTkAgg(dialog_figure, dialog)
+        dialog_canvtoolbar = NavigationToolbar2Tk(dialog_canvas, dialog)
+        dialog_canvtoolbar.update()
+        dialog_canvas.get_tk_widget().pack(expand=True, fill="both", side=tk.LEFT)
+        dialog_canvas.draw()
+
+    def Plot3DMultiframe(self, figure):
+        ax = figure.add_subplot(111, projection="3d")  
+
+        if self._gui.ImageObject is None or self._gui.ImageObject.img is None or len(self.ax2.get_images()) == 0:
+            messagebox.showerror("Neurotorch", f"You first need to load an image to plot the 3D Multifram synapse plot")
+            return False
+
+        img = np.full(shape=self.ax2.get_images()[0].get_size(), fill_value=0.0)
+        mesh_X, mesh_Y = np.mgrid[0:img.shape[0], 0:img.shape[1]]
+        pos = np.dstack((mesh_X, mesh_Y))
+        for synapse in self.synapses:
+            for roi in synapse.rois:
+                if roi.location is None: continue
+                if isinstance(roi, CircularSynapseROI):
+                    cov = roi.radius
+                else:
+                    cov = roi.regionProps.equivalent_diameter_area/2 if roi.regionProps is not None else 6
+                img += multivariate_normal.pdf(x=pos, mean=roi.location, cov=cov)
+
+        #overlay_img_props = self._gui.ImageObject.imgView(ImgObj.SPATIAL).MeanProps
+        #norm = cm_colors.Normalize(vmin=overlay_img_props.min, vmax=overlay_img_props.max)
+        #cmap = cm.get_cmap("Greys_r")
+        #img_plot = ax.plot_surface(mesh_X, mesh_Y, img, rcount=100, ccount=100, facecolors = cmap(norm(overlay_img_props.img)))
+        img_plot = ax.plot_surface(mesh_X, mesh_Y, img, rcount=150, ccount=150,  cmap="inferno")
+        figure.colorbar(img_plot, ax=ax)
+        ax.set_xlabel("X")
+        ax.set_ylabel("Y")
+        ax.set_title("Surface plot of detected synapses per signal frame merged to a single image by multiplying each ROI location\nwith a normal probability distribution with covariance set to radius (or equivalent radius for non circular ROIs)")
+        return True
     
     def Canvas1ClickEvent(self, event):
         if not event.dblclick or event.inaxes is None:

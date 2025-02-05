@@ -1,5 +1,6 @@
 import numpy as np
 from skimage import measure
+from skimage.measure._regionprops import RegionProperties
 from skimage.segmentation import expand_labels
 import math
 import uuid
@@ -16,7 +17,7 @@ class ISynapseROI:
     CLASS_DESC = "ISynapseROI"
     def __init__(self):
         self.location: tuple|None = None
-        self.regionProps = None
+        self.regionProps: RegionProperties|None = None
         self.uuid = str(uuid.uuid4())
         self.frame: int|None = None
 
@@ -28,7 +29,7 @@ class ISynapseROI:
         self.location = (X, Y)
         return self
     
-    def SetRegionProps(self, region_props):
+    def SetRegionProps(self, region_props: RegionProperties|None):
         self.regionProps = region_props
         return self
     
