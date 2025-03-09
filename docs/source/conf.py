@@ -7,9 +7,9 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'Neurotorch'
-copyright = '2024, Andreas Brilka'
+copyright = '2025, Andreas Brilka'
 author = 'Andreas Brilka'
-release = '24.12.5'
+release = '25.3.1'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -18,6 +18,8 @@ extensions = []
 
 templates_path = ['_templates']
 exclude_patterns = []
+
+master_doc = "index"
 
 
 

@@ -76,7 +76,7 @@ class TabROIFinder(Tab):
         tk.Label(self.frameOptions, text="Diff. Img Overlay").grid(row=11, column=0)
         self.setting_plotOverlay = GridSetting(self.frameOptions, row=11, type_="Checkbox", text="Plot raw algorithm output", default=0, tooltip=Resource.GetString("tab3/rawAlgorithmOutput"))
         self.setting_plotOverlay.var.IntVar.trace_add("write", lambda _1,_2,_3: self.Invalidate_ROIs())
-        self.setting_plotPixels = GridSetting(self.frameOptions, row=12, type_="Checkbox", text="Plot ROIs pixels", default=0, tooltip=Resource.GetString("tab3/plotROIPixels"))
+        self.setting_plotPixels = GridSetting(self.frameOptions, row=12, type_="Checkbox", text="Plot ROI pixels", default=0, tooltip=Resource.GetString("tab3/plotROIPixels"))
         self.setting_plotPixels.var.IntVar.trace_add("write", lambda _1,_2,_3: self.Invalidate_ROIs())
 
         self.btnDetect = tk.Button(self.frameOptions, text="Detect", command=self.Detect)

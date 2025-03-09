@@ -12,6 +12,7 @@ Neurotorch documentation
    tabs/tab_signal
    tabs/tab_roifinder
    imagej
+   glossary
 
 .. toctree::
    :hidden:
