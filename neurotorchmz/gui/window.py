@@ -42,6 +42,7 @@ class Neurotorch_GUI:
         try:
             self.root.iconbitmap(os.path.join(*[Settings.ParentPath, "media", "neurotorch_logo.ico"]))
         except:
+            logger.warning(f"Can't find the icon")
             pass
         self.root.geometry("600x600")
         self.root.state("zoomed")
@@ -109,8 +110,7 @@ class Neurotorch_GUI:
         self.tabs[TabImage] = TabImage(self)
         self.tabs[TabSignal] = TabSignal(self)
         self.tabs[TabROIFinder] = TabROIFinder(self)
-        if edition == Edition.NEUROTORCH_DEBUG:
-            self.tabs[TabAnalysis] = TabAnalysis(self)
+        self.tabs[TabAnalysis] = TabAnalysis(self)
         for t in self.tabs.values(): t.Init()
         self.tabMain.select(self.tabs[TabImage].tab)
 

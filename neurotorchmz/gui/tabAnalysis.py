@@ -90,11 +90,8 @@ class TabAnalysis(Tab):
         self.frameROIS = tk.LabelFrame(self.frameTools, text="ROIs")
         self.frameROIS.grid(row=3, column=0, sticky="news")
 
-        self.tvSynapses = SynapseTreeview(self.frameROIS, self._gui, synapseCallback=self.Synapses,selectCallback=self.InvalidateSelectedROI, updateCallback=self.Invalidate_ROIs)
+        self.tvSynapses = SynapseTreeview(self.frameROIS, self._gui, synapseCallback=self.Synapses,selectCallback=self.InvalidateSelectedROI, updateCallback=self.Invalidate_ROIs, allowMultiframe=True)
         self.tvSynapses.pack(fill="both", padx=10)
-        tk.Label(self.frameROIS, text="Use Right-Click to edit").pack(fill="x")
-        tk.Label(self.frameROIS, text="Double click on values to modify them").pack(fill="x")
-        self.tvSynapses.option_allowAddingMultiframeSynapses = True
 
         self.figure1 = plt.Figure(figsize=(20,10), dpi=100)
         self.ax1 = self.figure1.add_subplot(221)  
@@ -438,17 +435,17 @@ class TabAnalysis(Tab):
             return
         x, y = event.xdata, event.ydata
         if event.inaxes == self.ax1:
-            rois = [r for s in self.synapses for r in s.rois]
+            rois = [(s, r) for s in self.synapses for r in s.rois]
         elif event.inaxes == self.ax2:
-            rois = [r for s in self.synapses for r in s.rois if r.uuid in self.roiPatches2.keys()]
+            rois = [(s, r) for s in self.synapses for r in s.rois if r.uuid in self.roiPatches2.keys()]
         else:
             return
         if len(rois) == 0: return
-        rois.sort(key=lambda r: (r.location[0]-x)**2+(r.location[1]-y)**2 if r.location is not None else np.inf)
-        roi = rois[0]
+        rois.sort(key=lambda v: (v[1].location[0]-x)**2+(v[1].location[1]-y)**2 if v[1].location is not None else np.inf)
+        synapse, roi = rois[0]
         d = ((roi.location[0]-x)**2+(roi.location[1]-y)**2)**0.5 if roi.location is not None else np.inf
         if d <= 40:
-            self.tvSynapses.selection_set(roi.uuid)
+            self.tvSynapses.Select(synapse=synapse, roi=roi)
 
     def _Canvas1Resize(self, event):
         if self.tab.winfo_width() > 300:

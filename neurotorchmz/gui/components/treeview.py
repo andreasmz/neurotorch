@@ -12,14 +12,13 @@ logger = logging.getLogger()
 from ...utils.synapse_detection import *
 
 class SynapseTreeview(ttk.Treeview):
+    """
+        A treeview component to display Synapses. Provides GUI components to edit them.
+    """
 
     # Constant to export data as Stream
     TO_STREAM = "TO_STREAM"
     API_rightClickHooks = []
-
-    """
-        A treeview component to display Synapses. Provides GUI components to edit them.
-    """
 
     editableFiels = [
         "CircularSynapseROI.Frame",
@@ -27,20 +26,61 @@ class SynapseTreeview(ttk.Treeview):
         "CircularSynapseROI.Radius",
     ]
 
-    def __init__(self, master, gui: Neurotorch_GUI, synapseCallback: Callable[[], dict[str, ISynapse]], selectCallback: Callable[[ISynapse|None, ISynapseROI|None], None], updateCallback = Callable, **kwargs):
+    def __init__(self, 
+                 master, 
+                 gui: Neurotorch_GUI, 
+                 synapseCallback: Callable[[], dict[str, ISynapse]], 
+                 selectCallback: Callable[[ISynapse|None, ISynapseROI|None], None], 
+                 updateCallback = Callable, 
+                 allowSingleframe: bool = False,
+                 allowMultiframe: bool = False,
+                 **kwargs):
         """
-                Parameters:
-                        synapseCallback: Callable to return the current list of Synapses. Used to emulate a by ref behaviour
-                        selectCallback: Called when the user selects a specific ISynapse. Called with None, if the user deselects from any ISynapse
-                        updateCallback: Called when a property of a synapse is changed
+            Parameters:
+                    synapseCallback: Callable to return the current list of Synapses. Used to emulate a by ref behaviour
+                    selectCallback: Called when the user selects a specific ISynapse. Called with None, if the user deselects from any ISynapse
+                    updateCallback: Called when a property of a synapse is changed
         """
-        super().__init__(master=master, columns=("Val"), **kwargs)
+        self.master = master
+        self.option_allowAddingSingleframeSynapses = allowSingleframe
+        self.option_allowAddingMultiframeSynapses = allowMultiframe
+        self.frame = ttk.Frame(self.master)
+        self.frametv = ttk.Frame(self.frame)
+        self.frametv.pack(fill="both")
+
+        super().__init__(master=self.frametv, columns=("Val"), **kwargs)
         self.heading("#0", text="Property")
         self.heading("#1", text="Value")
-        self.column("#0", minwidth=0, width=100)
-        self.column("#1", minwidth=0, width=150)
+        self.column("#0", minwidth=0, width=100, stretch=False)
+        self.column("#1", minwidth=0, width=150, stretch=False)
         self.tag_configure("staged_synapse", foreground="#9416a6")
 
+        self.scrollbar = ttk.Scrollbar(self.frametv, orient="vertical", command=self.yview)
+        self.scrollbar.pack(side=tk.RIGHT, fill="y")
+        super().pack(fill="both", padx=10)
+        self.scrollbarx = ttk.Scrollbar(self.frametv, orient="horizontal", command=self.xview)
+        self.scrollbarx.pack(side=tk.BOTTOM, fill="x")
+
+        self.frameButtons = tk.Frame(self.frame)
+        self.frameButtons.pack()
+        _btn_padx = 5
+        if self.option_allowAddingSingleframeSynapses:
+            self.btnAdd = tk.Button(self.frameButtons, text="+ Add", command = lambda: self._OnContextMenu_Add("Singleframe_CircularROI"))
+            self.btnAdd.pack(side=tk.LEFT, padx=_btn_padx)
+        if self.option_allowAddingMultiframeSynapses:
+            self.btnAdd_Multiframe = tk.Button(self.frameButtons, text="+ Add Synapse", command= lambda: self._OnContextMenu_Add("MultiframeSynapse"))
+            self.btnAdd_Multiframe.pack(side=tk.LEFT, padx=_btn_padx)
+
+        self.btnRemove = tk.Button(self.frameButtons, text="🗑 Remove", state="disabled", command=self._BtnRemoveClick)
+        self.btnRemove.pack(side=tk.LEFT, padx=_btn_padx)
+        self.btnStage = tk.Button(self.frameButtons, text="🔒 Stage", state="disabled", command=self._BtnStageClick)
+        self.btnStage.pack(side=tk.LEFT, padx=_btn_padx)
+
+        tk.Label(self.frame, text="Use Right-Click to edit").pack(fill="x")
+        tk.Label(self.frame, text="Double click on values to modify them").pack(fill="x")
+
+        self.configure(yscrollcommand = self.scrollbar.set)
+        self.configure(xscrollcommand = self.scrollbarx.set)
         self.bind("<<TreeviewSelect>>", self._OnSelect)
         self.bind("<Double-1>", self._OnDoubleClick)
         self.bind("<Button-3>", self._OnRightClick)
@@ -50,11 +90,11 @@ class SynapseTreeview(ttk.Treeview):
         self._selectCallback = selectCallback
         self._updateCallback = updateCallback
 
-        self.option_allowAddingSingleframeSynapses = False
-        self.option_allowAddingMultiframeSynapses = False
-
         self._gui = gui
         self._entryPopup = None
+
+    def pack(self, **kwargs):
+        self.frame.pack(**kwargs)
 
     def SyncSynapses(self):
         """ Display the given list of ISynapse in the treeview. Updates existing values to keep the scrolling position. """
@@ -96,6 +136,8 @@ class SynapseTreeview(ttk.Treeview):
                     self.move(_ruuid, _uuid, si)
                 self._UpdateISynapseROI(r)
         if len(self.get_children('')) == 0:
+            self.btnRemove.config(state="disabled")
+            self.btnStage.config(state="disabled")
             self._selectCallback(None)
 
     def GetSynapseByRowID(self, rowid: str) -> tuple[ISynapse|None, ISynapseROI|None]:
@@ -122,7 +164,36 @@ class SynapseTreeview(ttk.Treeview):
             return (synapse, None)
         roi = synapse.rois_dict[roi_uuid]
         return (synapse, roi)
-            
+    
+    def GetSelectedSynapse(self) -> tuple[ISynapse|None, ISynapseROI|None]:
+        """
+            Identifies the currently selected rowid and returns the result of GetSynapseByRowID
+        """
+        selection = self.selection()
+        if len(selection) != 1:
+            return (None, None)
+        rowid = selection[0]
+        synapse, roi = self.GetSynapseByRowID(rowid)
+        return synapse, roi
+    
+    def Select(self, synapse: ISynapse|None = None, roi:ISynapseROI|None = None):
+        """
+            Selects an entry based on synapse or roi ID and scrolls to it. As a convenience feature, if both synapse and ROI are given,
+            it will select the synapse if the node is collapsed and the ROI in the other case.
+        """
+        if synapse is None and roi is None:
+            raise ValueError("Selecting a row in a synapse entry requires at least a synapse or ROI uuid")
+        if synapse is not None and not isinstance(synapse, ISynapse):
+            raise ValueError(f"The provided synapse is of type {type(synapse)}")
+        if roi is not None and not isinstance(roi, ISynapseROI):
+            raise ValueError(f"The provided ROI is of type {type(roi)}")
+        if roi is not None and (synapse is None or self.item(synapse.uuid, "open") or len(synapse.rois) >= 2):
+            self.selection_set(roi.uuid)
+            self.see(roi.uuid)
+        else:
+            self.selection_set(synapse.uuid)
+            self.see(synapse.uuid)
+        
     def _OnSelect(self, event):
         """ Triggered on selecting a row in the Treeview. Determines the corrosponding ISynapse and passes it back to the callback. """
         selection = self.selection()
@@ -131,6 +202,12 @@ class SynapseTreeview(ttk.Treeview):
             return
         rowid = selection[0]
         synapse, roi = self.GetSynapseByRowID(rowid)
+        if synapse is not None or roi is not None:
+            self.btnRemove.config(state="active")
+            self.btnStage.config(state="active")
+        else:
+            self.btnRemove.config(state="disabled")
+            self.btnStage.config(state="disabled")
         self._selectCallback(synapse, roi)
 
     def _OnDoubleClick(self, event):
@@ -300,6 +377,26 @@ class SynapseTreeview(ttk.Treeview):
             self.insert(rp_id, 'end', iid=f"{_ruuid}_RegionProperties.InertiaY", text=f"Inertia Y", values=([f"{round(rp.inertia_tensor[1,1], 2)}"]))
             self.insert(rp_id, 'end', iid=f"{_ruuid}_RegionProperties.InertiaRatio", text=f"Inertia Ratio", values=([f"{round(rp.inertia_tensor[0,0]/rp.inertia_tensor[1,1], 2)}"]))
         self.item(_ruuid, text=type_, values=[f"Frame {roi.frame + 1}" if roi.frame is not None else ''])
+
+    # Button Clicks
+
+    def _BtnRemoveClick(self):
+        """ Triggered when clicking the Remove button """
+        synapse, roi = self.GetSelectedSynapse()
+        if synapse is not None and roi is not None and self.option_allowAddingMultiframeSynapses:
+            self._OnContextMenu_Remove(synapse, roi)
+        elif synapse is not None:
+            self._OnContextMenu_Remove(synapse)
+        else:
+            self.master.bell()
+            
+    def _BtnStageClick(self):
+        """ Triggered when clicking the Stage button """
+        synapse, roi = self.GetSelectedSynapse()
+        if synapse is not None:
+            self._OnContextMenu_ToggleStage(synapse)
+        else:
+            self.master.bell()
 
     # Context Menu Clicks
 
