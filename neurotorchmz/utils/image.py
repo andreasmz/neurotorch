@@ -7,8 +7,10 @@ from scipy.ndimage import gaussian_filter
 import threading
 import pims
 import os
-import logging
 import gc
+import logging
+
+logger = logging.getLogger("NeurotorchMZ")
 
 from  ..gui.components.general import Job    
 

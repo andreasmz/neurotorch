@@ -4,8 +4,6 @@ from .components.treeview import SynapseTreeview
 from ..utils import synapse_detection_integration as detection
 from ..utils.image import *
 from ..utils.synapse_detection import *
-from ..utils.logger import logger
-
 
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
@@ -20,6 +18,11 @@ from matplotlib.ticker import MaxNLocator
 import numpy as np
 import pandas as pd
 from scipy.stats import multivariate_normal
+import logging
+
+logger = logging.getLogger("NeurotorchMZ")
+
+
 
 class TabAnalysis_AlgorithmChangedEvent(TabUpdateEvent):
     pass
@@ -57,17 +60,17 @@ class TabAnalysis(Tab):
         self.radioAlgo1 = tk.Radiobutton(self.frameDetection, variable=self.radioAlgoVar, indicatoron=True, text="Threshold (Deprecated)", value="threshold", command=lambda:self.Invalidate_Algorithm())
         self.radioAlgo2 = tk.Radiobutton(self.frameDetection, variable=self.radioAlgoVar, indicatoron=True, text="Hysteresis thresholding", value="hysteresis", command=lambda:self.Invalidate_Algorithm())
         self.radioAlgo3 = tk.Radiobutton(self.frameDetection, variable=self.radioAlgoVar, indicatoron=True, text="Local Max", value="local_max", command=lambda:self.Invalidate_Algorithm())
-        ToolTip(self.radioAlgo1, msg=Resource.GetString("algorithms/threshold/description"), follow=True, delay=0.1)
-        ToolTip(self.radioAlgo2, msg=Resource.GetString("algorithms/hysteresisTh/description"), follow=True, delay=0.1)
-        ToolTip(self.radioAlgo3, msg=Resource.GetString("algorithms/localMax/description"), follow=True, delay=0.1)
+        ToolTip(self.radioAlgo1, msg=Resources.GetString("algorithms/threshold/description"), follow=True, delay=0.1)
+        ToolTip(self.radioAlgo2, msg=Resources.GetString("algorithms/hysteresisTh/description"), follow=True, delay=0.1)
+        ToolTip(self.radioAlgo3, msg=Resources.GetString("algorithms/localMax/description"), follow=True, delay=0.1)
         self.radioAlgo1.grid(row=1, column=0, sticky="nw", columnspan=3)
         self.radioAlgo2.grid(row=2, column=0, sticky="nw", columnspan=3)
         self.radioAlgo3.grid(row=3, column=0, sticky="nw", columnspan=3)
 
         tk.Label(self.frameDetection, text="Diff. Img Overlay").grid(row=11, column=0)
-        self.setting_plotOverlay = GridSetting(self.frameDetection, row=11, type_="Checkbox", text="Plot raw algorithm output", default=0, tooltip=Resource.GetString("tab3/rawAlgorithmOutput"))
+        self.setting_plotOverlay = GridSetting(self.frameDetection, row=11, type_="Checkbox", text="Plot raw algorithm output", default=0, tooltip=Resources.GetString("tab3/rawAlgorithmOutput"))
         self.setting_plotOverlay.var.IntVar.trace_add("write", lambda _1,_2,_3: self.Invalidate_ROIs())
-        self.setting_plotPixels = GridSetting(self.frameDetection, row=12, type_="Checkbox", text="Plot ROIs pixels", default=0, tooltip=Resource.GetString("tab3/plotROIPixels"))
+        self.setting_plotPixels = GridSetting(self.frameDetection, row=12, type_="Checkbox", text="Plot ROIs pixels", default=0, tooltip=Resources.GetString("tab3/plotROIPixels"))
         self.setting_plotPixels.var.IntVar.trace_add("write", lambda _1,_2,_3: self.Invalidate_ROIs())
         self.btnDetect = tk.Button(self.frameDetection, text="Detect", command=self.Detect)
         self.btnDetect.grid(row=20, column=0)

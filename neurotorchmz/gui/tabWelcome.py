@@ -1,7 +1,6 @@
 from .window import Neurotorch_GUI, Tab
 from .settings import (
-    Neurotorch_Settings as Settings,
-    Neurotorch_Resources as Resource
+    Neurotorch_Resources as Resources
 )
 
 import tkinter as tk
@@ -9,6 +8,9 @@ from tkinter import ttk, messagebox
 from PIL import ImageTk, Image
 import os, sys
 import subprocess
+import logging
+
+logger = logging.getLogger("NeurotorchMZ")
 
 class TabWelcome(Tab):
     def __init__(self, gui: Neurotorch_GUI):
@@ -25,7 +27,7 @@ class TabWelcome(Tab):
         self.frame.bind("<Configure>", self._FrameResizeEvent)
         self.frame.pack(expand=True, fill="both")
 
-        self.coverimg = Resource.GetImage("neurotorch_coverimage_4.webp")
+        self.coverimg = Resources.GetImage("neurotorch_coverimage_4.webp")
         self.canvas = tk.Canvas(self.frame, background="black")
         self.canvas.pack(expand=True, fill="both")
         self.frameBottom_L = tk.Frame(self.frame)

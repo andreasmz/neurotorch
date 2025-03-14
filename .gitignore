@@ -1,5 +1,5 @@
 __pycache__/
 *.pyc
 .pypirc
-neurotorchmz/user/*
+neurotorchmz/resources/*.dump
 .vscode

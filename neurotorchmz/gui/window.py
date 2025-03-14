@@ -1,7 +1,7 @@
 """
     Main module to initialize the Neurotorch GUI.
 """
-import sys, os
+import sys
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from tktooltip import ToolTip
@@ -10,14 +10,16 @@ import pickle
 from typing import Literal
 import logging
 import matplotlib
+from pathlib import Path
 matplotlib.use('TkAgg')
+
+logger = logging.getLogger("NeurotorchMZ")
 
 from .components.general import Job, Statusbar
 from .edition import Edition
-from .settings import (Neurotorch_Settings as Settings, Neurotorch_Resources as Resource)
+from .settings import (Neurotorch_Settings as Settings, Neurotorch_Resources as Resources)
 from ..utils.image import ImgObj
 from ..utils.signalDetection import SignalObj
-from ..utils.logger import logger
 
 
 class Neurotorch_GUI:
@@ -39,11 +41,7 @@ class Neurotorch_GUI:
         self.edition = edition
         self.root = tk.Tk()
         self.SetWindowTitle("")
-        try:
-            self.root.iconbitmap(os.path.join(*[Settings.ParentPath, "media", "neurotorch_logo.ico"]))
-        except:
-            logger.warning(f"Can't find the icon")
-            pass
+        self.root.iconbitmap(bitmap=(Resources.path / "neurotorch_logo_ico"), default=(Resources.path / "neurotorch_logo_ico"))
         self.root.geometry("600x600")
         self.root.state("zoomed")
         self.statusbar = Statusbar(self.root, self.root)
@@ -78,7 +76,7 @@ class Neurotorch_GUI:
         self.menuFilter.add_command(label="Clear cache", command=self.MenuImage_ClearCache)
         self.menuFilter.add_separator()
         self.menuFilter.add_command(label="Cummulative imgDiff", command=lambda: self.MenuImageDenoise('MeanMaxDiff', None))
-        ToolTip(self.menuFile, msg=Resource.GetString("menubar/filters/meanMaxDiff"), follow=True, delay=0.5)
+        ToolTip(self.menuFile, msg=Resources.GetString("menubar/filters/meanMaxDiff"), follow=True, delay=0.5)
 
         if edition == Edition.NEUROTORCH_DEBUG:
             self.menuDenoiseImg = tk.Menu(self.menuImage,tearoff=0)
@@ -254,12 +252,12 @@ class Neurotorch_GUI:
     def MenuNeurotorchAbout(self):
         messagebox.showinfo("Neurotorch", f"© Andreas Brilka 2024\nYou are running Neurotorch {self._version_}")
 
-
     def MenuDebugLoadPeaks(self):
-        path = os.path.join(Settings.UserPath, "img_peaks.dump")
-        if not os.path.exists(path):
+        path = Settings.app_data_path / "img_peaks.dump"
+        if not path.exists() or not path.is_file():
             self.root.bell()
             return
+        
         with open(path, 'rb') as f:
             _img = pickle.load(f)
             _name = "img_peaks.dump"
@@ -282,7 +280,7 @@ class Neurotorch_GUI:
                 logger.info(f"Skipped peak {p} as it is to near to the edge")
         _peaksExtended.extend([int(p+2)])
         logger.info("Exported frames", _peaksExtended)
-        savePath = os.path.join(Settings.UserPath, "img_peaks.dump")
+        savePath = Settings.app_data_path / "img_peaks.dump"
         with open(savePath, 'wb') as f:
             pickle.dump(self.ImageObject.img[_peaksExtended, :, :], f, protocol=pickle.HIGHEST_PROTOCOL)
 

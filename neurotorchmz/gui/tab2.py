@@ -1,6 +1,5 @@
 from .window import *
 from ..utils.signalDetection import SigDetect_DiffMax, SigDetect_DiffStd, ISignalDetectionAlgorithm
-from ..gui.settings import Neurotorch_Resources as Resource
 from .components.general import *
 
 import tkinter as tk
@@ -11,6 +10,9 @@ import matplotlib.widgets as PltWidget
 from matplotlib.cm import ScalarMappable
 from matplotlib.colors import Normalize
 import numpy as np
+import logging
+
+logger = logging.getLogger("NeurotorchMZ")
 
 class TabSignal_AlgorithmChangedEvent(TabUpdateEvent):
     pass
@@ -38,7 +40,7 @@ class TabSignal(Tab):
 
         self.frameInfo = ttk.LabelFrame(self.frame, text = "Info")
         self.frameInfo.grid(row=0, column=0, sticky="news")
-        self.lblTabInfo = tk.Label(self.frameInfo, text=Resource.GetString("tab2/description"), wraplength=350, justify="left")
+        self.lblTabInfo = tk.Label(self.frameInfo, text=Resources.GetString("tab2/description"), wraplength=350, justify="left")
         self.lblTabInfo.pack(anchor=tk.E, expand=True, fill="x")
 
         self.frameOptions = ttk.LabelFrame(self.frame, text="Options")
@@ -52,8 +54,8 @@ class TabSignal(Tab):
         self.radioAlgo2 = tk.Radiobutton(self.frameAlgorithm, variable=self.radioAlgoVar, indicatoron=False, text="DiffStd", value="diffStd", command=lambda:self.Update(TabSignal_AlgorithmChangedEvent()))
         self.radioAlgo1.pack(side=tk.LEFT)
         self.radioAlgo2.pack(side=tk.LEFT)
-        ToolTip(self.radioAlgo1, msg=Resource.GetString("tab2/algorithms/diffMax"), follow=True, delay=0.1)
-        ToolTip(self.radioAlgo2, msg=Resource.GetString("tab2/algorithms/diffStd"), follow=True, delay=0.1)
+        ToolTip(self.radioAlgo1, msg=Resources.GetString("tab2/algorithms/diffMax"), follow=True, delay=0.1)
+        ToolTip(self.radioAlgo2, msg=Resources.GetString("tab2/algorithms/diffStd"), follow=True, delay=0.1)
 
         self.setting_snapFrames = GridSetting(self.frameOptions, row=10, type_="Checkbox", text="Snap frames to peaks", unit="", default=1, tooltip="")
         self.setting_snapFrames.var.IntVar.trace_add("write", lambda _1,_2,_3: self.UpdateFromSignal())
@@ -61,16 +63,16 @@ class TabSignal(Tab):
         self.setting_normalize.var.IntVar.trace_add("write", lambda _1,_2,_3: self.PlotImage())
         self.setting_originalImage = GridSetting(self.frameOptions, row=12, type_="Checkbox", text="Show original image", default=0)
         self.setting_originalImage.var.IntVar.trace_add("write", lambda _1,_2,_3: self.PlotImage())
-        self.setting_peakProminence = GridSetting(self.frameOptions, row=13, text="Peak Prominence", unit="%", default=50, min_=1, max_=100, scaleMin=1, scaleMax=100, tooltip=Resource.GetString("tab2/peakProminence"))
+        self.setting_peakProminence = GridSetting(self.frameOptions, row=13, text="Peak Prominence", unit="%", default=50, min_=1, max_=100, scaleMin=1, scaleMax=100, tooltip=Resources.GetString("tab2/peakProminence"))
         self.setting_peakProminence.var.IntVar.trace_add("write", lambda _1,_2,_3: self.Update(TabSignal_RefindPeaksEvent()))
-        self.setting_colorbarUpdate = GridSetting(self.frameOptions, row=14, type_="Checkbox", text="Colorbar Update", unit="", default=1, tooltip=Resource.GetString("tab2/checkColorbar"))
+        self.setting_colorbarUpdate = GridSetting(self.frameOptions, row=14, type_="Checkbox", text="Colorbar Update", unit="", default=1, tooltip=Resources.GetString("tab2/checkColorbar"))
         self.setting_autostart = GridSetting(self.frameOptions, row=20, type_="Checkbox", text="Autostart Detection", default=1)
         tk.Button(self.frameOptions, text="Detect", command=self.Detect).grid(row=21, column=0)
 
         self.frameSignal = ttk.LabelFrame(self.frame, text="Signal")
         self.frameSignal.grid(row=2, column=0, sticky="new")
-        self.setting_peakWidthLeft = GridSetting(self.frameSignal, row=5, text="Peak Width Left", default=3, min_=0, max_=50, scaleMin=0, scaleMax=20, tooltip=Resource.GetString("tab2/peakWidth"))
-        self.setting_peakWidthRight = GridSetting(self.frameSignal, row=6, text="Peak Width Right", default=10, min_=0, max_=50, scaleMin=0, scaleMax=20, tooltip=Resource.GetString("tab2/peakWidth"))
+        self.setting_peakWidthLeft = GridSetting(self.frameSignal, row=5, text="Peak Width Left", default=3, min_=0, max_=50, scaleMin=0, scaleMax=20, tooltip=Resources.GetString("tab2/peakWidth"))
+        self.setting_peakWidthRight = GridSetting(self.frameSignal, row=6, text="Peak Width Right", default=10, min_=0, max_=50, scaleMin=0, scaleMax=20, tooltip=Resources.GetString("tab2/peakWidth"))
         self.setting_peakWidthLeft.var.IntVar.trace_add("write", lambda _1,_2,_3: self._UpdateSignalWidths())
         self.setting_peakWidthRight.var.IntVar.trace_add("write", lambda _1,_2,_3: self._UpdateSignalWidths())
 

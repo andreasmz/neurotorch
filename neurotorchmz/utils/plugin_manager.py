@@ -1,5 +1,9 @@
 import pathlib
 import sys
+import pkgutil
+import logging
+
+logger = logging.getLogger("NeurotorchMZ")
 
 from ..gui.window import Neurotorch_GUI
 from ..gui.settings import Neurotorch_Settings
@@ -7,6 +11,9 @@ from ..plugins import load_plugins
 
 
 class PluginManager:
+    def __init__(self, gui: Neurotorch_GUI):
+
+
     def __init__(self, gui: Neurotorch_GUI):
         self.gui = gui
 

@@ -1,6 +1,9 @@
 from .synapse_detection import *
 from ..gui.components.general import Job
 import threading
+import logging
+
+logger = logging.getLogger("NeurotorchMZ")
 
 class _API():
 

@@ -1,96 +1,124 @@
-import os
 import platformdirs
-import pathlib
 import configparser
 import json
 from PIL import Image
+from pathlib import Path
+import sys
+import threading
+import logging
+from logging.handlers import RotatingFileHandler
+logger = logging.getLogger("NeurotorchMZ")
+
 
 class Neurotorch_Settings:
+    """ Static class to access user configurations and data """
 
-    defaultSettings = {"ImageJ_Path": ""}
-    ParentPath = None
-    SuperParentPath = None
-    UserPath = None
-    MediaPath = None
-    ResourcesPath = None
-    DataPath = None
-    ConfigPath = None
-    TempPath = None
-    config : configparser.ConfigParser = None
+    app_data_path: Path = platformdirs.user_data_path(appname="NeurotorchMZ", appauthor=False, roaming=True)
+    tmp_path: Path = app_data_path / "tmp"
+    config: configparser.ConfigParser = None
+
 
     def _CreateStatic():
-        Neurotorch_Settings.ParentPath = os.path.abspath(os.path.join(os.path.join(__file__, os.pardir), os.pardir))
-        Neurotorch_Settings.SuperParentPath = os.path.abspath(os.path.join(Neurotorch_Settings.ParentPath, os.pardir))
-        Neurotorch_Settings.UserPath = os.path.join(Neurotorch_Settings.ParentPath, "user")
-        Neurotorch_Settings.MediaPath = os.path.join(Neurotorch_Settings.ParentPath, "media")
-        Neurotorch_Settings.ResourcesPath = os.path.join(Neurotorch_Settings.ParentPath, "resources")
-        Neurotorch_Settings.PluginPath = os.path.join(Neurotorch_Settings.ParentPath, "plugins")
-        Neurotorch_Settings.DataPath = platformdirs.user_data_path("Neurotorch", "AndreasB")
-        pathlib.Path(Neurotorch_Settings.DataPath).mkdir(exist_ok=True, parents=True)
-        Neurotorch_Settings.TempPath = os.path.join(Neurotorch_Settings.DataPath, "temp")
-        pathlib.Path(Neurotorch_Settings.TempPath).mkdir(exist_ok=True, parents=True)
-        for f in [os.path.join(Neurotorch_Settings.TempPath, f) for f in os.listdir(Neurotorch_Settings.TempPath)]:
-            if os.path.isfile(f):
-                os.remove(f)
-
-        Neurotorch_Settings.ConfigPath = os.path.join(Neurotorch_Settings.DataPath, 'neurtorch_config.ini')
+        Neurotorch_Settings.app_data_path.mkdir(parents=True, exist_ok=True)
+        Neurotorch_Settings.tmp_path.mkdir(exist_ok=True, parents=False)
+        for f in Neurotorch_Settings.tmp_path.iterdir():
+            if f.is_file():
+                f.unlink()
+                logger.debug(f"Cleared file {f.name} from the tmp folder")
+            elif f.is_dir():
+                f.rmdir()
+                logger.debug(f"Cleared folder {f.name} from the tmp folder")
         Neurotorch_Settings.config = configparser.ConfigParser()
         Neurotorch_Settings.ReadConfig()
 
     def ReadConfig():
-        Neurotorch_Settings.config.read(Neurotorch_Settings.ConfigPath)
+        """ Initializes the config parser """
+        Neurotorch_Settings.config.read(Neurotorch_Settings.app_data_path / "settings.ini")
         if "SETTINGS" not in Neurotorch_Settings.config.sections():
             Neurotorch_Settings.config.add_section("SETTINGS")
-        for k,v in Neurotorch_Settings.defaultSettings.items():
-            if not Neurotorch_Settings.config.has_option("SETTINGS", k):
-                Neurotorch_Settings.config.set("SETTINGS", k, v)
 
-        if not os.path.exists(Neurotorch_Settings.ConfigPath):
+        if not (Neurotorch_Settings.app_data_path / "settings.ini").exists():
             Neurotorch_Settings.SaveConfig()
 
     def GetSettings(key: str) -> str|None:
+        """ Retrieve a setting. If the key does not exist, return None """
         if not Neurotorch_Settings.config.has_option("SETTINGS", key):
             return None
         return Neurotorch_Settings.config.get("SETTINGS", key)
     
-    def SetSetting(key: str, value: str):
+    def SetSetting(key: str, value: str, save: bool = False):
+        """ Set a setting. If save=True, the file is saved to disk """
         Neurotorch_Settings.config.set("SETTINGS", key, value)
-        Neurotorch_Settings.SaveConfig()
+        if save:
+            Neurotorch_Settings.SaveConfig()
 
     def SaveConfig():
-        pathlib.Path(os.path.dirname(Neurotorch_Settings.ConfigPath)).mkdir(parents=True, exist_ok=True)
-        with open(Neurotorch_Settings.ConfigPath, 'w') as configfile:
-            Neurotorch_Settings.config.write(configfile)
+        """ Writes the config file to disk"""
+        try:
+            with open(Neurotorch_Settings.app_data_path / "settings.ini", 'w') as configfile:
+                Neurotorch_Settings.config.write(configfile)
+        except Exception as ex:
+            logger.warning(f"Failed to save the config. The error message was: \n---\n%s\n---" % str(ex))
+
+    def LoadPlugins():
+        """ This function loads plugins from a) the shipped plugin folder contained in the package itself and b) the AppData folder """
+        user_plugin_path = (Neurotorch_Settings.app_data_path / "plugins").mkdir(parents=True, exist_ok=True)
+
 
 class Neurotorch_Resources:
+    """ Static class to access resources """
 
-    _path_stringsJSON = None
+    path = Path(__file__).parent.parent / "resources"
+
     _json: dict = None
 
     def _CreateStatic():
-        Neurotorch_Resources._path_stringsJSON = os.path.join(*[Neurotorch_Settings.ResourcesPath, "strings.json"])
-        if not os.path.exists(Neurotorch_Resources._path_stringsJSON):
-            return
-        with open(Neurotorch_Resources._path_stringsJSON) as f:
+        path = Path(__file__).parent.parent / "resources" / "strings.json"
+        with open(path) as f:
             Neurotorch_Resources._json = json.load(f)
 
     def GetString(path:str) -> str:
+        """ Retreive a key by supplying the adress with slashes (example: tab2/algorithms/diffMax). Returns '' if the key is not found and the path itself if it does not point to a end node """
         if Neurotorch_Resources._json is None:
             return ""
         _folder = Neurotorch_Resources._json
-        for key in path.split("/"):
+        paths = path.split("/")
+        for i, key in enumerate(paths):
             if key not in _folder.keys():
+                logger.debug(f"Can't find key {path}. It stops at '{'/'.join(paths[0:i])}'")
                 return ""
             _folder = _folder[key]
         if type(_folder) == str:
             return _folder
         return path
     
-    def GetImage(relativepath: str):
-        _path = os.path.abspath(os.path.join(Neurotorch_Settings.MediaPath, *relativepath.split("/")))
-        if not os.path.exists(_path):
-            return None
-        return Image.open(_path)
+    def GetImage(filename: str) -> Image.ImageFile:
+        """ Open a image. Raises FileNotFoundError if the file can't be opened """
+        path = Neurotorch_Resources.path / filename
+        if not path.exists() or not path.is_file():
+            raise FileNotFoundError(f"Can't find the resource file {filename}")
+        return Image.open(path)
+    
+_fmt = logging.Formatter('[%(asctime)s %(levelname)s]: %(message)s')
+file_logging_handler = RotatingFileHandler(Neurotorch_Settings.app_data_path / "log.txt", mode="a", maxBytes=(1024**2), backupCount=10)
+file_logging_handler.setFormatter(_fmt)
+file_logging_handler.setLevel(logging.DEBUG)
+stream_logging_handler = logging.StreamHandler()
+stream_logging_handler.setFormatter(_fmt)
+stream_logging_handler.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
+logger.addHandler(file_logging_handler)
+logger.addHandler(stream_logging_handler)    
+
+def log_exceptions_hook(exc_type, exc_value=None, exc_traceback=None, thread=None):
+    logger.error(f"An {repr(exc_type)} happened: {exc_value}", exc_info=(exc_type, exc_value, exc_traceback))
+    sys.__excepthook__(exc_type, exc_value, exc_traceback)
+
+def thread_exceptions_hook(args):
+    log_exceptions_hook(*args)
+
+sys.excepthook = log_exceptions_hook
+threading.excepthook = thread_exceptions_hook
 
 Neurotorch_Settings._CreateStatic()
 Neurotorch_Resources._CreateStatic()
