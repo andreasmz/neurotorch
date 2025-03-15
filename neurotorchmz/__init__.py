@@ -2,34 +2,14 @@ __version__ = "25.3.1"
 __author__ = "Andreas Brilka"
 
 import threading
-import logging
-from enum import Enum
+from .core.session import Session, Edition
 
-class Edition(Enum):
-    NEUROTORCH = 1
-    NEUROTORCH_LIGHT = 2
-    NEUROTORCH_DEBUG = 10
+def Start(headless: bool = False, edition: Edition = Edition.NEUROTORCH):
+    session = Session(headless=headless, edition=edition)
+    session.launch()
 
-from gui.settings import logger, file_logging_handler
-from .utils.api import *
-
-neutorch_GUI = None
-
-
-
-def Start(edition:Edition = Edition.NEUROTORCH):
-    global neutorch_GUI, API
-    from .gui.window import Neurotorch_GUI
-
-    if edition == Edition.NEUROTORCH_DEBUG:
-        file_logging_handler.setLevel(logging.DEBUG)
-        logger.debug("Enabled debugging output to console")
-
-    neutorch_GUI = Neurotorch_GUI(__version__)
-    API = _API(neutorch_GUI)
-    logger.debug(f"Started NeurotorchMZ version {__version__}")
-    neutorch_GUI.GUI(edition)
-
-def Start_Background(edition:Edition = Edition.NEUROTORCH):
-    task = threading.Thread(target=Start, args=(edition,))
+def Start_Background(edition:Edition = Edition.NEUROTORCH) -> Session:
+    session = Session(headless=False, edition=edition)
+    task = threading.Thread(target=session.launch)
     task.start()
+    return session

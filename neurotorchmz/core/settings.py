@@ -13,7 +13,7 @@ logger = logging.getLogger("NeurotorchMZ")
 class Neurotorch_Settings:
     """ Static class to access user configurations and data """
 
-    app_data_path: Path = platformdirs.user_data_path(appname="NeurotorchMZ", appauthor=False, roaming=True)
+    app_data_path: Path = platformdirs.user_data_path(appname="NeurotorchMZ", appauthor=False, roaming=True, ensure_exists=True)
     tmp_path: Path = app_data_path / "tmp"
     config: configparser.ConfigParser = None
 
@@ -92,7 +92,7 @@ class Neurotorch_Resources:
             return _folder
         return path
     
-    def GetImage(filename: str) -> Image.ImageFile:
+    def GetImage(filename: str) -> Image.Image:
         """ Open a image. Raises FileNotFoundError if the file can't be opened """
         path = Neurotorch_Resources.path / filename
         if not path.exists() or not path.is_file():
@@ -100,12 +100,13 @@ class Neurotorch_Resources:
         return Image.open(path)
     
 _fmt = logging.Formatter('[%(asctime)s %(levelname)s]: %(message)s')
+_fmtFile = logging.Formatter('[%(asctime)s|%(levelname)s|%(module)s]: %(message)s')
 file_logging_handler = RotatingFileHandler(Neurotorch_Settings.app_data_path / "log.txt", mode="a", maxBytes=(1024**2), backupCount=10)
-file_logging_handler.setFormatter(_fmt)
+file_logging_handler.setFormatter(_fmtFile)
 file_logging_handler.setLevel(logging.DEBUG)
 stream_logging_handler = logging.StreamHandler()
 stream_logging_handler.setFormatter(_fmt)
-stream_logging_handler.setLevel(logging.INFO)
+stream_logging_handler.setLevel(logging.ERROR)
 logger.setLevel(logging.DEBUG)
 logger.addHandler(file_logging_handler)
 logger.addHandler(stream_logging_handler)    
@@ -122,3 +123,6 @@ threading.excepthook = thread_exceptions_hook
 
 Neurotorch_Settings._CreateStatic()
 Neurotorch_Resources._CreateStatic()
+
+def log_exception_debug(ex: Exception, msg:str = None):
+    logger.debug("%s:\n---\n%s\n---" % (msg if msg is not None else f"An exception happened", str(ex)))
