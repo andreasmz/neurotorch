@@ -532,15 +532,15 @@ class ImageObject:
         
         return (self.imgS - self.imgView(ImageView.SPATIAL).Mean).astype(self.imgS.dtype)
     
-    def PrecomputeImage(self, convolute: bool = False, task_continue: Task|None = None, run_async:bool = True) -> Task:
+    def PrecomputeImage(self, calc_convoluted: bool = False, task_continue: bool = False, run_async:bool = True) -> Task:
         """ 
-            Calculation of the image views as well as the difference image takes some time. To improve runtime performance, this function precomputes common views.
+            Precalculate the image views to prevent stuttering during runtime.
 
-            :param bool convolute: Controls if the convoluted function should also be precomputed
-            :param Task|None task: This function supports the continuation of an existing task (for example from opening an image file)
-            :param bool async_mode: Controls if the precomputation runs in a different thread
+            :param bool calc_convoluted: Controls if the convoluted function should also be precomputed
+            :param bool task_continue: This function supports the continuation of an existing task (for example from opening an image file)
+            :param bool async_mode: Controls if the precomputation runs in a different thread. Has no effect when task_continue is set
+            :returns Task: The task object of this task
             :raises AlreadyLoading: There is already a task working on this ImageObject
-            
         """
         if not task_continue and self._task is not None and not self._task.finished:
             raise AlreadyLoadingError()
@@ -554,7 +554,7 @@ class ImageObject:
             gc.collect()
             task.set_step_progress(1+_progIni, "Calculating imgDiff")
             self.imgDiff
-            if convolute:
+            if calc_convoluted:
                 task.set_step_progress(2+_progIni, "Applying Gaussian Filter on imgDiff")
                 self.imgDiff_Mode = "Convoluted"
                 self.imgDiff
@@ -577,23 +577,38 @@ class ImageObject:
             self._task = Task(_Precompute, "Precompute image views", run_async=run_async).set_step_mode(2).start()
         return self._task
         
-    def SetImagePrecompute(self, img:np.ndarray, name:str = None, callback = None, errorcallback = None, convolute: bool = False, run_async:bool = False) -> Task:
+    def SetImagePrecompute(self, img:np.ndarray, name:str = None, calc_convoluted: bool = False, run_async:bool = True) -> Task:
+        """ 
+            Set a new image with a given name and run PrecomputeImage() on it.
+
+            :param np.ndarray img: The image
+            :param str name: Name of the image
+            :param bool calc_convoluted: Controls if the convoluted function should also be precomputed
+            :param bool task_continue: This function supports the continuation of an existing task (for example from opening an image file)
+            :param bool async_mode: Controls if the precomputation runs in a different thread
+            :returns Task: The task object of this task
+            :raises AlreadyLoading: There is already a task working on this ImageObject
+        """
         if not ImageObject._IsValidImagestack(img):
             raise UnsupportedImageError()
         self.img = img
         self.name = name
-        return self.PrecomputeImage(convolute=convolute, run_async=run_async)
+        return self.PrecomputeImage(calc_convoluted=calc_convoluted, run_async=run_async)
 
 
-    def OpenFile(self, path: Path|str, precompute:bool = False, convolute:bool = False, run_async:bool = False) -> Task:
+    def OpenFile(self, path: Path|str, precompute:bool = False, calc_convoluted:bool = False, run_async:bool = True) -> Task:
         """ 
             Open an image using a given path.
 
             :param Path|str path: The path to the image file
             :param bool precompute: Controls if the loaded image is also precomputed
-            :param bool convolute: Has only an affect when precompute is set. Passed to PrecomputeImage() function
+            :param bool calc_convoluted: Has only an affect when precompute is set. Passed to PrecomputeImage() function
             :param bool run_async: Controls if the precomputation runs in a different thread
-            :raises 
+            :returns Task: The task object of this task
+            :raises AlreadyLoading: There is already a task working on this ImageObject
+            :raises FileNotFoundError:
+            :raises UnsupportedImageError:
+            :raises ImageShapeError:
         
         """
         if self._task is not None and not self._task.finished:
@@ -607,7 +622,7 @@ class ImageObject:
         self.Clear()
 
         def _Load(task: Task):
-            task.set_step_progress(0, "Opening File")
+            task.set_step_progress(0, "Reading File")
             try:
                 _pimsImg = pims.open(path)
             except FileNotFoundError:
@@ -627,9 +642,9 @@ class ImageObject:
                 self._pimsmetadata = collections.OrderedDict(sorted(_pimsImg.get_metadata_raw().items()))
 
             if precompute:
-                self.PrecomputeImage(convolute=convolute, task_continue=True, run_async=run_async)
+                self.PrecomputeImage(calc_convoluted=calc_convoluted, task_continue=True, run_async=run_async)
 
-        self._task = Task(_Load, "Open image file", run_async=run_async).set_step_mode(2 + 4*precompute).start()
+        self._task = Task(_Load, "Open image", run_async=run_async).set_step_mode(2 + 4*precompute).start()
         return self._task
     
 class ImageView:

@@ -2,10 +2,9 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Literal
 from tktooltip import ToolTip
-import time
-from enum import Enum
 import psutil
 
+from ...core.task_system import Task, TaskState
 
 class Statusbar:
     """
@@ -18,7 +17,6 @@ class Statusbar:
         self._statusTxt = ""
         self._progTxt = ""
         self._timerSpeed = Statusbar.timerLowSpeed #ms
-        self._jobs : list[Job] = []
 
         self.root = root
         self.frame = frame
@@ -37,9 +35,6 @@ class Statusbar:
 
         self.root.after(0, self._TimerTick)
         self.root.after(1000, self._LowerTimerTick)
-
-    def AddJob(self, job):
-        self._jobs.append(job)
 
     @property
     def StatusText(self):
@@ -67,29 +62,29 @@ class Statusbar:
         else:
             self._timerSpeed = Statusbar.timerHighSpeed
         
-        for j in self._jobs:
-            if ((j.State == JobState.STOPPED) | (j.State == JobState.TIMEOUT)) and (j.Time <= -3 or j.Runtime <= 3):
-                self._jobs.remove(j)
-        self._jobs.sort(key=lambda j: j.startTime) #Ascending sorting: Newest job last
-        
-        if len(self._jobs) == 0:
+        active_tasks = [t for t in Task.tasks if t.state == TaskState.RUNNING]
+        finished_task = [t for t in Task.tasks if (t.finished and t.time_since_end < 5)]
+        sorted(active_tasks, key=lambda t: t.time_since_start, reverse=True)
+        sorted(finished_task, key=lambda t: (t.state.value, t.time_since_end), reverse=True)
+
+        if len(active_tasks) == 0 and len(finished_task) == 0:
             self.progressText = ""
             if str(self.progMain["mode"]) != "determinate":
                 self.progMain.configure(mode="determinate")
             if self.varProgMain.get() != 0:
                 self.varProgMain.set(0)
-        elif len(self._jobs) > 0:
-            j = self._jobs[-1] # Pick newest job
-            self.progressText = f"{j.Text} ({round(j.Time, 0)} s)" if len(self._jobs) == 1 else f"{j.Text} ({round(j.Time, 0)} s) and {len(self._jobs)-1} more job running"
-            if j.steps == 0:
+        else:
+            t = active_tasks[0] if len(active_tasks) >= 1 else finished_task[0]
+            self.progressText = t.to_string_short() + (f"and {len(active_tasks)-1} more task{'s' if len(active_tasks) >= 3 else ''} running" if len(active_tasks) >= 2 else "")
+            if t.is_determinate():
+                if str(self.progMain["mode"]) != "determinate":
+                    self.progMain.configure(mode="determinate")
+                if self.varProgMain.get() != t.progress:
+                    self.varProgMain.set(t.progress)
+            else:
                 if str(self.progMain["mode"]) != "indeterminate":
                     self.progMain.configure(mode="indeterminate")
                 self.progMain.step(10)
-            else:
-                if str(self.progMain["mode"]) != "determinate":
-                    self.progMain.configure(mode="determinate")
-                if self.varProgMain.get() != j.Percentage:
-                    self.varProgMain.set(j.Percentage)
         self.root.after(self._timerSpeed, self._TimerTick)
 
     def _LowerTimerTick(self):
@@ -97,110 +92,6 @@ class Statusbar:
         _size = round(process.memory_info().rss/(1024**2),2)
         self.lblSystemUsage["text"] = f"RAM: {_size} MB"
         self.root.after(Statusbar.lowerTimerSpeed, self._LowerTimerTick)
-    
-class JobState(Enum):
-    """
-        Enum for the class Job
-    """
-    RUNNING = 1
-    STOPPED = 2
-    TIMEOUT = 3
-class Job:
-    """
-        Implements a currently running task whith n steps, which can be progressed using SetProgress()
-    """
-    def __init__(self, steps, timeout=60*5, showSteps=True):
-        """
-            steps: Number of steps or 0 for continuous jobs
-        """
-        if steps < 0:
-            raise ValueError("Steps must be a positive integer or zero")
-        self.startTime = time.time()
-        self.steps = steps
-        self.timeout = timeout
-        self.showSteps = showSteps if steps != 0 else False
-        self._progress = 0
-        self._text = ""
-        self._state : JobState = JobState.RUNNING
-        self._finishedTime = None
-    
-    @property
-    def Text(self):
-        if self.State == JobState.STOPPED:
-            return f"Finished: {self._text}"
-        if self.State == JobState.TIMEOUT:
-            return f"Timeout: {self._text}"
-        if self.showSteps:
-            if self.Progress == self.steps:
-                return f"Completing: {self._text}"
-            return f"{self.Progress+1}/{self.steps} {self._text}"
-        return self._text
-
-    @property
-    def Progress(self):
-        return self._progress
-
-    def SetProgress(self, val, text=False, noError=False):
-        if val > self.steps or val < 0:
-            if noError:
-                return False
-            raise ValueError("The progress value must be smaller than step size and greater or equal to zero")
-        self._progress = val
-        if text != False:
-            self._text = text
-
-    def SetStopped(self, text=False):
-        self._finishedTime = time.time()
-        self._state = JobState.STOPPED
-        self._progress = self.steps
-        if text != False:
-            self._text = text
-    
-    @property
-    def State(self):
-        if self._state == JobState.RUNNING:
-            if (time.time() - self.startTime) >= self.timeout:
-                self._state = JobState.TIMEOUT
-                self._finishedTime = time.time()
-        return self._state
-
-    @property
-    def Percentage(self):
-        if (self.State == JobState.STOPPED) | (self.State == JobState.TIMEOUT):
-            return 0
-        if self.steps == 0:
-            return 100
-        return int(95*self._progress/self.steps + 5)
-    
-    @property
-    def Runtime(self):
-        """
-            The runtime of the job
-        """
-        match (self.State):
-            case JobState.RUNNING:
-                return time.time() - self.startTime
-            case JobState.STOPPED | JobState.TIMEOUT:
-                if self._finishedTime is None:
-                    raise RuntimeError("The finish time of the job wasn't set")
-                return self._finishedTime - self.startTime
-            case _:
-                raise RuntimeError(f"The job was in an unkown JobState {self._state}")
-    
-    @property
-    def Time(self):
-        """
-            The runtime of the job (postive) or the time since stopped (negative)
-        """
-        match (self.State): #using the property will update to possible timeout
-            case JobState.RUNNING:
-                return time.time() - self.startTime
-            case JobState.STOPPED | JobState.TIMEOUT:
-                if self._finishedTime is None:
-                    raise RuntimeError("The finish time of the job wasn't set")
-                return self._finishedTime - time.time()
-            case _:
-                raise RuntimeError(f"The job was in an unkown JobState {self._state}")
 
 
 class EntryPopup(ttk.Entry):

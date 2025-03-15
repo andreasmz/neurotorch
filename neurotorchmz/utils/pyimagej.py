@@ -1,23 +1,23 @@
-from .image import ImgObj
+from ..core.session import *
+from ..core.task_system import Task
 from .synapse_detection import *
-from ..gui.settings import Neurotorch_Settings as Settings
-from ..gui.window import Neurotorch_GUI
-from ..gui.components.general import Job
 
-
-import traceback
 import tkinter as tk
 from tkinter import messagebox, filedialog
-import os, threading
+import os
 import numpy as np
 import xarray
+from pathlib import Path
 
 class ImageJHandler:
-    def __init__(self, gui: Neurotorch_GUI):
-        self._gui = gui
-        self.root = gui.root
+    """
+        Provides a connection between Neurotorch and Fiji/ImageJ using pyimageJ
+    """
+
+    def __init__(self, session: Session):
         self.ij = None
-        self.job = None
+        self.session = session
+        self.task: Task|None = None
 
         # Java imports from ImageJ
         self.OvalRoi = None # jimport('ij.gui.OvalRoi')
@@ -28,7 +28,8 @@ class ImageJHandler:
         # Image J Objects
         self.RM = None # Roi Manager
 
-    def MenubarImageJH(self, menubar):
+    def MenubarImageJH(self, menubar: tk.Menu):
+        """ Creates a menu with ImageJ commands in the supplied menubar by the GUI """
         self.menubar = menubar
         self.menuImageJ = tk.Menu(self.menubar,tearoff=0)
         self.menubar.add_cascade(label="ImageJ",menu=self.menuImageJ)
@@ -48,51 +49,54 @@ class ImageJHandler:
         self.menuImageJ.add_command(label="Locate Installation", state="normal", command=self.MenuLocateInstallation_Click)
 
     def StartImageJ(self):
+        """ Starts ImageJ """
         try:
             from scyjava import jimport
             import imagej
         except ModuleNotFoundError as ex:
-            print(ex)
+            log_exception_debug(ex, "ModuleImport Error trying to import ImageJ")
             messagebox.showerror("Neurotorch", "It seems that pyimagej is not installed")
             return
-        if Settings.GetSettings("ImageJ_Path") is None or (not os.path.exists(Settings.GetSettings("ImageJ_Path"))):
+        if (path_imagej := Settings.GetSettings("ImageJ_Path")) is None or not (path_imagej := Path(Settings.GetSettings("ImageJ_Path"))).exists() or not path_imagej.is_dir():
+            logger.warning(f"Failed to locate ImageJ at {path_imagej}")
             messagebox.showerror("Neurotorch", "Can't locate your local Fiji/ImageJ installation. Please set the path to your installation via the menubar and try again")
             return
         
-        if self.job is not None:
+        if self.task is not None:
+            logger.debug("ImageJ is already running")
             messagebox.showerror("Neurotorch", "ImageJ has already been started")
             return
 
-        def _StartImageJ_Thread(job: Job):
+        def _StartImageJ_Thread(task: Task, path_imagej: Path):
             try:
-                _path = Settings.GetSettings("ImageJ_Path")
-                self.ij = imagej.init(_path, mode='interactive')
+                self.ij = imagej.init(path_imagej, mode='interactive')
                 self.OvalRoi = jimport('ij.gui.OvalRoi')
                 self.PolygonRoi = jimport('ij.gui.PolygonRoi')
                 self.Roi = jimport('ij.gui.Roi')
                 self.IJ_Plugin_Duplicator = jimport('ij.plugin.Duplicator')
             except TypeError as ex:
+                log_exception_debug(ex, "TypeError trying to start Fiji/ImageJ")
                 messagebox.showerror("Neurotorch", f"Failed to start Fiji/ImageJ. Did you previously loaded an ND2 file (or any other Bioformat)? Then this my have crashed the Java instance. Try to restart Neurotorch and start Fiji/ImageJ BEFORE opening an ND2 file")
                 self.menuImageJ.entryconfig("Start ImageJ", state="normal")
-                job.SetStopped("Failed to start Fiji/ImageJ")
+                task.error = ex
                 return
             except Exception as ex:
-                messagebox.showerror("Neurotorch", f"Failed to start Fiji/ImageJ. The error was '{ex}' and the traceback\n{traceback.format_exc()}")
+                logger.error(f"Failed to start ImageJ: {str(ex)}")
+                log_exception_debug(ex, "The stacktrace for the error above")
+                messagebox.showerror("Neurotorch", f"Failed to start Fiji/ImageJ. See the logs for more details")
                 self.menuImageJ.entryconfig("Start ImageJ", state="normal")
-                job.SetStopped("Failed to start Fiji/ImageJ")
+                task.error = ex
                 return
             self.ij.ui().showUI()
             self._ImageJReady()
-            job.SetStopped("Fiji/ImageJ started")
+            logger.debug(f"Imported ImageJ and its dependencies")
 
         self.menuImageJ.entryconfig("Start ImageJ", state="disabled")
-        self.job = Job(steps=0)
-        self.job.SetProgress(0, "Starting Fiji/ImageJ")
-        self._gui.statusbar.AddJob(self.job)
-        threading.Thread(target=_StartImageJ_Thread, args=(self.job,), daemon=True, name="Neurotorch_ImageJThread").start()
+        self.task = Task(_StartImageJ_Thread, "Starting Fiji/ImageJ").set_indeterminate().start(path_imagej=path_imagej)
 
 
-    def LoadImage(self):
+    def LoadImage(self) -> Task:
+        """ Load an image from ImageJ into Neurotorch """
         if self.ij is None:
             messagebox.showerror("Neurotorch", "Please first start ImageJ")
             return
@@ -105,41 +109,46 @@ class ImageJHandler:
         if hasattr(_imgIP, 'getShortTitle'):
             _name = str(_imgIP.getShortTitle())
         _img = np.array(_img)
-        ImgObj().SetImagePrecompute(img=_img, name=_name, callback=self._gui._OpenImage_Callback, errorcallback=self._gui._OpenImage_CallbackError)
+        task = ImageObject().SetImagePrecompute(img=_img, name=_name, run_async=True)
+        task.set_callback(self.session._OpenImage_Callback).set_error_callback(self.session._OpenImage_CallbackError)
+        return task.start()
 
     def ExportToImageJ_Img(self, asCopy = False):
+        """ Export the active image to ImageJ """
         if self.ij is None:
             messagebox.showerror("Neurotorch", "Please first start ImageJ")
             return
-        if self._gui.ImageObject is None or self._gui.ImageObject.img is None:
+        if self.session.active_image_object is None or self.session.active_image_object.img is None:
             self.root.bell()
             return
-        xImg = xarray.DataArray(self._gui.ImageObject.img, name=f"{self._gui.ImageObject.name}", dims=("pln", "row", "col"))
+        xImg = xarray.DataArray(self.session.active_image_object.img, name=f"{self.session.active_image_object.name}", dims=("pln", "row", "col"))
         javaImg = self.ij.py.to_imageplus(xImg)
         if asCopy:
             javaImg = self.IJ_Plugin_Duplicator().run(javaImg)
         self.ij.ui().show(javaImg)    
-        min = self._gui.ImageObject.imgProps.minClipped
-        max = self._gui.ImageObject.imgProps.max
+        min = self.session.active_image_object.imgProps.minClipped
+        max = self.session.active_image_object.imgProps.max
         self.ij.py.run_macro(f"setMinAndMax({min}, {max});")
 
     def ExportToImageJ_ImgDiff(self, asCopy = False):
+        """ Export the active imageDiff to ImageJ"""
         if self.ij is None:
             messagebox.showerror("Neurotorch", "Please first start ImageJ")
             return
-        if self._gui.ImageObject is None or self._gui.ImageObject.imgDiff is None:
+        if self.session.active_image_object is None or self.session.active_image_object.imgDiff is None:
             self.root.bell()
             return
-        xDiffImg = xarray.DataArray(np.clip(self._gui.ImageObject.imgDiff, a_min=0, a_max=None).astype("uint16"), name=f"{self._gui.ImageObject.name} (diff)", dims=("pln", "row", "col"))
+        xDiffImg = xarray.DataArray(np.clip(self.session.active_image_object.imgDiff, a_min=0, a_max=None).astype("uint16"), name=f"{self.session.active_image_object.name} (diff)", dims=("pln", "row", "col"))
         javaDiffImg = self.ij.py.to_imageplus(xDiffImg)
         if asCopy:
             javaDiffImg = self.IJ_Plugin_Duplicator().run(javaDiffImg)
         self.ij.ui().show(javaDiffImg)
-        min = self._gui.ImageObject.imgDiffProps.minClipped
-        max = self._gui.ImageObject.imgDiffProps.max
+        min = self.session.active_image_object.imgDiffProps.minClipped
+        max = self.session.active_image_object.imgDiffProps.max
         self.ij.py.run_macro(f"setMinAndMax({min}, {max});")
 
-    def ImportROIS(self) -> list[ISynapseROI]|None:
+    def ImportROIS(self) -> tuple[list[ISynapseROI], list[str]]|None:
+        """ Import ROIs from ImageJ """
         if self.ij is None:
             messagebox.showerror("Neurotorch", "Please first start ImageJ")
             return None
@@ -168,6 +177,7 @@ class ImageJHandler:
         return (rois, names)
 
     def ExportROIs(self, synapses: list[ISynapse]):
+        """ Export ISynapses (and their ROIs) to ImageJ """
         if self.ij is None:
             messagebox.showerror("Neurotorch", "Please first start ImageJ")
             return
@@ -198,26 +208,33 @@ class ImageJHandler:
                 self.RM.addRoi(roi)
             elif isinstance(roi, PolygonalSynapseROI):
                 if roi.polygon is None: continue
-                roi = self.PolygonRoi(roi.polygon[:, 0]+0.5, roi.polygon[:, 1]+0.5, self._gui.ijH.Roi.POLYGON)
+                roi = self.PolygonRoi(roi.polygon[:, 0]+0.5, roi.polygon[:, 1]+0.5, self.Roi.POLYGON)
                 roi.setName(name)
                 self.RM.addRoi(roi)
             else:
                 continue
 
     def OpenRoiManager(self):
+        """ Opens the ROI Manager """
+        if self.ij is None:
+            messagebox.showerror("Neurotorch", "Please first start ImageJ")
+            return
         self.ij.py.run_macro("roiManager('show all');")
         self.RM = self.ij.RoiManager.getRoiManager()
         
     def MenuLocateInstallation_Click(self):
+        """ Opens a window to locate the installation. """
         _path = filedialog.askopenfilename(parent=self.root, title="Locate your local Fiji/ImageJ installation", 
-                filetypes=(("ImageJ-win64.exe", "*.exe"), ))
+                filetypes=(("ImageJ-win64.exe (Windows)", "*.exe"), ("Fiji.app (MacOS)", "*.app")))
         if _path is None or _path == "":
             return
-        if _path.endswith(".exe"):
-            _path = os.path.dirname(_path)
-        Settings.SetSetting("ImageJ_Path", _path)
+        _path = Path(_path)
+        if _path.suffix == ".exe":
+            _path = _path.parent
+        Settings.SetSetting("ImageJ_Path", str(_path))
 
     def _ImageJReady(self):
+        """ Internal function. Called, when ImageJ is successfully loaded """
         self.menuImageJ.entryconfig("ImageJ --> Neurotorch", state="normal")
         self.menuImageJ.entryconfig("Img --> ImageJ", state="normal")
         self.menuImageJ.entryconfig("ImgDiff --> ImageJ", state="normal")
