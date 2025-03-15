@@ -1,10 +1,10 @@
 import collections
-from typing import Callable, Literal
+from typing import Callable, Literal, Self
 import numpy as np
 import pims.bioformats
 import psutil
+from pathlib import Path
 from scipy.ndimage import gaussian_filter
-import threading
 import pims
 import os
 import gc
@@ -12,7 +12,7 @@ import logging
 
 logger = logging.getLogger("NeurotorchMZ")
 
-from  ..gui.components.general import Job    
+from ..core.task_system import Task  
 
 class ImageProperties:
     """
@@ -228,7 +228,7 @@ class AxisImage:
     
 
 
-class ImgObj:
+class ImageObject:
     """
         A class for holding a) the image provided in form an three dimensional numpy array (time, y, x) and b) the derived images and properties, for example
         the difference Image (imgDiff). All properties are lazy loaded, i. e. they are calculated on first access
@@ -278,8 +278,9 @@ class ImgObj:
         self._customImages = {}
         self._customImagesProps = {}
 
-        self._openFileThread : threading.Thread = None
-        self._loadingThread : threading.Thread = None
+        self._task: Task|None = None
+        #self._openFileThread : threading.Thread = None
+        #self._loadingThread : threading.Thread = None
         self._name: str|None = None
 
     @property
@@ -302,14 +303,14 @@ class ImgObj:
             if self._imgDenoised is None:
                 if self.imgDiff_Conv is None:
                     return None
-                self._imgDenoised = self.imgView(ImgObj.SPATIAL).Median + np.cumsum(self.imgDiff_Conv, axis=(1,2)) 
+                self._imgDenoised = self.imgView(ImageView.SPATIAL).Median + np.cumsum(self.imgDiff_Conv, axis=(1,2)) 
             return self._imgDenoised
         return self._img
     
     @img.setter
     def img(self, image: np.ndarray) -> bool:
         self.Clear()
-        if not ImgObj._IsValidImagestack(image): return False
+        if not ImageView._IsValidImagestack(image): return False
         self._img = image
         return True
 
@@ -352,13 +353,13 @@ class ImgObj:
         if self._img is None:
             return None
         match mode:
-            case ImgObj.SPATIAL:
+            case ImageView.SPATIAL:
                 if self._imgSpatial is None:
-                    self._imgSpatial = AxisImage(self._img, ImgObj.SPATIAL)
+                    self._imgSpatial = AxisImage(self._img, ImageView.SPATIAL)
                 return self._imgSpatial
-            case ImgObj.TEMPORAL:
+            case ImageView.TEMPORAL:
                 if self._imgTemporal is None:
-                    self._imgTemporal = AxisImage(self._img, ImgObj.TEMPORAL)
+                    self._imgTemporal = AxisImage(self._img, ImageView.TEMPORAL)
                 return self._imgTemporal
             case _:
                 raise ValueError("The axis must be either SPATIAL or TEMPORAL")
@@ -416,13 +417,13 @@ class ImgObj:
         if self.imgDiff is None:
             return None
         match mode:
-            case ImgObj.SPATIAL:
+            case ImageView.SPATIAL:
                 if self._imgDiffSpatial is None:
-                    self._imgDiffSpatial = AxisImage(self._imgDiff, ImgObj.SPATIAL)
+                    self._imgDiffSpatial = AxisImage(self._imgDiff, ImageView.SPATIAL)
                 return self._imgDiffSpatial
-            case ImgObj.TEMPORAL:
+            case ImageView.TEMPORAL:
                 if self._imgDiffTemporal is None:
-                    self._imgDiffTemporal = AxisImage(self._imgDiff, ImgObj.TEMPORAL)
+                    self._imgDiffTemporal = AxisImage(self._imgDiff, ImageView.TEMPORAL)
                 return self._imgDiffTemporal
             case _:
                 raise ValueError("The axis must be either SPATIAL or TEMPORAL")
@@ -432,13 +433,13 @@ class ImgObj:
             return None
         _n = self._imgDiffConvFunc.__name__+str(self._imgDiffConvArgs)
         match mode:
-            case ImgObj.SPATIAL:
+            case ImageView.SPATIAL:
                 if _n not in self._imgDiffCSpatial.keys():
-                    self._imgDiffCSpatial[_n] = AxisImage(self.imgDiff_Conv, ImgObj.SPATIAL)
+                    self._imgDiffCSpatial[_n] = AxisImage(self.imgDiff_Conv, ImageView.SPATIAL)
                 return self._imgDiffCSpatial[_n]
-            case ImgObj.TEMPORAL:
+            case ImageView.TEMPORAL:
                 if _n not in self._imgDiffCTemporal.keys():
-                    self._imgDiffCTemporal[_n] = AxisImage(self.imgDiff_Conv, ImgObj.TEMPORAL)
+                    self._imgDiffCTemporal[_n] = AxisImage(self.imgDiff_Conv, ImageView.TEMPORAL)
                 return self._imgDiffCTemporal[_n]
             case _:
                 raise ValueError("The axis must be either SPATIAL or TEMPORAL")
@@ -451,7 +452,7 @@ class ImgObj:
 
     @imgDiff.setter
     def imgDiff(self, image: np.ndarray) -> bool:
-        if not ImgObj._IsValidImagestack(image): return False
+        if not ImageObject._IsValidImagestack(image): return False
         self.Clear()
         self._imgDiff = image
         self._imgDiff_mode = "Normal"
@@ -500,8 +501,8 @@ class ImgObj:
         """Clears all currently not actively used internal variables (currently only the convoluted imgDiff)"""
         for internalvar, property in [(self._imgDiffConv, self.imgDiff_Conv),
                                        (self._imgDiffConvProps, self.imgDiff_ConvProps),
-                                       (self._imgDiffCSpatial, self.imgDiff_ConvView(ImgObj.SPATIAL)),
-                                       (self._imgDiffCTemporal, self.imgDiff_ConvView(ImgObj.TEMPORAL))]:
+                                       (self._imgDiffCSpatial, self.imgDiff_ConvView(ImageView.SPATIAL)),
+                                       (self._imgDiffCTemporal, self.imgDiff_ConvView(ImageView.TEMPORAL))]:
             for k in list(internalvar.keys()).copy():
                 if internalvar[k] is not property:
                     del internalvar[k]
@@ -529,83 +530,93 @@ class ImgObj:
         if self._img is None:
             return None
         
-        return (self.imgS - self.imgView(ImgObj.SPATIAL).Mean).astype(self.imgS.dtype)
+        return (self.imgS - self.imgView(ImageView.SPATIAL).Mean).astype(self.imgS.dtype)
     
-    def PrecomputeImage(self, callback = None, errorcallback = None, convolute: bool = False, job:Job = None, waitCompletion:bool = False) -> Literal["AlreadyLoading", "WrongShape"] | Job:
-        if self._loadingThread is not None and self._loadingThread.is_alive():
-            if errorcallback is not None: errorcallback("AlreadyLoading")
-            return "AlreadyLoading"
+    def PrecomputeImage(self, convolute: bool = False, task_continue: Task|None = None, run_async:bool = True) -> Task:
+        """ 
+            Calculation of the image views as well as the difference image takes some time. To improve runtime performance, this function precomputes common views.
 
-        def _Precompute(job:Job):
-            _progIni = job.Progress
-            job.SetProgress(_progIni, text="Precalculating ImgView (Spatial Mean)")
-            self.imgView(ImgObj.SPATIAL).Mean
-            job.SetProgress(_progIni, text="Precalculating ImgView (Spatial Std)")
-            self.imgView(ImgObj.SPATIAL).Std
+            :param bool convolute: Controls if the convoluted function should also be precomputed
+            :param Task|None task: This function supports the continuation of an existing task (for example from opening an image file)
+            :param bool async_mode: Controls if the precomputation runs in a different thread
+            :raises AlreadyLoading: There is already a task working on this ImageObject
+            
+        """
+        if not task_continue and self._task is not None and not self._task.finished:
+            raise AlreadyLoadingError()
+
+        def _Precompute(task: Task):
+            _progIni = task._step
+            task.set_step_progress(_progIni, "Precalculating ImgView (Spatial Mean)")
+            self.imgView(ImageView.SPATIAL).Mean
+            task.set_step_progress(_progIni, "Precalculating ImgView (Spatial Std)")
+            self.imgView(ImageView.SPATIAL).Std
             gc.collect()
-            job.SetProgress(1+_progIni, text="Calculating imgDiff")
+            task.set_step_progress(1+_progIni, "Calculating imgDiff")
             self.imgDiff
             if convolute:
-                job.SetProgress(2+_progIni, text="Applying Gaussian Filter on imgDiff")
+                task.set_step_progress(2+_progIni, "Applying Gaussian Filter on imgDiff")
                 self.imgDiff_Mode = "Convoluted"
                 self.imgDiff
             gc.collect()
-            job.SetProgress(3+_progIni, text="Precalculating ImgDiffView (Spatial Max)")
-            self.imgDiffView(ImgObj.SPATIAL).Max
-            job.SetProgress(3+_progIni, text="Precalculating ImgDiffView (Spatial Std)")
-            self.imgDiffView(ImgObj.SPATIAL).StdNormed
+            task.set_step_progress(3+_progIni, "Precalculating ImgDiffView (Spatial Max)")
+            self.imgDiffView(ImageView.SPATIAL).Max
+            task.set_step_progress(3+_progIni, "Precalculating ImgDiffView (Spatial Std)")
+            self.imgDiffView(ImageView.SPATIAL).StdNormed
             gc.collect()
-            job.SetProgress(3+_progIni, text="Precalculating ImgDiffView (Temporal Max)")
-            self.imgDiffView(ImgObj.TEMPORAL).Max
-            job.SetProgress(3+_progIni, text="Precalculating ImgDiffView (Temporal Std)")
-            self.imgDiffView(ImgObj.TEMPORAL).Std
+            task.set_step_progress(3+_progIni, "Precalculating ImgDiffView (Temporal Max)")
+            self.imgDiffView(ImageView.TEMPORAL).Max
+            task.set_step_progress(3+_progIni, "Precalculating ImgDiffView (Temporal Std)")
+            self.imgDiffView(ImageView.TEMPORAL).Std
             gc.collect()
-            job.SetStopped("Loading Image")
-            if callable is not None:
-                callback(self)
+            task.set_step_progress
 
-        if job is None:
-            job = Job(steps=4, showSteps=True)
-        self._loadingThread = threading.Thread(target=_Precompute, args=(job,), daemon=True)
-        self._loadingThread.start()
-        if waitCompletion:
-            self._loadingThread.join()
+        if task_continue:
+            _Precompute(self._task)
         else:
-            return job
+            self._task = Task(_Precompute, "Precompute image views", run_async=run_async).set_step_mode(2).start()
+        return self._task
         
-    def SetImagePrecompute(self, img:np.ndarray, name:str = None, callback = None, errorcallback = None, convolute: bool = False, job:Job = None, waitCompletion:bool = False) -> Literal["FileNotFound", "AlreadyLoading", "ImageUnsupported", "WrongShape"] | Job:
-        if not ImgObj._IsValidImagestack(img):
-            if errorcallback is not None: errorcallback("ImageUnsupported")
-            return "ImageUnsupported"
+    def SetImagePrecompute(self, img:np.ndarray, name:str = None, callback = None, errorcallback = None, convolute: bool = False, run_async:bool = False) -> Task:
+        if not ImageObject._IsValidImagestack(img):
+            raise UnsupportedImageError()
         self.img = img
         self.name = name
-        return self.PrecomputeImage(callback=callback,errorcallback=errorcallback, convolute=convolute, job=job, waitCompletion=waitCompletion)
+        return self.PrecomputeImage(convolute=convolute, run_async=run_async)
 
 
-    def OpenFile(self, path: str, callback = None, errorcallback = None, convolute: bool = False, waitCompletion:bool = False) -> Literal["FileNotFound", "AlreadyLoading", "ImageUnsupported", "WrongShape"] | Job:
-        if (self._loadingThread is not None and self._loadingThread.is_alive()) or (self._openFileThread is not None and self._openFileThread.is_alive()):
-            if errorcallback is not None: errorcallback("AlreadyLoading")
-            return "AlreadyLoading"
+    def OpenFile(self, path: Path|str, precompute:bool = False, convolute:bool = False, run_async:bool = False) -> Task:
+        """ 
+            Open an image using a given path.
+
+            :param Path|str path: The path to the image file
+            :param bool precompute: Controls if the loaded image is also precomputed
+            :param bool convolute: Has only an affect when precompute is set. Passed to PrecomputeImage() function
+            :param bool run_async: Controls if the precomputation runs in a different thread
+            :raises 
         
-        if path is None or path == "":
-            if errorcallback is not None: errorcallback("FileNotFound")
-            return "FileNotFound"
+        """
+        if self._task is not None and not self._task.finished:
+            raise AlreadyLoadingError()
+        
+        if isinstance(path, str):
+            path = Path(path)
+        if not path.exists() or not path.is_file():
+            raise FileNotFoundError()
+        
         self.Clear()
 
-        def _Load(job: Job):
-            job.SetProgress(0, "Opening File")
+        def _Load(task: Task):
+            task.set_step_progress(0, "Opening File")
             try:
                 _pimsImg = pims.open(path)
             except FileNotFoundError:
-                if errorcallback is not None: errorcallback("FileNotFound")
-                return "FileNotFound"
+                raise FileNotFoundError()
             except Exception as ex:
-                if errorcallback is not None: errorcallback("ImageUnsupported", ex)
-                return "ImageUnsupported"
+                raise UnsupportedImageError(ex)
             if len(_pimsImg.shape) != 3:
-                if errorcallback is not None: errorcallback("WrongShape", _pimsImg.shape)
-                return "WrongShape"
-            job.SetProgress(1, "Converting image")
+                raise ImageShapeError(_pimsImg.shape)
+            task.set_step_progress(1, "Converting image")
             imgNP = np.zeros(shape=_pimsImg.shape, dtype=_pimsImg.dtype)
             for i in range(_pimsImg.shape[0]):
                 imgNP[i] = _pimsImg[i]
@@ -615,13 +626,42 @@ class ImgObj:
             if getattr(_pimsImg, "get_metadata_raw", None) != None:
                 self._pimsmetadata = collections.OrderedDict(sorted(_pimsImg.get_metadata_raw().items()))
 
-            return self.PrecomputeImage(callback=callback, errorcallback=errorcallback, convolute=convolute, job=job, waitCompletion=waitCompletion)
+            if precompute:
+                self.PrecomputeImage(convolute=convolute, task_continue=True, run_async=run_async)
 
-        job = Job(steps=6)
-        self._openFileThread = threading.Thread(target=_Load, args=(job,), daemon=True)
-        self._openFileThread.start()
-        if waitCompletion:
-            self._openFileThread.join()
-        else:
-            return job
+        self._task = Task(_Load, "Open image file", run_async=run_async).set_step_mode(2 + 4*precompute).start()
+        return self._task
     
+class ImageView:
+    """ 
+        Presets for reducing the 3 dimensional ImageObject in dimensions
+    
+        :var tuple SPATIAL: Removes the temporal component and will create an 2D image
+        :var tuple TEMPORAL: Removes the spatial component and will create an 1D time series
+    """
+
+    SPATIAL = (0)
+    TEMPORAL = (1,2)
+
+
+class ImageObjectError(Exception):
+    """ ImageObject Error"""
+    pass
+
+class AlreadyLoadingError(ImageObjectError):
+    """ Already loading an Image into an ImageObject"""
+    pass
+
+class UnsupportedImageError(ImageObjectError):
+    """ The image is unsupported """
+    
+    def __init__(self, exception: Exception|None = None, *args):
+        super().__init__(*args)
+        self.exception = exception
+
+class ImageShapeError(ImageObjectError):
+    """ The image has an invalid shape """
+
+    def __init__(self, shape: np.ndarray|None = None, *args):
+        super().__init__(*args)
+        self.shape = shape
