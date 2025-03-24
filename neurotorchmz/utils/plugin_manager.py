@@ -6,7 +6,7 @@ import logging
 logger = logging.getLogger("NeurotorchMZ")
 
 from ..gui.window import Neurotorch_GUI
-from ..gui.settings import Neurotorch_Settings
+from ..core.settings import Neurotorch_Settings
 from ..plugins import load_plugins
 
 

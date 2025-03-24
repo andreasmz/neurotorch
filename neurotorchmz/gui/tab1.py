@@ -1,40 +1,34 @@
 from .window import *
-from ..utils.image import ImgObj
 
-import tkinter as tk
-from tkinter import ttk, messagebox
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib import cm
 import numpy as np
-import logging
-
-logger = logging.getLogger("NeurotorchMZ")
 
 class TabImage_ViewChangedEvent(TabUpdateEvent):
     pass
 
 class TabImage(Tab):
-    def __init__(self, gui: Neurotorch_GUI):
-        super().__init__(gui)
+
+    def __init__(self, session: Session, root:ttk.Frame, frame: ttk.Frame):
+        super().__init__(session=session, root=root, frame=frame)
         self.tab_name = "Tab Image"
-        self.gui = gui
-        self.root = gui.root
         self.imshow2D = None
         self.imshow3D = None
         self.colorbar = None
 
-    def Init(self):
-        self.tab = ttk.Frame(self.gui.tabMain)
-        self.gui.tabMain.add(self.tab, text="Image")
+    def init(self):
+        self.tab = ttk.Frame(self.frame)
+        self.frame.add(self.tab, text="Image")
+        #ToolTip(self.tab, msg=self.__doc__, follow=True, delay=0.1)
 
         self.frameRadioImageMode = tk.Frame(self.tab)
         self.radioDisplayVar = tk.StringVar(value="imgMean")
-        self.radioDisplay1 = tk.Radiobutton(self.frameRadioImageMode, variable=self.radioDisplayVar, indicatoron=False, command=lambda:self.Update(TabImage_ViewChangedEvent()), text="Image mean (imgMean)", value="imgMean")
-        self.radioDisplay1b = tk.Radiobutton(self.frameRadioImageMode, variable=self.radioDisplayVar, indicatoron=False, command=lambda:self.Update(TabImage_ViewChangedEvent()), text="Image standard deviation (imgStd)", value="imgStd")
-        self.radioDisplay2 = tk.Radiobutton(self.frameRadioImageMode, variable=self.radioDisplayVar, indicatoron=False, command=lambda:self.Update(TabImage_ViewChangedEvent()), text="Difference Image Maximum (imgDiffMax)", value="diffMax")
-        self.radioDisplay3 = tk.Radiobutton(self.frameRadioImageMode, variable=self.radioDisplayVar, indicatoron=False, command=lambda:self.Update(TabImage_ViewChangedEvent()), text="Difference Image Standard deviation (imgDiffStd)", value="diffStd")
-        self.radioDisplay4 = tk.Radiobutton(self.frameRadioImageMode, variable=self.radioDisplayVar, indicatoron=False, command=lambda:self.Update(TabImage_ViewChangedEvent()), text="imgDiffMax without signal", value="diffMaxWithoutSignal")
+        self.radioDisplay1 = tk.Radiobutton(self.frameRadioImageMode, variable=self.radioDisplayVar, indicatoron=False, command=lambda:self.invoke_update(TabImage_ViewChangedEvent()), text="Original (mean)", value="imgMean")
+        self.radioDisplay1b = tk.Radiobutton(self.frameRadioImageMode, variable=self.radioDisplayVar, indicatoron=False, command=lambda:self.invoke_update(TabImage_ViewChangedEvent()), text="Original (standard deviation)", value="imgStd")
+        self.radioDisplay2 = tk.Radiobutton(self.frameRadioImageMode, variable=self.radioDisplayVar, indicatoron=False, command=lambda:self.invoke_update(TabImage_ViewChangedEvent()), text="Delta (maximum)", value="diffMax")
+        self.radioDisplay3 = tk.Radiobutton(self.frameRadioImageMode, variable=self.radioDisplayVar, indicatoron=False, command=lambda:self.invoke_update(TabImage_ViewChangedEvent()), text="Delta (standard deviation)", value="diffStd")
+        self.radioDisplay4 = tk.Radiobutton(self.frameRadioImageMode, variable=self.radioDisplayVar, indicatoron=False, command=lambda:self.invoke_update(TabImage_ViewChangedEvent()), text="Delta (maximum), signal frames removed", value="diffMaxWithoutSignal")
         self.radioDisplay1.grid(row=0, column=0)
         self.radioDisplay1b.grid(row=0, column=1)
         self.radioDisplay2.grid(row=0, column=2)
@@ -64,7 +58,7 @@ class TabImage(Tab):
 
 
         self.notebookPlots = ttk.Notebook(self.frameMainDisplay)
-        self.notebookPlots.bind('<<NotebookTabChanged>>',lambda _:self.Update(TabImage_ViewChangedEvent()))
+        self.notebookPlots.bind('<<NotebookTabChanged>>',lambda _:self.invoke_update(TabImage_ViewChangedEvent()))
         self.tab2D = ttk.Frame(self.notebookPlots)
         self.tab3D = ttk.Frame(self.notebookPlots)
         self.notebookPlots.add(self.tab2D, text="2D")
@@ -90,7 +84,9 @@ class TabImage(Tab):
         self.canvas3D.get_tk_widget().pack(fill="both", expand=True)
         self.canvas3D.draw()
 
-    def Update(self, event: TabUpdateEvent):
+    def update_tab(self, event: TabUpdateEvent):
+        imgObj = self.session.active_image_object
+        signalObj = self.session.active_image_signal
         if not (isinstance(event, ImageChangedEvent) or isinstance(event, TabImage_ViewChangedEvent)):
             return
         if isinstance(event, ImageChangedEvent):
@@ -103,31 +99,29 @@ class TabImage(Tab):
             self.imshow2D = None
             self.imshow3D = None    
             self.treeMetadata.delete(*self.treeMetadata.get_children())
-            if self.gui.ImageObject is not None:
-                self.treeMetadata.insert('', 'end', iid="providedImageData", text="General Image Properties", open=True)
-                self.treeMetadata.insert('providedImageData', 'end', text="Name", values=([self.gui.ImageObject.name]))
-                if self.gui.ImageObject.img is not None:
-                    self.treeMetadata.insert('providedImageData', 'end', text="Frames", values=([self.gui.ImageObject.img.shape[0]]))
-                    self.treeMetadata.insert('providedImageData', 'end', text="Width [px]", values=([self.gui.ImageObject.img.shape[2]]))
-                    self.treeMetadata.insert('providedImageData', 'end', text="Height [px]", values=([self.gui.ImageObject.img.shape[1]]))
-                    self.treeMetadata.insert('providedImageData', 'end', text="Numpy dtype", values=([self.gui.ImageObject.img.dtype]))
-                    self.treeMetadata.insert('providedImageData', 'end', text="Maximum", values=([self.gui.ImageObject.imgProps.max]))
-                    self.treeMetadata.insert('providedImageData', 'end', text="Minimum", values=([self.gui.ImageObject.imgProps.min]))
-                else:
-                    self.treeMetadata.insert('providedImageData', 'end', text="Only diffImage provided", values=(["True"]))
-                if self.gui.ImageObject.pims_metadata is not None:
-                    self.treeMetadata.insert('', 'end', iid="nd2ImageData", text="ND2 Image Data (Selected)", open=True)
-                    for k,v in ImgObj.nd2_relevantMetadata.items():
-                        if k in self.gui.ImageObject.pims_metadata.keys():
-                            value = self.gui.ImageObject.pims_metadata[k]
-                            self.treeMetadata.insert('nd2ImageData', 'end', text=v, values=([value]))
-                        else:
-                            self.treeMetadata.insert('nd2ImageData', 'end', text=v, values=(["Not set"]))
-                    self.treeMetadata.insert('', 'end', iid="nd2RawImageData", text="ND2 Image Data (All)", open=False)
-                    for k,v in self.gui.ImageObject.pims_metadata.items():
+            if imgObj is not None:
+                if imgObj.name is not None:
+                    self.treeMetadata.insert('', 'end', text="Name", values=([imgObj.name]))
+                if imgObj.path is not None:
+                    self.treeMetadata.insert('', 'end', text="Path", values=([imgObj.path]))
+                if imgObj.img is not None:
+                    self.treeMetadata.insert('', 'end', iid="providedImageData", text="Image Properties", open=True)
+                    self.treeMetadata.insert('providedImageData', 'end', text="Frames", values=([imgObj.img.shape[0]]))
+                    self.treeMetadata.insert('providedImageData', 'end', text="Width [px]", values=([imgObj.img.shape[2]]))
+                    self.treeMetadata.insert('providedImageData', 'end', text="Height [px]", values=([imgObj.img.shape[1]]))
+                    self.treeMetadata.insert('providedImageData', 'end', text="Numpy dtype", values=([imgObj.img.dtype]))
+                    self.treeMetadata.insert('providedImageData', 'end', text="Maximum", values=([imgObj.imgProps.max]))
+                    self.treeMetadata.insert('providedImageData', 'end', text="Minimum", values=([imgObj.imgProps.min]))
+                    
+                if imgObj.nd2_metadata is not None:
+                    self.treeMetadata.insert('', 'end', iid="nd2_metadata", text="ND2 metadata", open=True)
+                    self._insert_dict_into_tree(parent_node="nd2_metadata", d=imgObj.nd2_metadata, max_level_open=2)
+                if imgObj.pims_metadata is not None:
+                    self.treeMetadata.insert('', 'end', iid="pims_metadata", text="Metadata", open=False)
+                    for k,v in imgObj.pims_metadata.items():
                         if "#" in k:
                             continue
-                        self.treeMetadata.insert('nd2RawImageData', 'end', text=k, values=([v]))
+                        self.treeMetadata.insert('pims_metadata', 'end', text=k, values=([v]))
 
         _selected = self.radioDisplayVar.get()
         if self.colorbar is not None:
@@ -140,9 +134,6 @@ class TabImage(Tab):
             self.imshow3D.remove()
             self.imshow3D = None
         
-
-        imgObj = self.gui.ImageObject
-
         if imgObj is None or imgObj.img is None or imgObj.imgDiff is None:
             self.canvas2D.draw()
             self.canvas3D.draw()
@@ -150,20 +141,20 @@ class TabImage(Tab):
         match (_selected):
             case "imgMean":
                 self.ax2D.set_axis_on()
-                self.imshow2D = self.ax2D.imshow(imgObj.imgView(ImgObj.SPATIAL).Mean, cmap="Greys_r")
+                self.imshow2D = self.ax2D.imshow(imgObj.imgView(ImageView.SPATIAL).Mean, cmap="Greys_r")
             case "imgStd":
                 self.ax2D.set_axis_on()
-                self.imshow2D = self.ax2D.imshow(imgObj.imgView(ImgObj.SPATIAL).Std, cmap="Greys_r")
+                self.imshow2D = self.ax2D.imshow(imgObj.imgView(ImageView.SPATIAL).Std, cmap="Greys_r")
             case "diffMax":
                 self.ax2D.set_axis_on()
-                self.imshow2D = self.ax2D.imshow(imgObj.imgDiffView(ImgObj.SPATIAL).Max, cmap="inferno")
+                self.imshow2D = self.ax2D.imshow(imgObj.imgDiffView(ImageView.SPATIAL).Max, cmap="inferno")
             case "diffStd":
                 self.ax2D.set_axis_on()
-                self.imshow2D = self.ax2D.imshow(imgObj.imgDiffView(ImgObj.SPATIAL).Std, cmap="inferno")
+                self.imshow2D = self.ax2D.imshow(imgObj.imgDiffView(ImageView.SPATIAL).Std, cmap="inferno")
             case "diffMaxWithoutSignal":
-                if self.gui.signal.imgObj_Sliced is not False and self.gui.signal.imgObj_Sliced is not None and self.gui.signal.imgObj_Sliced.imgDiff is not None:
+                if signalObj.imgObj_Sliced is not False and signalObj.imgObj_Sliced is not None and signalObj.imgObj_Sliced.imgDiff is not None:
                     self.ax2D.set_axis_on()
-                    self.imshow2D = self.ax2D.imshow(self.gui.signal.imgObj_Sliced.imgDiffView(ImgObj.SPATIAL).Max, cmap="inferno")
+                    self.imshow2D = self.ax2D.imshow(signalObj.imgObj_Sliced.imgDiffView(ImageView.SPATIAL).Max, cmap="inferno")
                 else:
                     self.ax2D.set_axis_off()
             case _:
@@ -181,18 +172,28 @@ class TabImage(Tab):
         X, Y = np.meshgrid(X, Y)
         match (_selected):
             case "imgMean":
-                self.imshow3D = self.ax3D.plot_surface(X,Y, imgObj.imgView(ImgObj.SPATIAL).Mean, cmap="Greys_r")
+                self.imshow3D = self.ax3D.plot_surface(X,Y, imgObj.imgView(ImageView.SPATIAL).Mean, cmap="Greys_r")
             case "imgStd":
-                self.imshow3D = self.ax3D.plot_surface(X,Y, imgObj.imgView(ImgObj.SPATIAL).Std, cmap="Greys_r")
+                self.imshow3D = self.ax3D.plot_surface(X,Y, imgObj.imgView(ImageView.SPATIAL).Std, cmap="Greys_r")
             case "diffMax":
-                self.imshow3D = self.ax3D.plot_surface(X,Y, imgObj.imgDiffView(ImgObj.SPATIAL).Max, cmap="inferno")
+                self.imshow3D = self.ax3D.plot_surface(X,Y, imgObj.imgDiffView(ImageView.SPATIAL).Max, cmap="inferno")
             case "diffStd":
-                self.imshow3D = self.ax3D.plot_surface(X,Y, imgObj.imgDiffView(ImgObj.SPATIAL).Std, cmap="inferno")
+                self.imshow3D = self.ax3D.plot_surface(X,Y, imgObj.imgDiffView(ImageView.SPATIAL).Std, cmap="inferno")
             case "diffMaxWithoutSignal":
-                if self.gui.signal.imgObj_Sliced is not False and self.gui.signal.imgObj_Sliced is not None:
-                    self.imshow3D = self.ax3D.plot_surface(X,Y, self.gui.signal.imgObj_Sliced.imgDiffView(ImgObj.SPATIAL).Max, cmap="inferno")
+                if signalObj.imgObj_Sliced is not None and signalObj.imgObj_Sliced.imgDiff is not None:
+                    self.imshow3D = self.ax3D.plot_surface(X,Y, signalObj.imgObj_Sliced.imgDiffView(ImageView.SPATIAL).Max, cmap="inferno")
             case _:
                 pass
         if self.imshow3D is not None:
             self.colorbar = self.figure3D.colorbar(self.imshow3D, ax=self.ax3D)
         self.canvas3D.draw()
+
+    def _insert_dict_into_tree(self, parent_node: str, d: dict, max_level_open:int, level:int=0):
+        """ Insert a dictionary with strings and (sub-)dictionary as values recursively into the treeView """
+        for k, v in d.items():
+            iid = str(uuid.uuid4())
+            if isinstance(v, dict):
+                self.treeMetadata.insert(parent=parent_node, index='end', iid=iid, text=k, values=([""]), open=(level <= max_level_open))
+                self._insert_dict_into_tree(parent_node=iid, d=v, max_level_open=max_level_open, level=(level+1))
+            else:
+                self.treeMetadata.insert(parent=parent_node, index='end', iid=iid, text=k, values=([str(v)]), open=(level <= max_level_open))

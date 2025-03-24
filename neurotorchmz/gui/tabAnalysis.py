@@ -1,9 +1,7 @@
 from .window import *
-from .components.general import *
 from .components.treeview import SynapseTreeview
+from .components.general import ScrolledFrame, GridSetting
 from ..utils import synapse_detection_integration as detection
-from ..utils.image import *
-from ..utils.synapse_detection import *
 
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
@@ -12,29 +10,28 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 import matplotlib.widgets as PltWidget
 import matplotlib.patches as patches
-from matplotlib import cm
-import matplotlib.colors as cm_colors
 from matplotlib.ticker import MaxNLocator
 import numpy as np
-import pandas as pd
 from scipy.stats import multivariate_normal
-import logging
-
-logger = logging.getLogger("NeurotorchMZ")
 
 
+class TabAnalysis_InvalidateEvent(TabUpdateEvent):
+    """ Internal event to invalidate different parts of the tab """
 
-class TabAnalysis_AlgorithmChangedEvent(TabUpdateEvent):
-    pass
+    def __init__(self, algorithm:bool = False, image:bool = False, rois:bool = False, selectedROI: bool = False, selectedROI_tuple: tuple = None):
+        super().__init__()
+        self.algorithm = algorithm
+        self.image = image
+        self.rois = rois
+        self.selectedROIS = selectedROI
+        self.selectedROI_tuple = selectedROI_tuple
 
 class TabAnalysis(Tab):
 
-    def __init__(self, gui: Neurotorch_GUI):
-        super().__init__(gui)
+    def __init__(self, session: Session, root:ttk.Frame, frame: ttk.Frame):
+        super().__init__(session=session, root=root, frame=frame)
         self.tab_name = "Tab Analysis"
-        self._gui = gui
-        self.root = gui.root
-        self.detectionAlgorithm = None
+        self.detectionAlgorithm: detection.IDetectionAlgorithmIntegration = None
         self.roiPatches = {}
         self.roiPatches2 = {}
         self.treeROIs_entryPopup = None
@@ -43,11 +40,9 @@ class TabAnalysis(Tab):
         self.ax1_colorbar = None
         self.ax2_colorbar = None
 
-        self._synapses: dict[str, ISynapse] = {}
-
-    def Init(self):
-        self.tab = ttk.Frame(self._gui.tabMain)
-        self._gui.tabMain.add(self.tab, text="Synapse Analyzer (Beta version)")
+    def init(self):
+        self.tab = ttk.Frame(self.frame)
+        self.frame.add(self.tab, text="Synapse Analyzer (Beta version)")
         self.frameToolsContainer = ScrolledFrame(self.tab)
         self.frameToolsContainer.pack(side=tk.LEFT, fill="y", anchor=tk.NW)
         self.frameTools = self.frameToolsContainer.frame
@@ -57,9 +52,9 @@ class TabAnalysis(Tab):
         self.lblAlgorithm = tk.Label(self.frameDetection, text="Algorithm")
         self.lblAlgorithm.grid(row=0, column=0, columnspan=2, sticky="nw")
         self.radioAlgoVar = tk.StringVar(value="local_max")
-        self.radioAlgo1 = tk.Radiobutton(self.frameDetection, variable=self.radioAlgoVar, indicatoron=True, text="Threshold (Deprecated)", value="threshold", command=lambda:self.Invalidate_Algorithm())
-        self.radioAlgo2 = tk.Radiobutton(self.frameDetection, variable=self.radioAlgoVar, indicatoron=True, text="Hysteresis thresholding", value="hysteresis", command=lambda:self.Invalidate_Algorithm())
-        self.radioAlgo3 = tk.Radiobutton(self.frameDetection, variable=self.radioAlgoVar, indicatoron=True, text="Local Max", value="local_max", command=lambda:self.Invalidate_Algorithm())
+        self.radioAlgo1 = tk.Radiobutton(self.frameDetection, variable=self.radioAlgoVar, indicatoron=True, text="Threshold (Deprecated)", value="threshold", command=lambda:self.invoke_update(TabAnalysis_InvalidateEvent(algorithm=True, image=True)))
+        self.radioAlgo2 = tk.Radiobutton(self.frameDetection, variable=self.radioAlgoVar, indicatoron=True, text="Hysteresis thresholding", value="hysteresis", command=lambda:self.invoke_update(TabAnalysis_InvalidateEvent(algorithm=True, image=True)))
+        self.radioAlgo3 = tk.Radiobutton(self.frameDetection, variable=self.radioAlgoVar, indicatoron=True, text="Local Max", value="local_max", command=lambda:self.invoke_update(TabAnalysis_InvalidateEvent(algorithm=True, image=True)))
         ToolTip(self.radioAlgo1, msg=Resources.GetString("algorithms/threshold/description"), follow=True, delay=0.1)
         ToolTip(self.radioAlgo2, msg=Resources.GetString("algorithms/hysteresisTh/description"), follow=True, delay=0.1)
         ToolTip(self.radioAlgo3, msg=Resources.GetString("algorithms/localMax/description"), follow=True, delay=0.1)
@@ -67,33 +62,36 @@ class TabAnalysis(Tab):
         self.radioAlgo2.grid(row=2, column=0, sticky="nw", columnspan=3)
         self.radioAlgo3.grid(row=3, column=0, sticky="nw", columnspan=3)
 
-        tk.Label(self.frameDetection, text="Diff. Img Overlay").grid(row=11, column=0)
+        tk.Label(self.frameDetection, text="Delta images overlay").grid(row=10, column=0)
         self.setting_plotOverlay = GridSetting(self.frameDetection, row=11, type_="Checkbox", text="Plot raw algorithm output", default=0, tooltip=Resources.GetString("tab3/rawAlgorithmOutput"))
-        self.setting_plotOverlay.var.IntVar.trace_add("write", lambda _1,_2,_3: self.Invalidate_ROIs())
+        self.setting_plotOverlay.var.IntVar.trace_add("write", lambda _1,_2,_3: self.invalidate_ROIs())
         self.setting_plotPixels = GridSetting(self.frameDetection, row=12, type_="Checkbox", text="Plot ROIs pixels", default=0, tooltip=Resources.GetString("tab3/plotROIPixels"))
-        self.setting_plotPixels.var.IntVar.trace_add("write", lambda _1,_2,_3: self.Invalidate_ROIs())
-        self.btnDetect = tk.Button(self.frameDetection, text="Detect", command=self.Detect)
+        self.setting_plotPixels.var.IntVar.trace_add("write", lambda _1,_2,_3: self.invalidate_ROIs())
+        self.btnDetect = tk.Button(self.frameDetection, text="Detect", command=self.detect)
         self.btnDetect.grid(row=20, column=0)
 
         self.frameDisplay= ttk.LabelFrame(self.frameTools, text="Display Options")
         self.frameDisplay.grid(row=1, column=0, sticky="news")
 
         self.sliderFrame = GridSetting(self.frameDisplay, row=5, type_="Int", text="Frame", min_=0, max_=0, scaleMin=0, scaleMax=0)
-        self.sliderFrame.var.SetCallback(self.SliderFrameChanged)
+        self.sliderFrame.var.SetCallback(self.sliderFrame_changed)
         self.sliderPeak = GridSetting(self.frameDisplay, row=6, type_="Int", text="Peak", min_=0, max_=0, scaleMin=0, scaleMax=0)
-        self.sliderPeak.var.SetCallback(self.SliderPeakChanged)
-        self.btn3DPlot = tk.Button(self.frameDisplay, text="3D Multiframe Plot", command=lambda:self.ShowExternalPlot("3D Multiframe Plot", self.Plot3DMultiframe))
+        self.sliderPeak.var.SetCallback(self.sliderPeak_changed)
+        self.btn3DPlot = tk.Button(self.frameDisplay, text="3D Multiframe Plot", command=lambda:self.show_external_plot("3D Multiframe Plot", self.plot_3D_multiframe))
         self.btn3DPlot.grid(row=10, column=1)
-
-
-        self.detectionAlgorithm = detection.IDetectionAlgorithmIntegration()
-        self.frameAlgoOptions = self.detectionAlgorithm.OptionsFrame(self.frameTools, self._gui.GetImageObject)
+        
+        self.frameAlgoOptions = self.detectionAlgorithm.OptionsFrame(self.frameTools, lambda: self.session.active_image_object)
         self.frameAlgoOptions.grid(row=2, column=0, sticky="news")
 
         self.frameROIS = tk.LabelFrame(self.frameTools, text="ROIs")
         self.frameROIS.grid(row=3, column=0, sticky="news")
 
-        self.tvSynapses = SynapseTreeview(self.frameROIS, self._gui, synapseCallback=self.Synapses,selectCallback=self.InvalidateSelectedROI, updateCallback=self.Invalidate_ROIs, allowMultiframe=True)
+        self.tvSynapses = SynapseTreeview(self.frameROIS, self.session, 
+                                          detection_result=self.session.synapse_analysis_detection_result, 
+                                          selectCallback=lambda synapse, 
+                                          roi:self.invoke_update(TabAnalysis_InvalidateEvent(selectedROI=True, selectedROI_tuple=(synapse, roi))), 
+                                          updateCallback=lambda:self.invoke_update(TabAnalysis_InvalidateEvent(rois=True)), 
+                                          allowMultiframe=True)
         self.tvSynapses.pack(fill="both", padx=10)
 
         self.figure1 = plt.Figure(figsize=(20,10), dpi=100)
@@ -102,86 +100,55 @@ class TabAnalysis(Tab):
         self.ax3 = self.figure1.add_subplot(223)  
         self.ax4 = self.figure1.add_subplot(224)  
 
-        self.ClearImagePlot()
+        self.clear_image_plot()
         self.canvas1 = FigureCanvasTkAgg(self.figure1, self.tab)
         self.canvtoolbar1 = NavigationToolbar2Tk(self.canvas1,self.tab)
         self.canvtoolbar1.update()
         self.canvas1.get_tk_widget().pack(expand=True, fill="both", side=tk.LEFT)
-        self.canvas1.mpl_connect('resize_event', self._Canvas1Resize)
-        self.canvas1.mpl_connect('button_press_event', self.Canvas1ClickEvent)
+        self.canvas1.mpl_connect('resize_event', self._canvas1_resize)
+        self.canvas1.mpl_connect('button_press_event', self.canvas1_click)
         self.canvas1.draw()
 
         #tk.Grid.rowconfigure(self.frameTools, 3, weight=1)
 
         self.tvSynapses.SyncSynapses()
-        self.Update(TabAnalysis_AlgorithmChangedEvent())
-
-
-    # Public functions
-
-    @property
-    def synapses(self) -> list[ISynapse]:
-        """ The current list of synapses in this tab. If you modify values inside this list, make sure to call tvSynapses.SyncSynapses() to reflect the changes in the TreeView. """
-        return list(self._synapses.values())
-    
-    @synapses.setter
-    def synapses(self, val: list[ISynapse]):
-        if not isinstance(val, list) or not all(isinstance(v, ISynapse) for v in val):
-            raise ValueError("The synapse property expects a list of ISynapse")
-        self._synapses = {s.uuid:s for s in val}
-
-    @property
-    def synapses_dict(self) -> dict[str, ISynapse]:
-        """ 
-            The current list of synapses in this tab presented as dict with the UUID as key. 
-            If you modify values inside this list, make sure to call tvSynapses.SyncSynapses() to reflect the changes in the TreeView. 
-        """
-        return self._synapses
-    
-    @synapses_dict.setter
-    def synapses_dict(self, val: dict[str, ISynapse]):
-        if not isinstance(val, dict) or not all(isinstance(k, str) and isinstance(v, ISynapse) for k, v in val.items()):
-            raise ValueError("The synapse property expects a dictionary of ISynapses with their UUID as key")
-        self._synapses = val
-
-    def Synapses(self, newval: dict[str, ISynapse]|None = None) -> dict[str, ISynapse]:
-        """ Python does not provide a pointer concept. Therefore use this helper function combining a Getter/Setter"""
-        if newval is not None:
-            self._synapses = newval
-        return self._synapses
+        self.Update(TabAnalysis_InvalidateEvent(algorithm=True, image=True))
 
     # Update and Invalidation functions
 
-    def Update(self, event: TabUpdateEvent):
+    def update_tab(self, event: TabUpdateEvent):
         """ The main function to update this tab. """
         if isinstance(event, ImageChangedEvent):
-            self.tvSynapses.ClearSynapses('non_staged')
+            self.tvSynapses.ClearSynapses(target='non_staged')
             self.tvSynapses.SyncSynapses()
-            self.ClearImagePlot()
-            self.Invalidate_Algorithm()
-            self.Invalidate_Image()
+            self.clear_image_plot()
+            self.invalidate_algorithm()
+            self.invalidate_image()
         elif isinstance(event, SignalChangedEvent):
-            self.Invalidate_Signal()
-        elif isinstance(event, TabAnalysis_AlgorithmChangedEvent):
-            self.Invalidate_Algorithm()
-            self.Invalidate_Image()
+            self.invalidate_stimulation()
+        elif isinstance(event, TabAnalysis_InvalidateEvent):
+            if event.algorithm: self.invalidate_algorithm()
+            if event.image: self.invalidate_image()
+            if event.rois: self.invalidate_ROIs()
+            if event.selectedROIS: self.invalidate_selected_ROI(*event.selectedROI_tuple)
 
+    @property
+    def detection_result(self) -> DetectionResult:
+        """ Convience property for self.session.synapse_analysis_detection_result """
+        return self.session.synapse_analysis_detection_result
 
-    def Invalidate_Algorithm(self):
+    def invalidate_algorithm(self):
         match self.radioAlgoVar.get():
             case "threshold":
                 if isinstance(self.detectionAlgorithm, detection.Thresholding_Integration):
-                    self.detectionAlgorithm.OptionsFrame_Update(self.GetCurrentDetectionSource())
                     return
                 self.detectionAlgorithm = detection.Thresholding_Integration()
             case "hysteresis":
                 if type(self.detectionAlgorithm) == detection.HysteresisTh_Integration:
-                    self.detectionAlgorithm.OptionsFrame_Update(self.GetCurrentDetectionSource())
                     return
                 self.detectionAlgorithm = detection.HysteresisTh_Integration()
             case "local_max":
                 if type(self.detectionAlgorithm) == detection.LocalMax_Integration:
-                    self.detectionAlgorithm.OptionsFrame_Update(self.GetCurrentDetectionSource())
                     return
                 self.detectionAlgorithm = detection.LocalMax_Integration()
             case _:
@@ -189,11 +156,11 @@ class TabAnalysis(Tab):
                 return
         if (self.frameAlgoOptions is not None):
             self.frameAlgoOptions.grid_forget()
-        self.frameAlgoOptions = self.detectionAlgorithm.OptionsFrame(self.frameTools, self._gui.GetImageObject)
-        self.detectionAlgorithm.OptionsFrame_Update(self.GetCurrentDetectionSource())
+        self.frameAlgoOptions = self.detectionAlgorithm.get_options_frame(self.frameTools)
+        self.detectionAlgorithm.update(image_obj=self.session.active_image_object, image_prop=self.current_input_image)
         self.frameAlgoOptions.grid(row=2, column=0, sticky="news")
 
-    def ClearImagePlot(self):
+    def clear_image_plot(self):
         if self.ax1_colorbar is not None:
             self.ax1_colorbar.remove()
             self.ax1_colorbar = None
@@ -208,15 +175,16 @@ class TabAnalysis(Tab):
         self.ax1.set_title("Image (Mean)")
         self.ax2.set_title("Diff Image")
 
-    def Invalidate_Signal(self):
-        if self._gui.signal.peaks is not None:
-            self.sliderPeak.SetRange(min_=1, max_=len(self._gui.signal.peaks), syncScale=True)
+    def invalidate_stimulation(self):
+        signalObj = self.session.active_image_signal
+        if signalObj is not None and signalObj.peaks is not None and len(signalObj.peaks) >= 1:
+            self.sliderPeak.SetRange(min_=1, max_=len(signalObj.peaks), syncScale=True)
         else:
             self.sliderPeak.SetRange(0,0, syncScale=True)
         
 
-    def Invalidate_Image(self):
-        imgObj = self._gui.ImageObject
+    def invalidate_image(self):
+        imgObj = self.session.active_image_object
 
         self.ax1Image = None
         if self.ax1_colorbar is not None:
@@ -226,23 +194,23 @@ class TabAnalysis(Tab):
             axImg.remove()
         self.ax1.set_axis_off()
 
-        self.Invalidate_Signal()
+        self.invalidate_stimulation()
         
         if imgObj is None or imgObj.img is None or imgObj.imgDiff is None:
             self.sliderFrame.SetRange(0,0, syncScale=True)
-            self.Invalidate_DiffImage()
+            self.invalidate_delta_plot()
             return
         
-        self.ax1Image = self.ax1.imshow(imgObj.imgView(imgObj.SPATIAL).Mean, cmap="Greys_r") 
+        self.ax1Image = self.ax1.imshow(imgObj.imgView(ImageView.SPATIAL).Mean, cmap="Greys_r") 
         self.ax1.set_axis_on()
         self.ax1_colorbar = self.figure1.colorbar(self.ax1Image, ax=self.ax1)
         
         self.sliderFrame.SetRange(min_=1, max_=imgObj.imgDiff.shape[0], syncScale=True)
-        self.Invalidate_DiffImage()
+        self.invalidate_delta_plot()
 
 
-    def Invalidate_DiffImage(self):
-        imgObj = self._gui.ImageObject
+    def invalidate_delta_plot(self):
+        imgObj = self.session.active_image_object
         self.ax2Image = None    
 
         if self.ax2_colorbar is not None:
@@ -253,11 +221,11 @@ class TabAnalysis(Tab):
         self.ax2.set_axis_off()
             
         if imgObj is None or imgObj.img is None or imgObj.imgDiff is None:
-            self.Invalidate_ROIs()
+            self.invalidate_ROIs()
             return
         frame = self.sliderFrame.Get() - 1
         if frame < 0 or frame >= imgObj.imgDiff.shape[0]:
-            self.Invalidate_ROIs()
+            self.invalidate_ROIs()
             return
         
         vmin, vmax = 0, imgObj.imgDiffProps.max
@@ -267,11 +235,11 @@ class TabAnalysis(Tab):
 
         self.ax2.set_title(f"Diff. Image (Frame {frame + 1})")
 
-        self.Invalidate_ROIs()
+        self.invalidate_ROIs()
 
         
 
-    def Invalidate_ROIs(self):
+    def invalidate_ROIs(self):
         for axImg in self.ax1.get_images():
             if axImg != self.ax1Image: axImg.remove()
         for axImg in self.ax2.get_images():
@@ -293,7 +261,7 @@ class TabAnalysis(Tab):
         
         # Plotting the ROIs
 
-        for synapse in self.synapses:
+        for synapse in self.detection_result.synapses:
             for roi in synapse.rois:
                 if roi.location is None:
                     continue
@@ -314,7 +282,7 @@ class TabAnalysis(Tab):
                     
         self.tvSynapses._OnSelect(None)
 
-    def InvalidateSelectedROI(self, synapse: ISynapse|None=None, roi: ISynapseROI|None=None):
+    def invalidate_selected_ROI(self, synapse: ISynapse|None=None, roi: ISynapseROI|None=None):
         """ Called by self.tvSynapses when a item is selected. If root item is selected, synapse and roi are None. If a ISynapse is selected, roi is None """
         if synapse is not None and roi is None:
             roi_uuids = list(synapse.rois_dict.keys())
@@ -336,60 +304,57 @@ class TabAnalysis(Tab):
         self.figure1.tight_layout()
         self.canvas1.draw()    
         
-    def Detect(self, waitCompletion:bool=False):
-        imgObj = self._gui.ImageObject
+    def detect(self) -> Task:
+        imgObj = self.session.active_image_object
+        signalObj = self.session.active_image_signal
         if self.detectionAlgorithm is None or imgObj is None or imgObj.img is None or imgObj.imgDiff is None:
-            self._gui.root.bell()
+            self.root.bell()
             return
 
-        def _Detect(job: Job, frames: list[int]):
+        def _detect(task: Task):
             self.tvSynapses.ClearSynapses('non_staged')
             self.tvSynapses.SyncSynapses()
             rois: list[ISynapseROI] = []
-            for i, p in enumerate(peaks):
-                job.SetProgress(i, f"Detecting ROIs in frame {p}")
-                rois.extend([r.SetFrame(p) for r in self.detectionAlgorithm.DetectAutoParams(imgObj.imgDiff_FrameProps(p))])
+            for i, p in enumerate(signalObj.peaks):
+                task.set_step_progress(i, f"detecting ROIs in frame {p}")
+                rois.extend([r.set_frame(p) for r in self.detectionAlgorithm.DetectAutoParams(imgObj.imgDiff_FrameProps(p))])
             synapses = SimpleCustering.Cluster(rois)
-            self._synapses = {s.uuid: s for s in synapses}
+            self.detection_result.synapses = synapses
             self.tvSynapses.SyncSynapses()
-            job.SetStopped("Detecting ROIs")
-            self.Invalidate_ROIs()
+            self.invoke_update(TabAnalysis_InvalidateEvent(rois=True))
 
-        peaks = self._gui.signal.peaks
-        if peaks is None or len(peaks) == 0:
+        if signalObj is None or signalObj.peaks is None or len(signalObj.peaks) == 0:
             messagebox.showwarning("Neurotorch", "You must first get at least one signal frame in the Signal Finder Tab before you can detect Multiframe Synapses")
             return
-        job = Job(steps=len(peaks))
-        self._gui.statusbar.AddJob(job)
-        _thread = threading.Thread(target=_Detect, args=(job,peaks), daemon=True)
-        _thread.start()
-        if waitCompletion:
-            _thread.join()
+        return Task(_detect, "Detecting ROIs", run_async=True).set_step_mode(len(signalObj.peaks)).start()
 
     # Helper function
 
-    def GetCurrentDetectionSource(self) -> ImageProperties|None:
-        imgObj = self._gui.ImageObject
+    @property
+    def current_input_image(self) -> ImageProperties|None:
+        imgObj = self.session.active_image_object
         if imgObj is None or imgObj.img is None or imgObj.imgDiff is None:
             return None
-        return imgObj.imgDiffView(ImgObj.SPATIAL).MaxProps
+        return imgObj.imgDiffView(ImageView.SPATIAL).MaxProps
     
-    def SliderFrameChanged(self):
+    def sliderFrame_changed(self):
         frame = self.sliderFrame.Get() - 1
-        if self._gui.signal.peaks is not None and len(peaks_index := (np.where(np.array(self._gui.signal.peaks) == frame)[0])) == 1:
-            peak = self._gui.signal.peaks[peaks_index[0]]
+        signalObj = self.session.active_image_signal
+        if signalObj is not None and signalObj.peaks is not None and len(peaks_index := (np.where(np.array(signalObj.peaks) == frame)[0])) == 1:
+            peak = signalObj.peaks[peaks_index[0]]
             self.sliderPeak.Set(peaks_index[0] + 1)
             
-        self.Invalidate_DiffImage()
+        self.invalidate_delta_plot()
 
-    def SliderPeakChanged(self):
+    def sliderPeak_changed(self):
         peak = self.sliderPeak.Get() - 1
-        if self._gui.signal.peaks is not None and len(self._gui.signal.peaks) > peak:
-            self.sliderFrame.Set(self._gui.signal.peaks[peak] + 1)
+        signalObj = self.session.active_image_signal
+        if peak != -1 and signalObj.peaks is not None and len(signalObj.peaks) > peak:
+            self.sliderFrame.Set(signalObj.peaks[peak] + 1)
         
 
 
-    def ShowExternalPlot(self, name:str,  plotFunction):
+    def show_external_plot(self, name:str,  plotFunction):
         dialog_figure = plt.Figure(figsize=(20,10), dpi=100)
         if plotFunction(dialog_figure) != True:
             return
@@ -403,23 +368,24 @@ class TabAnalysis(Tab):
         dialog_canvas.get_tk_widget().pack(expand=True, fill="both", side=tk.LEFT)
         dialog_canvas.draw()
 
-    def Plot3DMultiframe(self, figure):
+    def plot_3D_multiframe(self, figure):
         ax = figure.add_subplot(111, projection="3d")  
+        imgObj = self.session.active_image_object
 
-        if self._gui.ImageObject is None or self._gui.ImageObject.img is None or len(self.ax2.get_images()) == 0:
+        if imgObj is None or imgObj.img is None or len(self.ax2.get_images()) == 0:
             messagebox.showerror("Neurotorch", f"You first need to load an image to plot the 3D Multifram synapse plot")
             return False
 
         img = np.full(shape=self.ax2.get_images()[0].get_size(), fill_value=0.0)
         mesh_X, mesh_Y = np.mgrid[0:img.shape[0], 0:img.shape[1]]
         pos = np.dstack((mesh_X, mesh_Y))
-        for synapse in self.synapses:
+        for synapse in self.detection_result.synapses:
             for roi in synapse.rois:
                 if roi.location is None: continue
                 if isinstance(roi, CircularSynapseROI):
                     cov = roi.radius
                 else:
-                    cov = roi.regionProps.equivalent_diameter_area/2 if roi.regionProps is not None else 6
+                    cov = roi.region_props.equivalent_diameter_area/2 if roi.region_props is not None else 6
                 img += multivariate_normal.pdf(x=pos, mean=roi.location, cov=cov)
 
         #overlay_img_props = self._gui.ImageObject.imgView(ImgObj.SPATIAL).MeanProps
@@ -433,14 +399,14 @@ class TabAnalysis(Tab):
         ax.set_title("Surface plot of detected synapses per signal frame merged to a single image by multiplying each ROI location\nwith a normal probability distribution with covariance set to radius (or equivalent radius for non circular ROIs)")
         return True
     
-    def Canvas1ClickEvent(self, event):
+    def canvas1_click(self, event):
         if not event.dblclick or event.inaxes is None:
             return
         x, y = event.xdata, event.ydata
         if event.inaxes == self.ax1:
-            rois = [(s, r) for s in self.synapses for r in s.rois]
+            rois = [(s, r) for s in self.detection_result.synapses for r in s.rois]
         elif event.inaxes == self.ax2:
-            rois = [(s, r) for s in self.synapses for r in s.rois if r.uuid in self.roiPatches2.keys()]
+            rois = [(s, r) for s in self.detection_result.synapses for r in s.rois if r.uuid in self.roiPatches2.keys()]
         else:
             return
         if len(rois) == 0: return
@@ -450,7 +416,7 @@ class TabAnalysis(Tab):
         if d <= 40:
             self.tvSynapses.Select(synapse=synapse, roi=roi)
 
-    def _Canvas1Resize(self, event):
+    def _canvas1_resize(self, event):
         if self.tab.winfo_width() > 300:
             self.figure1.tight_layout()
             self.canvas1.draw()

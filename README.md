@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="https://raw.githubusercontent.com/andreasmz/neurotorch/main/docs/media/neurotorch_coverimage_24_11.jpeg" style="max-width: 600px;">
+    <img src="https://raw.githubusercontent.com/andreasmz/neurotorch/main/docs/media/neurotorch_coverimage.jpeg" style="max-width: 600px;">
 </p> 
 
 ![Python Version from PEP 621 TOML](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2Fandreasmz%2Fneurotorch%2Fmain%2Fpyproject.toml&style=flat&logo=Python)
@@ -62,15 +62,15 @@ Currently in active development:
 Please note: Neurotorch is under continuous development. Therefore the visuals provided here may be outdated in future versions.
 
 <p align="center">
-    <img src="https://raw.githubusercontent.com/andreasmz/neurotorch/main/docs/media/readme/neurotorch_tabImage_01.png" style="max-width: 600px;"> <br>
+    <img src="https://raw.githubusercontent.com/andreasmz/neurotorch/main/docs/media/nt/tab_image/tab_image.png" style="max-width: 600px;"> <br>
     <em>First impression of an file opened in Neurotorch. For specific file formats (here nd2), a variety of metadata can be extracted</em>
 </p> 
 <p align="center">
-    <img src="https://raw.githubusercontent.com/andreasmz/neurotorch/main/docs/media/readme/neurotorch_tabSignal_01.png" style="max-width: 600px;"> <br>
+    <img src="https://raw.githubusercontent.com/andreasmz/neurotorch/main/docs/media/nt/tab_signal/tab_signal.png" style="max-width: 600px;"> <br>
     <em>Use the tab 'Signal' to find the timepoints with stimulation (marked in the plot on the left site with yellow dots). You can also use this tab to view the video frame by frame</em>
 </p> 
 <p align="center">
-    <img src="https://raw.githubusercontent.com/andreasmz/neurotorch/main/docs/media/readme/neurotorch_tabROIFinder_01.png" style="max-width: 600px;"> <br>
+    <img src="https://raw.githubusercontent.com/andreasmz/neurotorch/main/docs/media/nt/tab_roifinder/tab_roifinder" style="max-width: 600px;"> <br>
     <em>Extraction of regions with high synaptic activity. For the choosen image with good enough signal to noise ratio, all settings were determined automatically by the program and nothing more than pressing 'Detect' was necessary to get this screen. The ROIs are marked in the images with red boundaries while the selected ROI displayed also with the mean value over time is marked with yellow boundaries</em>
 </p> 
 

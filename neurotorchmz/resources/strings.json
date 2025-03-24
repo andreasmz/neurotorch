@@ -24,8 +24,8 @@
             "description": "Find circular ROIs based on a threshold (Deprecated)\n\nIt is not recommended to use this algorithm as now better algorithms exist",
             "params": {
                 "threshold": "Each pixel must have a signal value above this threshold",
-                "radius": "The radius of the ROI",
-                "minCoverage": "The coverage is the ratio of the ROI area in the circle defined by the radius and must exceed this value"
+                "radius": "If greater 0, the detected ROIs will have circular shape and the given radius\nIf smaller 0, the algorithm will rather print out polygons",
+                "minArea": "ROIs are only found if their area exceed this size"
             }
         },
         "hysteresisTh" : {

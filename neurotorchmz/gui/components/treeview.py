@@ -1,13 +1,10 @@
 import tkinter as tk
 from tkinter import ttk
-import logging
 from typing import Callable, Type, Literal
 import re
 import pandas as pd
 
 from ..window import *
-
-logger = logging.getLogger()
 
 from ...utils.synapse_detection import *
 
@@ -28,8 +25,8 @@ class SynapseTreeview(ttk.Treeview):
 
     def __init__(self, 
                  master, 
-                 gui: Neurotorch_GUI, 
-                 synapseCallback: Callable[[], dict[str, ISynapse]], 
+                 session: Session, 
+                 detection_result: DetectionResult,
                  selectCallback: Callable[[ISynapse|None, ISynapseROI|None], None], 
                  updateCallback = Callable, 
                  allowSingleframe: bool = False,
@@ -86,25 +83,30 @@ class SynapseTreeview(ttk.Treeview):
         self.bind("<Button-3>", self._OnRightClick)
 
         self.modified = False
-        self._synapseCallback = synapseCallback # Returns dict of UUID -> ISynapse
+        self.detection_result = detection_result # Returns dict of UUID -> ISynapse
         self._selectCallback = selectCallback
         self._updateCallback = updateCallback
 
-        self._gui = gui
+        self.session = session
         self._entryPopup = None
+        self._sync_task = Task(function=self._SyncSynapses_task, name="syncing synapse treeview", run_async=True, keep_alive=True)
 
     def pack(self, **kwargs):
         self.frame.pack(**kwargs)
 
     def SyncSynapses(self):
         """ Display the given list of ISynapse in the treeview. Updates existing values to keep the scrolling position. """
+        self._sync_task.start()
+
+    def _SyncSynapses_task(self, task:Task):
+        task.set_indeterminate()
         try: 
             self._entryPopup.destroy()
         except AttributeError:
             pass    
-        synapses = self._synapseCallback()
+        synapses = self.detection_result.synapses_dict
         synapses = dict(sorted(synapses.items(), key=lambda item: (not item[1].staged, item[1].location[0] , item[1].location[1]) if item[1].location is not None else (not item[1].staged, 0, 0)))
-        self._synapseCallback(synapses)
+        #self._synapseCallback(synapses)
 
         for _uuid in ((uuidsOld := set(self.get_children(''))) - (uuidsNew := set(synapses.keys()))):
             self.delete(_uuid) # Delete removed entries
@@ -121,7 +123,7 @@ class SynapseTreeview(ttk.Treeview):
                 synapse_index += 1
             isSingleframe = isinstance(s, SingleframeSynapse)
             self.item(_uuid, text=name)
-            self.item(_uuid, values=[s.ROIDescriptionStr()])
+            self.item(_uuid, values=[s.get_roi_description()])
             self.item(_uuid, tags=(("staged_synapse",) if s.staged else ()))
 
             # Now the same procedure for the ISynapseROIs
@@ -138,7 +140,6 @@ class SynapseTreeview(ttk.Treeview):
         if len(self.get_children('')) == 0:
             self.btnRemove.config(state="disabled")
             self.btnStage.config(state="disabled")
-            self._selectCallback(None)
 
     def GetSynapseByRowID(self, rowid: str) -> tuple[ISynapse|None, ISynapseROI|None]:
         """ 
@@ -152,10 +153,10 @@ class SynapseTreeview(ttk.Treeview):
         if len(parents) < 2:
             return (None, None)
         synapse_uuid = parents[-2]
-        if synapse_uuid not in self._synapseCallback().keys():
+        if synapse_uuid not in self.detection_result.synapses_dict.keys():
             logger.warning(f"SynapseTreeview: Can't find synapse {synapse_uuid} in the callback")
             return (None, None)
-        synapse = self._synapseCallback()[synapse_uuid]
+        synapse = self.detection_result.synapses_dict[synapse_uuid]
         if len(parents) < 3:
             return (synapse, None)
         roi_uuid = parents[-3]
@@ -319,21 +320,21 @@ class SynapseTreeview(ttk.Treeview):
                         logger.debug(f"Invalid input for edtiable field '{rowid_fiels[1]}': {val}")
                         self.master.bell()
                         return
-                    roi.SetFrame(int(val) - 1)
+                    roi.set_frame(int(val) - 1)
                     logger.debug(f"Modified frame of CircularSynapseROI to {roi.frame}")
                 case "CircularSynapseROI.Center":
                     if (_match := re.match(r"^(\d+),(\d+)$", val.replace(" ", "").replace("(", "").replace(")", ""))) is None or len(_match.groups()) != 2:
                         logger.debug(f"Invalid input for edtiable field '{rowid_fiels[1]}': {val}")
                         self.master.bell()
                         return
-                    roi.SetLocation(int(_match.groups()[0]), int(_match.groups()[1]))
+                    roi.set_location(int(x=_match.groups()[0]), y=int(_match.groups()[1]))
                     logger.debug(f"Modified location of CircularSynapseROI to {roi.LocationStr}")
                 case "CircularSynapseROI.Radius":
                     if not val.isdigit():
                         logger.debug(f"Invalid input for edtiable field '{rowid_fiels[1]}': {val}")
                         self.master.bell()
                         return
-                    roi.SetRadius(int(val))
+                    roi.set_radius(int(val))
                     logger.debug(f"Modified location of CircularSynapseROI to {roi.radius}")
                 case _:
                     logger.warning(f"SynapseTreeview: Unexpected invalid editable field {rowid_fiels[1]}")
@@ -356,14 +357,14 @@ class SynapseTreeview(ttk.Treeview):
         if type(roi) == CircularSynapseROI:
             type_ = "Circular ROI"
             self.insert(_ruuid, 'end', iid=f"{_ruuid}_CircularSynapseROI.Radius", text="Radius", values=[roi.radius if roi.radius is not None else ''])
-            self.insert(_ruuid, 'end', iid=f"{_ruuid}_CircularSynapseROI.Center", text="Center(X,Y)",  values=[roi.LocationStr()])
+            self.insert(_ruuid, 'end', iid=f"{_ruuid}_CircularSynapseROI.Center", text="Center(X,Y)",  values=[roi.location_string])
         elif type(roi) == PolygonalSynapseROI:
             type_ = "Polygonal ROI"
         else:
             type_ = "Undefined ROI"
 
-        if roi.regionProps is not None:
-            rp = roi.regionProps
+        if roi.region_props is not None:
+            rp = roi.region_props
             rp_id = f"{_ruuid}_RegionProperties"
             self.insert(_ruuid, 'end', iid=f"{_ruuid}_RegionProperties", text="Properties", values=[])
             self.insert(rp_id, 'end', iid=f"{_ruuid}_RegionProperties.Area", text="Area [px]", values=[rp.area])
@@ -404,35 +405,35 @@ class SynapseTreeview(ttk.Treeview):
         if isinstance(synapse, MultiframeSynapse):
             match class_:
                 case "CircularROI":
-                    r = CircularSynapseROI().SetRadius(6).SetLocation(0,0).SetFrame(0)
+                    r = CircularSynapseROI().set_radius(6).set_location(x=0,y=0).set_frame(0)
                 case "PolyonalROI":
-                    r = PolygonalSynapseROI().SetFrame(0)
+                    r = PolygonalSynapseROI().set_frame(0)
                 case _:
                     return
-            s: MultiframeSynapse = self._synapseCallback()[synapse.uuid]
-            s.AddROI(r)
+            s: MultiframeSynapse = self.detection_result.synapses_dict[synapse.uuid]
+            s.add_roi(r)
         else:
             match class_:
                 case "Singleframe_CircularROI":
-                    s = SingleframeSynapse(CircularSynapseROI().SetRadius(6).SetLocation(0,0))
+                    s = SingleframeSynapse(CircularSynapseROI().set_radius(6).set_location(x=0,y=0))
                 case "Singleframe_PolyonalROI":
                     s = SingleframeSynapse(PolygonalSynapseROI())
                 case "MultiframeSynapse":
                     s = MultiframeSynapse()
                 case _:
                     return
-            self._synapseCallback()[s.uuid] = s
+            self.detection_result.synapses_dict[s.uuid] = s
         self.modified = True
         self.SyncSynapses()
         self._updateCallback()
 
     def _OnContextMenu_AllToStage(self):
-        for s in self._synapseCallback().values():
+        for s in self.detection_result.synapses_dict.values():
             s.staged = True
         self.SyncSynapses()
 
     def _OnContextMenu_AllFromStage(self):
-        for s in self._synapseCallback().values():
+        for s in self.detection_result.synapses_dict.values():
             s.staged = False
         self.SyncSynapses()
 
@@ -447,10 +448,10 @@ class SynapseTreeview(ttk.Treeview):
                 return
             del synapse.rois_dict[roi.uuid]
         elif synapse is not None:
-            if synapse.uuid not in self._synapseCallback().keys():
+            if synapse.uuid not in self.detection_result.synapses_dict.keys():
                 logger.warning(f"SynapseTreeview: Can't remove synapse {synapse.uuid} as it does not exist")
                 return
-            self._synapseCallback().pop(synapse.uuid)
+            self.detection_result.synapses_dict.pop(synapse.uuid)
         self.modified = True
         self.SyncSynapses()
         self._updateCallback()
@@ -461,7 +462,10 @@ class SynapseTreeview(ttk.Treeview):
         self._updateCallback()
 
     def ImportROIsImageJ(self):
-        res = self._gui.ijH.ImportROIS()
+        if self.session.ijH is None or self.session.ijH.ij is None:
+            messagebox.showerror("Neurotorch", "You must first start Fiji/ImageJ")
+            return
+        res = self.session.ijH.ImportROIS()
         if res is None:
             self.root.bell()
             return
@@ -469,19 +473,22 @@ class SynapseTreeview(ttk.Treeview):
         if len(rois) == 0:
             self.root.bell()
             return
-        synapses = self._synapseCallback()
+        synapses = self.detection_result.synapses_dict
         for i in range(len(rois)):
-            s = SingleframeSynapse(rois[i]).SetName(names[i])
+            s = SingleframeSynapse(rois[i]).set_name(names[i])
             synapses[s.uuid] = s
         self.SyncSynapses()
         self._updateCallback()
 
     def ExportROIsImageJ(self):
-        self._gui.ijH.ExportROIs(list(self._synapseCallback().values()))
+        if self.session.ijH is None or self.session.ijH.ij is None:
+            messagebox.showerror("Neurotorch", "You must first start Fiji/ImageJ")
+            return
+        self.session.ijH.ExportROIs(list(self.detection_result.synapses_dict.values()))
 
     def ExportCSVMultiM(self, path:str|None = None, dropFrame=False) -> bool|None:
-        synapses = self._synapseCallback()
-        if len(synapses) == 0 or self._gui.ImageObject is None or self._gui.ImageObject.img is None:
+        synapses = self.detection_result.synapses_dict
+        if len(synapses) == 0 or self.session.active_image_object is None or self.session.active_image_object.img is None:
             self.master.bell()
             return None
         data = pd.DataFrame()
@@ -495,13 +502,13 @@ class SynapseTreeview(ttk.Treeview):
                 name2 = name
                 if len(synapse.rois) >= 2:
                     name2 += f" ROI {i} "
-                name2 += "(" + roi.LocationStr().replace(",","|").replace(" ","") + ")"
+                name2 += "(" + roi.location_string.replace(",","|").replace(" ","") + ")"
                 if name2 in list(data.columns.values):
                     for i in range(2, 10):
                         if f"{name2} ({i})" not in list(data.columns.values):
                             name2 = f"{name2} ({i})"
                             break
-                signal = roi.GetImageSignal(self._gui.ImageObject.img)
+                signal = roi.get_signal_from_image(self.session.active_image_object.img)
                 if signal.shape[0] == 0:
                     continue
                 data[name2] = np.mean(signal, axis=1)
@@ -520,11 +527,11 @@ class SynapseTreeview(ttk.Treeview):
     def ClearSynapses(self, target: Literal['staged', 'non_staged', 'all']):
         match(target):
             case 'staged':
-                self._synapseCallback({_uuid: s for _uuid, s in self._synapseCallback().items() if not s.staged})
+                self.detection_result.synapses_dict = {_uuid: s for _uuid, s in self.detection_result.synapses_dict.items() if not s.staged}
             case 'non_staged':
-                self._synapseCallback({_uuid: s for _uuid, s in self._synapseCallback().items() if s.staged})
+                self.detection_result.synapses_dict = {_uuid: s for _uuid, s in self.detection_result.synapses_dict.items() if s.staged}
             case 'all':
-                self._synapseCallback({})
+                self.detection_result.clear()
             case _:
                 return
         self.modified = False

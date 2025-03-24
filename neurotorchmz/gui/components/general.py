@@ -4,6 +4,7 @@ from typing import Literal
 from tktooltip import ToolTip
 import psutil
 
+from ...core.settings import logger, log_exception_debug
 from ...core.task_system import Task, TaskState
 
 class Statusbar:
@@ -12,26 +13,61 @@ class Statusbar:
     """
     timerLowSpeed = 1000 # ms
     timerHighSpeed = 100 # ms
-    lowerTimerSpeed = 2000 #ms
+    lowerTimerSpeed = 1000 #ms
     def __init__(self, root, frame):
         self._statusTxt = ""
         self._progTxt = ""
+        self._finishedTxt = ""
         self._timerSpeed = Statusbar.timerLowSpeed #ms
 
         self.root = root
         self.frame = frame
 
-        self.statusFrame = tk.Frame(self.frame)
-        self.statusFrame.pack(side=tk.BOTTOM, fill="x", expand=False)
+        # self.statusFrame = tk.Frame(self.frame)
+        # self.statusFrame.pack(side=tk.BOTTOM, fill="x", expand=False)
+        # self.varProgMain = tk.DoubleVar()
+        # self.progMain = ttk.Progressbar(self.statusFrame,orient="horizontal", length=200, variable=self.varProgMain, maximum=100)
+        # self.progMain.pack(side=tk.LEFT)
+        # self.lblProg = tk.Label(self.statusFrame, text="", relief=tk.SUNKEN,borderwidth=1)
+        # self.lblProg.pack(side=tk.LEFT, padx=(10,10))
+        # self.lblStatus = tk.Label(self.statusFrame, text="", borderwidth=1, relief=tk.SUNKEN)
+        # self.lblStatus.pack(side=tk.LEFT, padx=(10, 10))
+        # self.lblSystemUsage = tk.Label(self.statusFrame, text="")
+        # self.lblSystemUsage2 = tk.Label(self.statusFrame, text="")
+        # self.lblSystemUsage3 = tk.Label(self.statusFrame, text="")
+        # self.lblSystemUsage3.pack(side=tk.RIGHT, padx=(0, 10))
+        # self.lblSystemUsage2.pack(side=tk.RIGHT, padx=(0, 0))
+        # self.lblSystemUsage.pack(side=tk.RIGHT, padx=(10, 0))
+
+        self.statusbarFrame = tk.Frame(self.frame)
+        self.statusbarFrame.pack(side=tk.BOTTOM, fill="x", expand=False)
         self.varProgMain = tk.DoubleVar()
-        self.progMain = ttk.Progressbar(self.statusFrame,orient="horizontal", length=200, variable=self.varProgMain, maximum=100)
+        self.finishedTaskFrame = tk.Frame(self.statusbarFrame)
+        self.finishedTaskFrame.grid(row=0, column=0, sticky="w")
+        self.runningTaskFrame = tk.Frame(self.statusbarFrame)
+        self.runningTaskFrame.grid(row=0, column=1, sticky="w")
+        self.statusFrame = tk.Frame(self.statusbarFrame)
+        self.statusFrame.grid(row=0, column=2)
+        self.systemInfoFrame = tk.Frame(self.statusbarFrame)
+        self.systemInfoFrame.grid(row=0, column=3, columnspan=2, sticky="e")
+        self.statusbarFrame.grid_columnconfigure([2], weight=1)
+        self.statusbarFrame.grid_columnconfigure([0], minsize=150)
+
+        self.lblTasksFinished = tk.Label(self.finishedTaskFrame, text="")
+        self.lblTasksFinished.pack()
+        self.progMain = ttk.Progressbar(self.runningTaskFrame, orient="horizontal", length=100, variable=self.varProgMain, maximum=100)
         self.progMain.pack(side=tk.LEFT)
-        self.lblProg = tk.Label(self.statusFrame, text="", relief=tk.SUNKEN,borderwidth=1)
-        self.lblProg.pack(side=tk.LEFT, padx=(10,10))
-        self.lblStatus = tk.Label(self.statusFrame, text="", borderwidth=1, relief=tk.SUNKEN)
-        self.lblStatus.pack(side=tk.LEFT, padx=(10, 10))
-        self.lblSystemUsage = tk.Label(self.statusFrame, text="")
-        self.lblSystemUsage.pack(anchor=tk.E, padx=(10, 10))
+        self.lblProg = tk.Label(self.runningTaskFrame, text="")
+        self.lblProg.pack(side=tk.LEFT, padx=(7,0))
+        self.lblStatus = tk.Label(self.statusFrame, text="")
+        self.lblStatus.pack(padx=(5, 5))
+        self.lblSystemUsage = tk.Label(self.systemInfoFrame, text="")
+        self.lblSystemUsage2 = tk.Label(self.systemInfoFrame, text="")
+        self.lblSystemUsage3 = tk.Label(self.systemInfoFrame, text="")
+        self.lblSystemUsage3.pack(side=tk.RIGHT, padx=(0, 5))
+        self.lblSystemUsage2.pack(side=tk.RIGHT, padx=(0, 0))
+        self.lblSystemUsage.pack(side=tk.RIGHT, padx=(5, 0))
+
 
         self.root.after(0, self._TimerTick)
         self.root.after(1000, self._LowerTimerTick)
@@ -51,46 +87,85 @@ class Statusbar:
         return self._progTxt
     
     @ProgressText.setter
-    def progressText(self, val):
+    def ProgressText(self, val):
         if val != self._progTxt:
             self._progTxt = val
             self.lblProg["text"] = self._progTxt
 
-    def _TimerTick(self):
-        if len(self._jobs) == 0:
-            self._timerSpeed = Statusbar.timerLowSpeed
-        else:
-            self._timerSpeed = Statusbar.timerHighSpeed
-        
-        active_tasks = [t for t in Task.tasks if t.state == TaskState.RUNNING]
-        finished_task = [t for t in Task.tasks if (t.finished and t.time_since_end < 5)]
-        sorted(active_tasks, key=lambda t: t.time_since_start, reverse=True)
-        sorted(finished_task, key=lambda t: (t.state.value, t.time_since_end), reverse=True)
+    @property
+    def TaskFinishedText(self):
+        return self._finishedTxt
+    
+    @TaskFinishedText.setter
+    def TaskFinishedText(self, val):
+        if val != self._finishedTxt:
+            self._finishedTxt = val
+            self.lblTasksFinished["text"] = self._finishedTxt
 
-        if len(active_tasks) == 0 and len(finished_task) == 0:
-            self.progressText = ""
-            if str(self.progMain["mode"]) != "determinate":
-                self.progMain.configure(mode="determinate")
-            if self.varProgMain.get() != 0:
-                self.varProgMain.set(0)
-        else:
-            t = active_tasks[0] if len(active_tasks) >= 1 else finished_task[0]
-            self.progressText = t.to_string_short() + (f"and {len(active_tasks)-1} more task{'s' if len(active_tasks) >= 3 else ''} running" if len(active_tasks) >= 2 else "")
-            if t.is_determinate():
+    def _TimerTick(self):
+        self._timerSpeed = Statusbar.timerHighSpeed
+        def _Tick():
+            active_tasks = [t for t in Task.get_tasks() if t.state == TaskState.RUNNING and t.time_since_start >= 0.5]
+            finished_task = [t for t in Task.get_tasks() if t.tend is not None and t.time_since_end <= 5 and t.runtime >= 0.5]
+
+            sorted(active_tasks, key=lambda t: t.time_since_start, reverse=True) # Oldest tasks first
+            sorted(finished_task, key=lambda t: (t.state.value, t.time_since_end)) # Newest finish first
+
+            if len(active_tasks) == 0:
+                self._timerSpeed = Statusbar.timerLowSpeed
+
+            if len(finished_task) == 0:
+                self.TaskFinishedText = ""
+            else:
+                t: Task = finished_task[0]
+                if t.error is not None and self.lblTasksFinished["fg"] != "red":
+                    self.lblTasksFinished.config(fg="red")
+                elif self.lblTasksFinished["fg"] != "SystemButtonText":
+                    self.lblTasksFinished.config(fg="SystemButtonText")
+                self.TaskFinishedText = str(t)
+
+            if len(active_tasks) == 0:
+                self.ProgressText = ""
                 if str(self.progMain["mode"]) != "determinate":
                     self.progMain.configure(mode="determinate")
-                if self.varProgMain.get() != t.progress:
-                    self.varProgMain.set(t.progress)
+                if self.varProgMain.get() != 0:
+                    self.varProgMain.set(0)
             else:
-                if str(self.progMain["mode"]) != "indeterminate":
-                    self.progMain.configure(mode="indeterminate")
-                self.progMain.step(10)
-        self.root.after(self._timerSpeed, self._TimerTick)
+                t: Task = active_tasks[0]
+                # Those both if querys create a flashing effect
+                if t.error is not None and self.lblProg["fg"] != "red":
+                    self.lblProg.config(fg="red")
+                elif self.lblProg["fg"] != "SystemButtonText":
+                    self.lblProg.config(fg="SystemButtonText")
+                self.ProgressText = str(t) + (f" and {len(active_tasks)-1} more task{'s' if len(active_tasks) >= 3 else ''}" if len(active_tasks) >= 2 else "")
+                if t.is_determinate():
+                    if str(self.progMain["mode"]) != "determinate":
+                        self.progMain.configure(mode="determinate")
+                    if self.varProgMain.get() != t.progress:
+                        self.varProgMain.set(100*t.progress)
+                else:
+                    if str(self.progMain["mode"]) != "indeterminate":
+                        self.progMain.configure(mode="indeterminate")
+                    self.progMain.step(10)
+        try:
+            _Tick()
+        except Exception as ex:
+            logger.debug(f"An error happened processing the task loop: {str(ex)}")
+        finally:
+            self.root.after(self._timerSpeed, self._TimerTick)
 
     def _LowerTimerTick(self):
         process = psutil.Process()
         _size = round(process.memory_info().rss/(1024**2),2)
-        self.lblSystemUsage["text"] = f"RAM: {_size} MB"
+        _availableRAM = round(psutil.virtual_memory().available/(1024**3), 2)
+        _totalRAM = round(psutil.virtual_memory().total/(1024**3), 2)
+        self.lblSystemUsage["text"] = f"CPU: {psutil.cpu_percent(interval=None)}%, RAM: {_size} MB ("
+        self.lblSystemUsage2["text"] = f"{_availableRAM} GB free"
+        if _availableRAM < 3:
+            self.lblSystemUsage2.config(fg="red")
+        else:
+            self.lblSystemUsage2.config(fg="SystemButtonText")
+        self.lblSystemUsage3["text"] = f" / {_totalRAM} GB)"
         self.root.after(Statusbar.lowerTimerSpeed, self._LowerTimerTick)
 
 

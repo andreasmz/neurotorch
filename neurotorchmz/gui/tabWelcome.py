@@ -1,27 +1,17 @@
-from .window import Neurotorch_GUI, Tab
-from .settings import (
-    Neurotorch_Resources as Resources
-)
+from .window import *
 
-import tkinter as tk
-from tkinter import ttk, messagebox
 from PIL import ImageTk, Image
 import os, sys
 import subprocess
-import logging
-
-logger = logging.getLogger("NeurotorchMZ")
 
 class TabWelcome(Tab):
-    def __init__(self, gui: Neurotorch_GUI):
-        super().__init__(gui)
+    def __init__(self, session: Session, root:ttk.Frame, frame: ttk.Frame):
+        super().__init__(session, root, frame)
         self.tab_name = "Tab Welcome"
-        self._gui = gui
-        self.root = gui.root
 
-    def Init(self):
-        self.tab = ttk.Frame(self._gui.tabMain)
-        self._gui.tabMain.add(self.tab, text="Welcome to Neurotorch")
+    def init(self):
+        self.tab = ttk.Frame(self.frame)
+        self.frame.add(self.tab, text="Welcome to Neurotorch")
 
         self.frame = tk.Frame(self.tab, background="white")
         self.frame.bind("<Configure>", self._FrameResizeEvent)

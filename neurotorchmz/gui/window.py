@@ -5,254 +5,233 @@ import sys
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from tktooltip import ToolTip
-import threading
 import pickle
 from typing import Literal
 import logging
 import matplotlib
 from pathlib import Path
+from collections import deque
 matplotlib.use('TkAgg')
 
-logger = logging.getLogger("NeurotorchMZ")
-
-from .components.general import Job, Statusbar
-from .edition import Edition
-from .settings import (Neurotorch_Settings as Settings, Neurotorch_Resources as Resources)
-from ..utils.image import ImgObj
-from ..utils.signalDetection import SignalObj
+from .components.general import Statusbar
+from ..core.session import *
+from ..core.session import __version__
+from ..core.task_system import Task
 
 
 class Neurotorch_GUI:
-    def __init__(self, version):
-        self._version_ = version
+    def __init__(self, session: Session):
         self.root = None
+        self.session = session
         self.tabs : dict[type: Tab] = {}
-        self._imgObj = None
-        self.signal = SignalObj(self.GetImageObject)
-        self.ijH = None
 
-    def GUI(self, edition:Edition=Edition.NEUROTORCH):
-        from neurotorchmz.gui.tabWelcome import TabWelcome
-        from neurotorchmz.gui.tab1 import TabImage
-        from neurotorchmz.gui.tab2 import TabSignal
-        from neurotorchmz.gui.tab3 import TabROIFinder
-        from neurotorchmz.gui.tabAnalysis import TabAnalysis
-        from ..utils.plugin_manager import PluginManager
+        self._pending_updates: deque[tuple[Tab, TabUpdateEvent]] = deque()
+
+    def launch(self, edition:Edition=Edition.NEUROTORCH):
         self.edition = edition
         self.root = tk.Tk()
-        self.SetWindowTitle("")
-        self.root.iconbitmap(bitmap=(Resources.path / "neurotorch_logo_ico"), default=(Resources.path / "neurotorch_logo_ico"))
-        self.root.geometry("600x600")
+        self.set_window_title("")
+        self.root.iconbitmap(default=(Resources.path / "neurotorch_logo.ico"))
+        self.root.geometry("900x600")
         self.root.state("zoomed")
         self.statusbar = Statusbar(self.root, self.root)
+
+        self._update_task = self._update_task = Task(self._update_loop, name="updating GUI", run_async=True, keep_alive=True)
 
         self.menubar = tk.Menu(self.root)
         self.root.config(menu=self.menubar)
         self.menuFile = tk.Menu(self.menubar,tearoff=0)
         self.menubar.add_cascade(label="File",menu=self.menuFile)
-        self.menuFile.add_command(label="Open", command=self.MenuFileOpen)
-        self.menuFile.add_command(label="Open noisy image", command=lambda: self.MenuFileOpen(noisy=True))
-        self.menuFile.add_command(label="Close image", command=self.MenuFileClose)
+        self.menuFile.add_command(label="Open", command=self.menuFile_open_click)
+        self.menuFile.add_command(label="Open noisy image", command=lambda: self.menuFile_open_click(noisy=True))
+        self.menuFile.add_command(label="Close image", command=self.menuFile_close_click)
 
         self.menuImage = tk.Menu(self.menubar,tearoff=0)
         self.menubar.add_cascade(label="Image", menu=self.menuImage)
         self.menuDenoise = tk.Menu(self.menuImage,tearoff=0)
         self.menuImage.add_cascade(label="Denoise imgDiff", menu=self.menuDenoise)
-        self.menuDenoise.add_command(label="Disable denoising", command=lambda: self.MenuImageDenoise(None, None))
-        self.menuDenoise.add_command(label="Clear cache", command=self.MenuImage_ClearCache)
+        self.menuDenoise.add_command(label="Disable denoising", command=lambda: self.menuImage_denoise_click(None, None))
+        self.menuDenoise.add_command(label="Clear cache", command=self.menuImage_clear_cache_click)
         self.menuDenoise.add_separator()
-        self.menuDenoise.add_command(label="Gaussian kernel (σ=0.5)", command=lambda: self.MenuImageDenoise('Gaussian', (0.5,)))
-        self.menuDenoise.add_command(label="Gaussian kernel (σ=0.8)", command=lambda: self.MenuImageDenoise('Gaussian', (0.8,)))
-        self.menuDenoise.add_command(label="Gaussian kernel (σ=1)", command=lambda: self.MenuImageDenoise('Gaussian', (1,)))
-        self.menuDenoise.add_command(label="Gaussian kernel (σ=1.5)", command=lambda: self.MenuImageDenoise('Gaussian', (1.5,)))
-        self.menuDenoise.add_command(label="Gaussian kernel (σ=2, recommended)", command=lambda: self.MenuImageDenoise('Gaussian', (2,)))
-        self.menuDenoise.add_command(label="Gaussian kernel (σ=2.5)", command=lambda: self.MenuImageDenoise('Gaussian', (2.5,)))
-        self.menuDenoise.add_command(label="Gaussian kernel (σ=3)", command=lambda: self.MenuImageDenoise('Gaussian', (3,)))
-        self.menuDenoise.add_command(label="Gaussian kernel (σ=5)", command=lambda: self.MenuImageDenoise('Gaussian', (5,)))
+        self.menuDenoise.add_command(label=f"Gaussian kernel (σ=0.5)", command=lambda: self.menuImage_denoise_click('Gaussian', {"sigma": 0.5}))
+        self.menuDenoise.add_command(label=f"Gaussian kernel (σ=0.8)", command=lambda: self.menuImage_denoise_click('Gaussian', {"sigma": 0.8}))
+        self.menuDenoise.add_command(label=f"Gaussian kernel (σ=1)", command=lambda: self.menuImage_denoise_click('Gaussian', {"sigma": 1}))
+        self.menuDenoise.add_command(label=f"Gaussian kernel (σ=1.5)", command=lambda: self.menuImage_denoise_click('Gaussian', {"sigma": 1.5}))
+        self.menuDenoise.add_command(label=f"Gaussian kernel (σ=2, recommended)", command=lambda: self.menuImage_denoise_click('Gaussian', {"sigma": 2}))
+        self.menuDenoise.add_command(label=f"Gaussian kernel (σ=2.5)", command=lambda: self.menuImage_denoise_click('Gaussian', {"sigma": 2.5}))
+        self.menuDenoise.add_command(label=f"Gaussian kernel (σ=3)", command=lambda: self.menuImage_denoise_click('Gaussian', {"sigma": 3}))
+        self.menuDenoise.add_command(label=f"Gaussian kernel (σ=5)", command=lambda: self.menuImage_denoise_click('Gaussian', {"sigma": 5}))
 
         self.menuFilter = tk.Menu(self.menuImage,tearoff=0)
         self.menuImage.add_cascade(label="Apply filter", menu=self.menuFilter)
-        self.menuFilter.add_command(label="Disable filter", command=lambda: self.MenuImageDenoise(None, None))
-        self.menuFilter.add_command(label="Clear cache", command=self.MenuImage_ClearCache)
+        self.menuFilter.add_command(label="Disable filter", command=lambda: self.menuImage_denoise_click(None, None))
+        self.menuFilter.add_command(label="Clear cache", command=self.menuImage_clear_cache_click)
         self.menuFilter.add_separator()
-        self.menuFilter.add_command(label="Cummulative imgDiff", command=lambda: self.MenuImageDenoise('MeanMaxDiff', None))
+        self.menuFilter.add_command(label="Cummulative imgDiff", command=lambda: self.menuImage_denoise_click('MeanMaxDiff', None))
         ToolTip(self.menuFile, msg=Resources.GetString("menubar/filters/meanMaxDiff"), follow=True, delay=0.5)
 
         if edition == Edition.NEUROTORCH_DEBUG:
             self.menuDenoiseImg = tk.Menu(self.menuImage,tearoff=0)
             self.menuImage.add_cascade(label="Denoise Image", menu=self.menuDenoiseImg)
-            self.menuDenoiseImg.add_command(label="On", command=lambda:self.MenuImageDenoiseImg(True))
-            self.menuDenoiseImg.add_command(label="Off", command=lambda:self.MenuImageDenoiseImg(False))
+            self.menuDenoiseImg.add_command(label="On", command=lambda:self.menuImage_denoise_image_click(True))
+            self.menuDenoiseImg.add_command(label="Off", command=lambda:self.menuImage_denoise_image_click(False))
 
         if (edition != Edition.NEUROTORCH_LIGHT):
-            from neurotorchmz.utils.pyimagej import ImageJHandler
-            self.ijH = ImageJHandler(self)
-            self.ijH.MenubarImageJH(self.menubar)
+            self.session.import_ijh()
+            self.session.ijH.MenubarImageJH(self.menubar)
 
         self.menuPlugins = tk.Menu(self.menubar,tearoff=0)
         self.menubar.add_cascade(label="Plugins",menu=self.menuPlugins)
         
         self.menuNeurotorch = tk.Menu(self.menubar,tearoff=0)
         self.menubar.add_cascade(label="Neurotorch",menu=self.menuNeurotorch)
-        self.menuNeurotorch.add_command(label="About", command=self.MenuNeurotorchAbout)
+        self.menuNeurotorch.add_command(label="About", command=self.menuNeurotorch_about_click)
 
         self.menuDebug = tk.Menu(self.menubar,tearoff=0)
         if edition == Edition.NEUROTORCH_DEBUG:
             self.menubar.add_cascade(label="Debug", menu=self.menuDebug)
-        self.menuDebug.add_command(label="Activate debugging to console", command=self.MenuDebug_EnableDebugging)    
-        self.menuDebug.add_command(label="Save diffImg peak frames", command=self.MenuDebugSavePeaks)
-        self.menuDebug.add_command(label="Load diffImg peak frames", command=self.MenuDebugLoadPeaks)
+        self.menuDebug.add_command(label="Activate debugging to console", command=self.menuDebug_enable_debugging_click)    
+        self.menuDebug.add_command(label="Save diffImg peak frames", command=self.menuDebug_save_peaks_click)
+        self.menuDebug.add_command(label="Load diffImg peak frames", command=self.menuDebug_load_peaks_click)
 
         self.tabMain = ttk.Notebook(self.root)
-        self.tabs[TabWelcome] = TabWelcome(self)
-        self.tabs[TabImage] = TabImage(self)
-        self.tabs[TabSignal] = TabSignal(self)
-        self.tabs[TabROIFinder] = TabROIFinder(self)
-        self.tabs[TabAnalysis] = TabAnalysis(self)
-        for t in self.tabs.values(): t.Init()
+        self.tabs[TabWelcome] = TabWelcome(self.session, self.root, self.tabMain)
+        self.tabs[TabImage] = TabImage(self.session, self.root, self.tabMain)
+        self.tabs[TabSignal] = TabSignal(self.session, self.root, self.tabMain)
+        self.tabs[TabROIFinder] = TabROIFinder(self.session, self.root, self.tabMain)
+        self.tabs[TabAnalysis] = TabAnalysis(self.session, self.root, self.tabMain)
+        for t in self.tabs.values(): t.init()
         self.tabMain.select(self.tabs[TabImage].tab)
 
-        self.plugin_mng = PluginManager(self)
+        #self.plugin_mng = PluginManager(self)
 
-        self.root.protocol("WM_DELETE_WINDOW", self.OnClosing)
+        self.root.protocol("WM_DELETE_WINDOW", self._on_closing)
         self.tabMain.pack(expand=1, fill="both")
         self.root.mainloop()
 
-    # Image Object functions and properties
-    @property
-    def ImageObject(self) -> ImgObj | None:
-        """
-            Returns the active ImgObj or None if not ImgObj is opened or selected
-        """
-        return self._imgObj
-    
-    @ImageObject.setter
-    def ImageObject(self, val: ImgObj):
-        """
-            Sets the active ImgObj and calls each tab to update
-        """
-        self._imgObj = val
-        self.signal.Clear()
-        self.NewImageProvided()
+    # Update handling
 
-    def GetImageObject(self):
-        """
-            Sometimes it may be necessary to pass an pointer to the current image object, as the object itself may be replaced.
-            For this, this function can be passed to archieve the exact same behaviour.
-        """
-        return self._imgObj   
-    
-    def NewImageProvided(self):
-        def _Update(job: Job):
-            job.SetProgress(0, text="Updating GUI")
-            #Preload
-            if self.ImageObject is not None:
-                job.SetProgress(0, text="Updating GUI: Precache the image views")
-                self.ImageObject.imgView(ImgObj.SPATIAL).Mean
-                self.ImageObject.imgView(ImgObj.SPATIAL).Std
-                job.SetProgress(1, text="Updating GUI: Precache the image views")
-                self.ImageObject.imgDiffView(ImgObj.SPATIAL).Max
-                self.ImageObject.imgDiffView(ImgObj.SPATIAL).StdNormed
-                job.SetProgress(2, text="Updating GUI: Precache the image views")
-                self.ImageObject.imgDiffView(ImgObj.TEMPORAL).Max
-                self.ImageObject.imgDiffView(ImgObj.TEMPORAL).Std
-                job.SetProgress(3, text="Updating GUI: Statusbar")
-
-                self.SetWindowTitle(self.ImageObject.name or "")
-                if self.ImageObject.img is not None:
-                    _size = round(sys.getsizeof(self.ImageObject.img)/(1024**2),2)
-                    self.statusbar.StatusText = f"Image of shape {self.ImageObject.img.shape} and size {_size} MB"
-                else:
-                    self.statusbar.StatusText = ""
+    def invoke_tab_update_event(self, event: TabUpdateEvent) -> Task:
+        """ Notify each tab about the given TabUpdateEvent """
+        if isinstance(event, ImageChangedEvent):
+            imgObj =  self.session.active_image_object
+            if imgObj is not None and imgObj.img is not None:
+                self.set_window_title(imgObj.name or "")
+                _size = round(sys.getsizeof(imgObj.img)/(1024**2),2)
+                self.statusbar.StatusText = f"Image of shape {imgObj.img.shape} and size {_size} MB"
             else:
                 self.statusbar.StatusText = ""
-                self.SetWindowTitle("")
-            for t in self.tabs.values(): 
-                job.SetProgress(4, text=f"Updating GUI: {t.tab_name}")
-                t.Update(ImageChangedEvent())
-            job.SetStopped("Updating GUI")
+        for t in self.tabs.values():
+            self.invoke_tab_about_update(t, event)
+        return self._update_task
 
-        job = Job(steps=5, showSteps=True)
-        self.statusbar.AddJob(job)
-        threading.Thread(target=_Update, args=(job,), daemon=True).start()
+    def invoke_tab_about_update(self, tab: Tab, event: TabUpdateEvent) -> Task:
+        """ Add a UpdateEvent to the queue and start the update loop if not already running """
+        self._pending_updates.append((tab, event))
+        self._update_task.start()
+        return self._update_task
 
-    def SignalChanged(self):
-        for t in self.tabs.values(): t.Update(SignalChangedEvent())
+    def _update_loop(self, task: Task):
+        """ Process the update queue as long as items are contained """
+        #num_total_updates = len(self._pending_updates) # Used to set the progress bar
+        #num_pending_updates = len(self._pending_updates) # Cache pending updates count
+        #update_index = 0
+        task.set_indeterminate()
+        while len(self._pending_updates) != 0:
+            #num_total_updates += len(self._pending_updates) - num_pending_updates # Add number of updates which had been previous while loop not in the Queue
+            #task.set_step_mode(step_count=num_total_updates)
+            tab, event = self._pending_updates.pop()
+            num_pending_updates = len(self._pending_updates)
+            task.set_message(" %s %s" % (tab.tab_name, f'({num_pending_updates} more updates queued)' if num_pending_updates > 0 else ''))
+            tab.Update(event)
+            #update_index += 1
 
 
     # General GUI functions
 
-
-    def SetWindowTitle(self, text:str=""):
+    def set_window_title(self, text:str=""):
         if (self.edition == Edition.NEUROTORCH_LIGHT):
             self.root.title(f"NeuroTorch Light {text}")
+        elif self.edition == Edition.NEUROTORCH_DEBUG:
+            self.root.title(f"Neurotorch {text} (DEBUG mode)")
         else:
             self.root.title(f"NeuroTorch {text}")
 
-    def OnClosing(self):
+    def _on_closing(self):
         self.root.destroy()
-        exit()
+        #exit()
+
+    # ImageObject handling
+
+    def _open_image_error_callback(self, ex: Exception):
+        if isinstance(ex, FileNotFoundError):
+            logger.warning(f"[ImageObject OpenFile] The given path is invalid")
+            messagebox.showerror("Neurotorch", f"The given path is invalid")
+        elif isinstance(ex, AlreadyLoadingError):
+            logger.warning(f"[ImageObject OpenFile] Image already loading error")
+            messagebox.showerror("Neurotorch", f"Please wait until the current image is loaded")
+        elif isinstance(ex, UnsupportedImageError):
+            logger.warning(f"[ImageObject OpenFile] Unsupported image: {str(ex.exception)}")
+            messagebox.showerror("Neurotorch", f"The provided file {ex.file_name} is not supported")
+        elif isinstance(ex, ImageShapeError):
+            logger.warning(f"[ImageObject OpenFile] Invalid shape {ex.shape}")
+            messagebox.showerror("Neurotorch", f"The image has shape {ex.shape}, which is incompatible as it must have (t, y, x)")
+        else:
+            logger.exception("[OpenImageObject] An unkown error happened", exc_info=(type(ex), ex, ex.__traceback__))
+            messagebox.showerror("Neurotorch", f"An unkown error happened oppening this image: {str(ex)}")
 
     
     # Menu Buttons Click
 
-    def MenuFileOpen(self, noisy:bool=False):
+    def menuFile_open_click(self, noisy:bool=False):
         image_path = filedialog.askopenfilename(parent=self.root, title="Open a Image File", 
                 filetypes=(("All files", "*.*"), ("TIF File", "*.tif *.tiff"), ("ND2 Files (NIS Elements)", "*.nd2")) )
         if image_path is None or image_path == "":
             return
-        self.statusbar._jobs.append(ImgObj().OpenFile(image_path, callback=self._OpenImage_Callback, errorcallback=self._OpenImage_CallbackError, convolute=noisy))
-        return
+        imgObj = ImageObject()
+        self.session.set_active_image_object(imgObj)
+        task = imgObj.OpenFile(Path(image_path), precompute=True, calc_convoluted=noisy, run_async=True)
+        task.add_callback(self.session.notify_image_object_change)
+        task.set_error_callback(self._open_image_error_callback)
     
-    def _OpenImage_Callback(self, imgObj: ImgObj):
-        self.ImageObject = imgObj
-
-    def _OpenImage_CallbackError(self, code, msg=""):
-        match(code):
-            case "FileNotFound":
-                messagebox.showerror("Neurotorch", f"The given path doesn't exist or can't be opened. {msg}")
-            case "AlreadyLoading":
-                messagebox.showerror("Neurotorch", f"Please wait until the current image is loaded. {msg}")
-            case "ImageUnsupported":
-                messagebox.showerror("Neurotorch", f"The provided file is not supported. {msg}")
-            case "WrongShape":
-                messagebox.showerror("Neurotorch", f"The image has wrong shape ({msg}). It needs to have (t, y, x)")
-            case _:
-                messagebox.showerror("Neurotorch", f"An unkown error happend opening this image. {msg}") 
-    
-    def MenuFileClose(self):
-        self.ImageObject = None
+    def menuFile_close_click(self):
+        self.session.set_active_image_object(None)
         
-    def MenuImageDenoise(self, mode: None|Literal["Gaussian", "MeanMaxDiff"], args: None|tuple):
-        if self.ImageObject is None or self.ImageObject.imgDiff is None:
+    def menuImage_denoise_click(self, mode: None|Literal["Gaussian", "MeanMaxDiff"], args: dict|None):
+        imgObj = self.session.active_image_object
+        if imgObj is None or imgObj.imgDiff is None:
             self.root.bell()
             return
         if mode is None:
-            self.ImageObject.imgDiff_Mode = "Normal"
+            imgObj.imgDiff_Mode = "Normal"
         elif mode == "Gaussian":
-            self.ImageObject.imgDiff_Mode = "Convoluted"
-            self.ImageObject.SetConvolutionFunction(self.ImageObject.Conv_GaussianBlur, args=args)
+            imgObj.imgDiff_Mode = "Convoluted"
+            imgObj.SetConvolutionFunction(ImageObject.Conv_GaussianBlur, func_args=args)
         elif mode == "MeanMaxDiff":
-            self.ImageObject.imgDiff_Mode = "Convoluted" 
-            self.ImageObject.SetConvolutionFunction(self.ImageObject.Conv_MeanMaxDiff, args=args)   
+            imgObj.imgDiff_Mode = "Convoluted" 
+            imgObj.SetConvolutionFunction(ImageObject.Conv_MeanMaxDiff, func_args=args)   
         else:
             raise ValueError(f"Mode parameter has an unkown value '{mode}'")
-        self.NewImageProvided()
+        self.session.active_image_object.PrecomputeImage().add_callback(lambda: self.invoke_tab_update_event(ImageChangedEvent()))
 
-    def MenuImage_ClearCache(self):
-        self.ImageObject.ClearCache()
+    def menuImage_clear_cache_click(self):
+        if self.session.active_image_object is None:
+            self.root.bell()
+            return    
+        self.session.active_image_object.ClearCache()
+        logger.debug("Cleared ImageObject cache")
 
-    def MenuImageDenoiseImg(self, enable: bool):
-        if self.ImageObject is None:
+    def menuImage_denoise_image_click(self, enable: bool):
+        if self.session.active_image_object is None:
             self.root.bell()
             return
-        self.ImageObject._imgMode = 1 if enable else 0
-        self.NewImageProvided()
+        self.session.active_image_object._imgMode = 1 if enable else 0
+        self.session.active_image_object.PrecomputeImage().add_callback(lambda: self.invoke_tab_update_event(ImageChangedEvent()))
 
-    def MenuNeurotorchAbout(self):
-        messagebox.showinfo("Neurotorch", f"© Andreas Brilka 2024\nYou are running Neurotorch {self._version_}")
+    def menuNeurotorch_about_click(self):
+        messagebox.showinfo("Neurotorch", f"© Andreas Brilka 2025\nYou are running Neurotorch {__version__}")
 
-    def MenuDebugLoadPeaks(self):
+    def menuDebug_load_peaks_click(self):
         path = Settings.app_data_path / "img_peaks.dump"
         if not path.exists() or not path.is_file():
             self.root.bell()
@@ -261,17 +240,23 @@ class Neurotorch_GUI:
         with open(path, 'rb') as f:
             _img = pickle.load(f)
             _name = "img_peaks.dump"
-            self.statusbar._jobs.append(ImgObj().SetImagePrecompute(img=_img, name=_name, callback=self._OpenImage_Callback, errorcallback=self._OpenImage_CallbackError))
+            imgObj = ImageObject()
+            task = Task((lambda t, **kwargs: imgObj.SetImagePrecompute(**kwargs)), name="Open image", run_async=True)
+            task.add_callback(lambda: self.session.set_active_image_object(imgObj))
+            task.set_error_callback(self._open_image_error_callback)
+            task.start(img=_img, name=_name, run_async=False)
 
-    def MenuDebugSavePeaks(self):
-        if self.ImageObject is None or self.ImageObject.img is None or self.signal.peaks is None or len(self.signal.peaks) == 0:
+    def menuDebug_save_peaks_click(self):
+        imgObj = self.session.active_image_object
+        signalObj = self.session.active_image_signal
+        if imgObj is None or imgObj.img is None or signalObj is None or signalObj.peaks is None or len(signalObj.peaks) == 0:
             self.root.bell()
             return
         if not messagebox.askyesnocancel("Neurotorch", "Do you want to save the current diffImg Peak Frames in a Dump?"):
             return
         _peaksExtended = []
-        for p in self.signal.peaks:
-            if p != 0 and p < (self.ImageObject.img.shape[0] - 1):
+        for p in signalObj.peaks:
+            if p != 0 and p < (imgObj.img.shape[0] - 1):
                 if len(_peaksExtended) == 0:
                     _peaksExtended.extend([int(p-1),int(p),int(p+1)])
                 else:
@@ -282,11 +267,11 @@ class Neurotorch_GUI:
         logger.info("Exported frames", _peaksExtended)
         savePath = Settings.app_data_path / "img_peaks.dump"
         with open(savePath, 'wb') as f:
-            pickle.dump(self.ImageObject.img[_peaksExtended, :, :], f, protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump(imgObj.img[_peaksExtended, :, :], f, protocol=pickle.HIGHEST_PROTOCOL)
 
-    def MenuDebug_EnableDebugging(self):
-        logger.setLevel(logging.DEBUG)
-        logger.DEBUG("Neurotorch is now in debugging mode")
+    def menuDebug_enable_debugging_click(self):
+        stream_logging_handler.setLevel(logging.DEBUG)
+        logger.debug("Neurotorch is now in debugging mode")
 
 
 class TabUpdateEvent:
@@ -300,18 +285,37 @@ class SignalChangedEvent(TabUpdateEvent):
 
 class Tab:
 
-    def __init__(self, gui: Neurotorch_GUI):
+    def __init__(self, session: Session, root:ttk.Frame, frame: ttk.Frame):
+        self.session = session
         self.tab_name = None
-        self.tab = None
+        self.root = root
+        self.frame = frame
 
-    def Init(self):
+    def init(self):
         """
             Called by the GUI to notify the tab to generate its body
         """
         pass
 
-    def Update(self, event:TabUpdateEvent):
+    def update_tab(self, event:TabUpdateEvent):
         """
             Called by the GUI to notify the tab, that it may need to update. It is the resposibility of the tab to check for the events
         """
         pass
+
+    def invoke_update(self, event: TabUpdateEvent):
+        """ Invoke an update on the tab """
+        self.session.window.invoke_tab_about_update(tab=self, event=event)
+
+    @property
+    def window(self) -> Neurotorch_GUI:
+        """ Convience function to get the window faster """
+        return self.session.window
+
+
+from ..gui.tabWelcome import TabWelcome
+from neurotorchmz.gui.tab1 import TabImage
+from neurotorchmz.gui.tab2 import TabSignal
+from neurotorchmz.gui.tab3 import TabROIFinder
+from neurotorchmz.gui.tabAnalysis import TabAnalysis
+#from ..utils.plugin_manager import PluginManager

@@ -6,21 +6,30 @@ Neurotorch documentation
    :hidden:
    :caption: Getting started
 
-   installation
-   first_steps
-   tabs/tab_image
-   tabs/tab_signal
-   tabs/tab_roifinder
-   imagej
+   introduction/installation
+   introduction/first_steps
+   introduction/algorithm
    glossary
 
-.. toctree::
-   :hidden:
-   :caption: Algorithms
 
-   algorithm/differenceImage
-   algorithm/detection_algorithms
-   algorithm/signal_algorithms
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   :caption: Working with the GUI
+
+   gui/tab_image
+   gui/tab_signal
+   gui/roifinder/tab_roifinder
+   gui/imagej
+
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: API 
+
+   api/api
 
 .. warning::
    You find here an early alpha version of the documentation currently beeing written

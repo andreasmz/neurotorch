@@ -1,25 +1,24 @@
 import collections
 from typing import Callable, Literal, Self
 import numpy as np
-import pims.bioformats
-import psutil
+import pims
+import tifffile
+import nd2
 from pathlib import Path
 from scipy.ndimage import gaussian_filter
-import pims
-import os
 import gc
 import logging
 
 logger = logging.getLogger("NeurotorchMZ")
 
 from ..core.task_system import Task  
+from ..core.serialize import Serializable
 
 class ImageProperties:
     """
         A class that supports lazy loading and caching of image properties like mean, median, std, min, max and clippedMin (=np.min(0, self.min))
         Returns scalars (except for the img property, where it returns the image used to initializate this object.
     """
-
     def __init__(self, img):
         self._img = img
         self._mean = None
@@ -27,6 +26,7 @@ class ImageProperties:
         self._median = None
         self._min = None
         self._max = None
+
 
     @property
     def mean(self) -> float:
@@ -77,6 +77,9 @@ class ImageProperties:
     @property
     def img(self) -> np.ndarray:
         return self._img
+    
+    def __del__(self):
+        del self._img
 
 
 class AxisImage:
@@ -226,9 +229,10 @@ class AxisImage:
             self._Max = ImageProperties(np.max(self._img, axis=self._axis))
         return self._Max
     
+    def __del__(self):
+        del self._img
 
-
-class ImageObject:
+class ImageObject(Serializable):
     """
         A class for holding a) the image provided in form an three dimensional numpy array (time, y, x) and b) the derived images and properties, for example
         the difference Image (imgDiff). All properties are lazy loaded, i. e. they are calculated on first access
@@ -246,14 +250,18 @@ class ImageObject:
                             "m_dXYPositionY0": "Y Position",
                             "m_dZPosition0": "Z Position",
                             }
-    
     SPATIAL = (0)
     TEMPORAL = (1,2)
+
+    # Dict used for serialization; key is property name, value is tuple of serialization name and conversion function for the given data to give at least a minimal property from 
+    _serialize_dict = {"_name":("name", str), "_path":("path", Path), "_imgMode":("imgMode", int), "_pimsmetadata": ("pimsmetadata", collections.OrderedDict)}
     
     def __init__(self, lazyLoading = True):
+        self._task_open_image = Task(lambda:_, "ImageObject", run_async=True, keep_alive=False)
         self.Clear()
 
     def Clear(self):
+        self._name: str|None = None
         self._img: np.ndarray = None
         self._imgDenoised: np.ndarray = None
         self._imgMode: int = 0 # 0: Use given image, 1: use denoised image
@@ -261,13 +269,15 @@ class ImageObject:
         self._imgS: np.ndarray = None # Image with signed dtype
         self._imgSpatial: AxisImage = None
         self._imgTemporal: AxisImage = None
-        self._pimsmetadata = None
+        self._pimsmetadata: dict|None = None
+        self._nd2metadata: dict|None = None
+        self._path: Path|None = None # Path of the image file, if given
 
         self._imgDiff_mode = 0 #0: regular imgDiff, 1: convoluted imgDiff
         self._imgDiff: np.ndarray = None
         self._imgDiffProps: ImageProperties = None
-        self._imgDiffConvFunc : Callable = self.Conv_GaussianBlur
-        self._imgDiffConvArgs : tuple = (2,)
+        self._imgDiffConvFunc : Callable = ImageObject.Conv_GaussianBlur
+        self._imgDiffConvArgs : dict|None = {"sigma": 2}
         self._imgDiffConv: dict[str, np.ndarray] = {}
         self._imgDiffConvProps: ImageProperties = {}
         self._imgDiffSpatial: AxisImage= None
@@ -278,10 +288,26 @@ class ImageObject:
         self._customImages = {}
         self._customImagesProps = {}
 
-        self._task: Task|None = None
-        #self._openFileThread : threading.Thread = None
-        #self._loadingThread : threading.Thread = None
-        self._name: str|None = None
+    def serialize(self, **kwargs) -> dict:
+        """ 
+            Serializes the ImageObject into a dictionary and do not include image data (only the path is included). Note that only properties, which could not be calculated from other ones, are included
+
+            Please note: If the ImageObject has no path, the image data itself will not be serialized
+        """
+        r = {}
+        for prop_name, (serialize_name, dtype_func) in ImageObject._serialize_dict.items():
+            if (a := self.__getattribute__(prop_name)) is not None:
+                r[serialize_name] = a
+        return r
+
+
+    
+    def deserialize(self, serialize_dict: dict, **kwargs):
+        """ Load data from a serialization dict """
+        self.Clear()
+        for prop_name, (serialize_name, dtype_func) in ImageObject._serialize_dict.items():
+            if serialize_name in serialize_dict.keys():
+                self.__setattr__(prop_name, dtype_func(serialize_dict))
 
     @property
     def name(self) -> str:
@@ -293,6 +319,11 @@ class ImageObject:
     def name(self, val):
         if val is None or isinstance(val, str):
             self._name = val
+
+    @property
+    def path(self) -> Path|None:
+        """ The path of the image file, if given """
+        return self._path
 
     @property
     def img(self) -> np.ndarray | None:
@@ -310,7 +341,7 @@ class ImageObject:
     @img.setter
     def img(self, image: np.ndarray) -> bool:
         self.Clear()
-        if not ImageView._IsValidImagestack(image): return False
+        if not ImageObject._IsValidImagestack(image): return False
         self._img = image
         return True
 
@@ -393,7 +424,7 @@ class ImageObject:
             return None
         _n = self._imgDiffConvFunc.__name__+str(self._imgDiffConvArgs)
         if _n not in self._imgDiffConv.keys():
-            self._imgDiffConv[_n] = self._imgDiffConvFunc(args=self._imgDiffConvArgs)
+            self._imgDiffConv[_n] = self._imgDiffConvFunc(imgObj=self, **self._imgDiffConvArgs)
         return self._imgDiffConv[_n]
     
     @property
@@ -476,8 +507,12 @@ class ImageObject:
         return ImageProperties(self.imgDiff[frame])
     
     @property
-    def pims_metadata(self) -> collections.OrderedDict | None:
+    def pims_metadata(self) -> dict | None:
         return self._pimsmetadata
+    
+    @property
+    def nd2_metadata(self) -> dict|None:
+        return self._nd2metadata
     
     
     def GetCustomImage(self, name: str):
@@ -514,24 +549,21 @@ class ImageObject:
             return False
         return True
     
-    def SetConvolutionFunction(self, func: Callable, args: tuple|None):
+    def SetConvolutionFunction(self, func: Callable, func_args: dict|None = None):
         self._imgDiffConvFunc = func
-        self._imgDiffConvArgs = args
+        self._imgDiffConvArgs = func_args if func_args is not None else {}
     
-    def Conv_GaussianBlur(self, args: tuple|None) -> np.ndarray | None:
-        if self.imgDiff_Normal is None:
+    def Conv_GaussianBlur(imgObj: Self, sigma: float) -> np.ndarray | None:
+        if imgObj.imgDiff_Normal is None:
             return None
-        if len(args) != 1:
-            return None
-        sigma = args[0]
-        return gaussian_filter(self.imgDiff_Normal, sigma=sigma, axes=(1,2))
+        return gaussian_filter(imgObj.imgDiff_Normal, sigma=sigma, axes=(1,2))
     
-    def Conv_MeanMaxDiff(self, args: tuple|None) -> np.ndarray | None:
+    def Conv_MeanMaxDiff(self) -> np.ndarray | None:
         if self._img is None:
             return None
-        
         return (self.imgS - self.imgView(ImageView.SPATIAL).Mean).astype(self.imgS.dtype)
     
+
     def PrecomputeImage(self, calc_convoluted: bool = False, task_continue: bool = False, run_async:bool = True) -> Task:
         """ 
             Precalculate the image views to prevent stuttering during runtime.
@@ -542,40 +574,40 @@ class ImageObject:
             :returns Task: The task object of this task
             :raises AlreadyLoading: There is already a task working on this ImageObject
         """
-        if not task_continue and self._task is not None and not self._task.finished:
+        if not task_continue and self._task_open_image.running:
             raise AlreadyLoadingError()
 
         def _Precompute(task: Task):
-            _progIni = task._step
-            task.set_step_progress(_progIni, "Precalculating ImgView (Spatial Mean)")
+            _progIni = task._step if task._step is not None else 0
+            task.set_step_progress(_progIni, "preparing ImgView (Spatial Mean)")
             self.imgView(ImageView.SPATIAL).Mean
-            task.set_step_progress(_progIni, "Precalculating ImgView (Spatial Std)")
+            task.set_step_progress(_progIni, "preparing ImgView (Spatial Std)")
             self.imgView(ImageView.SPATIAL).Std
             gc.collect()
-            task.set_step_progress(1+_progIni, "Calculating imgDiff")
+            task.set_step_progress(1+_progIni, "preparing imgDiff")
             self.imgDiff
             if calc_convoluted:
-                task.set_step_progress(2+_progIni, "Applying Gaussian Filter on imgDiff")
-                self.imgDiff_Mode = "Convoluted"
-                self.imgDiff
+                task.set_step_progress(2+_progIni, "preparing imgDiff convolution")
+                self.imgDiff_Conv
             gc.collect()
-            task.set_step_progress(3+_progIni, "Precalculating ImgDiffView (Spatial Max)")
+            task.set_step_progress(3+_progIni, "preparing ImgDiffView (Spatial Max)")
             self.imgDiffView(ImageView.SPATIAL).Max
-            task.set_step_progress(3+_progIni, "Precalculating ImgDiffView (Spatial Std)")
+            task.set_step_progress(3+_progIni, "preparing ImgDiffView (Spatial Std)")
             self.imgDiffView(ImageView.SPATIAL).StdNormed
             gc.collect()
-            task.set_step_progress(3+_progIni, "Precalculating ImgDiffView (Temporal Max)")
+            task.set_step_progress(3+_progIni, "preparing ImgDiffView (Temporal Max)")
             self.imgDiffView(ImageView.TEMPORAL).Max
-            task.set_step_progress(3+_progIni, "Precalculating ImgDiffView (Temporal Std)")
+            task.set_step_progress(3+_progIni, "preparing ImgDiffView (Temporal Std)")
             self.imgDiffView(ImageView.TEMPORAL).Std
             gc.collect()
-            task.set_step_progress
 
         if task_continue:
-            _Precompute(self._task)
+            _Precompute(self._task_open_image)
         else:
-            self._task = Task(_Precompute, "Precompute image views", run_async=run_async).set_step_mode(2).start()
-        return self._task
+            self._task_open_image.reset(function=_Precompute, name="preparing ImageObject", run_async=run_async)
+            self._task_open_image.set_step_mode(4)
+            self._task_open_image.start()
+        return self._task_open_image
         
     def SetImagePrecompute(self, img:np.ndarray, name:str = None, calc_convoluted: bool = False, run_async:bool = True) -> Task:
         """ 
@@ -606,12 +638,12 @@ class ImageObject:
             :param bool run_async: Controls if the precomputation runs in a different thread
             :returns Task: The task object of this task
             :raises AlreadyLoading: There is already a task working on this ImageObject
-            :raises FileNotFoundError:
-            :raises UnsupportedImageError:
-            :raises ImageShapeError:
+            :raises FileNotFoundError: Can't find the file
+            :raises UnsupportedImageError: The image is unsupported or has an error
+            :raises ImageShapeError: The image has an invalid shape
         
         """
-        if self._task is not None and not self._task.finished:
+        if self._task_open_image.running:
             raise AlreadyLoadingError()
         
         if isinstance(path, str):
@@ -622,30 +654,44 @@ class ImageObject:
         self.Clear()
 
         def _Load(task: Task):
-            task.set_step_progress(0, "Reading File")
-            try:
-                _pimsImg = pims.open(path)
-            except FileNotFoundError:
-                raise FileNotFoundError()
-            except Exception as ex:
-                raise UnsupportedImageError(ex)
-            if len(_pimsImg.shape) != 3:
-                raise ImageShapeError(_pimsImg.shape)
-            task.set_step_progress(1, "Converting image")
-            imgNP = np.zeros(shape=_pimsImg.shape, dtype=_pimsImg.dtype)
-            for i in range(_pimsImg.shape[0]):
-                imgNP[i] = _pimsImg[i]
-
-            self.img = imgNP
-            self.name = os.path.basename(path)
-            if getattr(_pimsImg, "get_metadata_raw", None) != None:
-                self._pimsmetadata = collections.OrderedDict(sorted(_pimsImg.get_metadata_raw().items()))
+            task.set_step_progress(0, "reading File")
+            if path.suffix.lower() in [".tif", ".tiff"]:
+                logger.debug(f"Opening {path.name} with tifffile")
+                with tifffile.TiffFile(path) as tif:
+                    self._img = tif.asarray()
+                    self._tiffmetadata = tif.ome_metadata
+            elif nd2.is_supported_file(path):
+                logger.debug(f"Opening {path.name} with nd2")
+                with nd2.ND2File(path) as ndfile:
+                    self._img = ndfile.asarray()
+                    self._nd2metadata = ndfile.unstructured_metadata()
+            else:
+                logger.debug(f"Opening {path.name} with PIMS")
+                try:
+                    _pimsImg = pims.open(str(path))
+                except FileNotFoundError:
+                    raise FileNotFoundError()
+                except Exception as ex:
+                    raise UnsupportedImageError(path.name, ex)
+                if len(_pimsImg.shape) != 3:
+                    raise ImageShapeError(_pimsImg.shape)
+                task.set_step_progress(1, "converting")
+                imgNP = np.zeros(shape=_pimsImg.shape, dtype=_pimsImg.dtype)
+                imgNP = [_pimsImg[i] for i in range(_pimsImg.shape[0])]
+                self.img = imgNP
+                if getattr(_pimsImg, "get_metadata_raw", None) != None: 
+                    self._pimsmetadata = collections.OrderedDict(sorted(_pimsImg.get_metadata_raw().items()))
+            self._path = path
+            self.name = path.stem
+            
 
             if precompute:
                 self.PrecomputeImage(calc_convoluted=calc_convoluted, task_continue=True, run_async=run_async)
 
-        self._task = Task(_Load, "Open image", run_async=run_async).set_step_mode(2 + 4*precompute).start()
-        return self._task
+        self._task_open_image.reset(function=_Load, name="open image file", run_async=run_async)
+        self._task_open_image.set_step_mode(2 + 4*precompute)
+        self._task_open_image.start()
+        return self._task_open_image
     
 class ImageView:
     """ 
@@ -670,9 +716,10 @@ class AlreadyLoadingError(ImageObjectError):
 class UnsupportedImageError(ImageObjectError):
     """ The image is unsupported """
     
-    def __init__(self, exception: Exception|None = None, *args):
+    def __init__(self, file_name: str, exception: Exception|None = None, *args):
         super().__init__(*args)
         self.exception = exception
+        self.file_name = file_name
 
 class ImageShapeError(ImageObjectError):
     """ The image has an invalid shape """

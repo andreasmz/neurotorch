@@ -1,85 +1,109 @@
+"""
+    While synapse_detection.py provides detection algorithms, this file contains the actual implementation into Neurotorch GUI
+"""
+
 import tkinter as tk
 from tkinter import ttk, messagebox
-from typing import Literal
 from matplotlib import patches
 
 from .image import ImageProperties
 from ..gui.components.general import *
-from ..gui.settings import Neurotorch_Resources as Resource
+from ..core.settings import Neurotorch_Resources as Resource
 from .synapse_detection import *
 
-# While synapse_detection.py provides detection algorithms, this file contains the actual implementation into Neurotorch GUI
-
 class IDetectionAlgorithmIntegration:
+    """ 
+        GUI integration of a synapse detection algorithm. Provides an option frame for setting information about an image
+    """
     
-    def __init__(self, displayMessageboxes = False):
+    def __init__(self):
         # The algorithm is choosing on its own what data to use. For this, an IMGObject is provided
-        self.imgObj = None
-        self.root = None
-        self.provides_rawPlot = False
+        self.provides_rawPlot: bool = False
+        """ If set to true, the GUI knows that this algorithms provides raw information from the detection """
 
-    def OptionsFrame(self, root, imgObjCallback) -> tk.LabelFrame:
+        self.image_obj: ImageObject|None = None
+        """ The current image object. Is for example used by some integrations to calculate the signal """
+        self.image_prop: ImageProperties|None = None
+        """ The ImageProperties object should contain a 2D image and is used as input for the algorithm """
+
+    def get_options_frame(self, master) -> tk.LabelFrame:
         """
-            This function is used to generate an frame for the algorithm options. The Integration class is responsible for this LabelFrame and
-            should return in after generation. If may (!) be that this class is called multiple times, for example after changing the algorithm.
+            Creates an tkinter widget for the algorithms settings in the provided master.
         """
-        self.root = root
-        self.optionsFrame = tk.LabelFrame(self.root, text="Options")
+        self.master = master
+        self.optionsFrame = tk.LabelFrame(self.master, text="Setting")
         return self.optionsFrame
     
-    def OptionsFrame_Update(self, inputImageObj: ImageProperties|None):
+    def update(self, image_obj: ImageObject, image_prop: ImageProperties|None):
         """
-            This Update function is called, after an new image is loaded (or after other certain events that may invalidate the algorithms parameters)
-            and could be for example used to update parameter estimations.
+            This function is called by the GUI to notify the detection algorithm integration object about a change in either the image object or the
+            image input
+        """
+        self.image_obj = image_obj
+        self.image_prop = image_prop
+
+    def detect(self) -> list[ISynapseROI]:
+        """
+            This function must be overwritten by subclasses and should implement calling the underlying IDetectionAlgorithm with parameters
+            choosen in the settings frame. 
         """
         pass
+    
 
-    def DetectAutoParams(self, inputImageObj: ImageProperties) -> list[ISynapseROI]:
-        """
-            This function should be an wrapper for the Detect function in an DetectionAlgorithm and get the parameters from the GUI and then call
-            and return the Algorithms Detect function. Only parameter frame is provided by the GUI and set to None when the mean image should be used.
-        """
-        pass
-
-    def Img_DetectionOverlay(self) -> tuple[tuple[np.ndarray]|None, list[patches.Patch]|None]:
+    def get_rawdata_overlay(self) -> tuple[tuple[np.ndarray]|None, list[patches.Patch]|None]:
         """
             An Integration may choose to provide an custom overlay image, usually the raw data obtained in one of the first steps. 
             Also it may provide a list of matplotlib patches for this overlay
+
             Return None to not plot anything
         """
-        pass
+        return (None, None)
+    
+    def add_signal_to_result(self, rois: list[ISynapseROI], sort:bool = False) -> list[ISynapseROI]:
+        """ Given a list of ROI, add the signal strength. If set, sort the list descending """
+        if self.image_obj is not None:
+            for roi in rois:
+                roi.strength = np.max(np.mean(roi.get_signal_from_image(self.image_obj.imgDiff), axis=1))
+        if sort:
+            rois.sort(key=lambda x: x.strength, reverse=True)
+        return rois
 
+class Thresholding_Integration(Thresholding, IDetectionAlgorithmIntegration):
 
-class Thresholding_Integration(Tresholding, IDetectionAlgorithmIntegration):
-
-    def __init__(self):
-        super().__init__()
-
-    def OptionsFrame(self, root, imgObjCallback) -> tk.LabelFrame:
-        self.root = root
-        self.optionsFrame = tk.LabelFrame(self.root, text="Options")
+    def get_options_frame(self, master) -> tk.LabelFrame:
+        super().get_options_frame(master=master)
 
         self.setting_threshold = GridSetting(self.optionsFrame, row=5, text="Threshold", unit="", default=50, min_=0, max_=2**15-1, scaleMin=1, scaleMax=200, tooltip=Resource.GetString("algorithms/threshold/params/threshold"))
         self.setting_radius = GridSetting(self.optionsFrame, row=6, text="Radius", unit="px", default=6, min_=0, max_=1000, scaleMin=-1, scaleMax=30, tooltip=Resource.GetString("algorithms/threshold/params/radius"))
-        self.setting_minAreaPercent = GridSetting(self.optionsFrame, row=7, text="Min. converage", unit="%", default=60, min_=1, max_=100, scaleMin=1, scaleMax=100, tooltip=Resource.GetString("algorithms/threshold/params/minCoverage"))
+        self.setting_minArea = GridSetting(self.optionsFrame, row=7, text="Minimal area", unit="px", default=40, min_=0, max_=1000, scaleMin=0, scaleMax=200, tooltip=Resource.GetString("algorithms/threshold/params/minArea"))
+        self.setting_minArea.var.IntVar.trace_add("write", lambda _1,_2,_3: self._update_lbl_minarea())
+        self._update_lbl_minarea()
+        
         return self.optionsFrame
     
-    def DetectAutoParams(self, inputImageObj: ImageProperties) -> list[ISynapseROI]:
+    def detect(self) -> list[ISynapseROI]:
+        if self.image_prop is None:
+            raise RuntimeError(f"The detection functions requires the update() function to be called first")
         threshold = self.setting_threshold.Get()
         radius = self.setting_radius.Get()
-        minROISize = self.setting_minAreaPercent.Get()/100
-        return self.Detect(inputImageObj.img, threshold=threshold, radius=radius, minROISize=minROISize)
-    
-    def Img_DetectionOverlay(self) -> tuple[tuple[np.ndarray]|None, list[patches.Patch]|None]:
+        minArea = self.setting_minArea.Get()
+        minArea = None if minArea < 0 else minArea 
+        return self.Detect(img=self.image_prop.img, threshold=threshold, radius=radius, minArea=minArea)
+
+    def get_rawdata_overlay(self) -> tuple[tuple[np.ndarray]|None, list[patches.Patch]|None]:
         return ((self.imgThresholded,), None)
+    
+    def _update_lbl_minarea(self):
+        """ Internal function. Called to print in a label the equivalent radius of the min_area parameter"""
+        A = self.setting_minArea.Get()
+        r = round(np.sqrt(A/np.pi),2)
+        self.lblMinAreaInfo["text"] = f"A circle with radius {r} px has the same area" 
     
 
 class HysteresisTh_Integration(HysteresisTh, IDetectionAlgorithmIntegration):
         
-    def OptionsFrame(self, root, imgObjCallback) -> tk.LabelFrame:
-        self.root = root
-        self.optionsFrame = tk.LabelFrame(self.root, text="Options")
-
+    def get_options_frame(self, master) -> tk.LabelFrame:
+        super().get_options_frame(master=master)
 
         self.lblImgStats = tk.Label(self.optionsFrame)
         self.lblImgStats.grid(row=1, column=0, columnspan=3)
@@ -102,55 +126,56 @@ class HysteresisTh_Integration(HysteresisTh, IDetectionAlgorithmIntegration):
         self.varCircularApprox.trace_add("write", lambda _1,_2,_3:self.setting_radius.SetVisibility(not self.varCircularApprox.get()))
         
         self.setting_minArea = GridSetting(self.optionsFrame, row=14, text="Min. Area", unit="px", default=50, min_=1, max_=10000, scaleMin=0, scaleMax=200, tooltip=Resource.GetString("algorithms/hysteresisTh/params/minArea"))
-        self.setting_minArea.var.IntVar.trace_add("write", lambda _1,_2,_3: self._UpdateMinAreaText())
+        self.setting_minArea.var.IntVar.trace_add("write", lambda _1,_2,_3: self._update_lbl_minarea())
         self.lblMinAreaInfo = tk.Label(self.optionsFrame, text="")
         self.lblMinAreaInfo.grid(row=15, column=0, columnspan=3)
-        self._UpdateMinAreaText()
+        self._update_lbl_minarea()
 
-        
-        
-
-        self.OptionsFrame_Update(None)
+        self.update(None)
         
         return self.optionsFrame
     
-    def OptionsFrame_Update(self, inputImageObj: ImageProperties|None):
-        if inputImageObj is None:
+    def update(self, image_obj: ImageObject, image_prop: ImageProperties|None):
+        super().update(image_obj=image_obj, image_prop=image_prop)
+        if self.image_prop is None:
             self.lblImgStats["text"] = ""
             return
         
-        _t = f"Image Stats: range = [{int(inputImageObj.min)}, {int(inputImageObj.max)}], "
-        _t = _t + f"{np.round(inputImageObj.mean, 2)} ± {np.round(inputImageObj.std, 2)}, "
-        _t = _t + f"median = {np.round(inputImageObj.median, 2)}"
+        _t = f"Image Stats: range = [{int(self.image_prop.min)}, {int(self.image_prop.max)}], "
+        _t = _t + f"{np.round(self.image_prop.mean, 2)} ± {np.round(self.image_prop.std, 2)}, "
+        _t = _t + f"median = {np.round(self.image_prop.median, 2)}"
         self.lblImgStats["text"] = _t
-        self.CalcAutoParams(inputImageObj)
+        self.estimate_params()
 
-    def CalcAutoParams(self, inputImageObj: ImageProperties):
-        if self.varAutoParams.get() != 1:
+    def estimate_params(self):
+        """
+            Estimate some parameters based on the provided image.
+        """
+        if self.varAutoParams.get() != 1 or self.image_prop is None:
             return
-        lowerThreshold = int(inputImageObj.mean + 2.5*inputImageObj.std)
-        upperThreshold = max(lowerThreshold, min(inputImageObj.max/2, inputImageObj.mean + 5*inputImageObj.std))
+        lowerThreshold = int(self.image_prop.mean + 2.5*self.image_prop.std)
+        upperThreshold = max(lowerThreshold, min(self.image_prop.max/2, self.image_prop.mean + 5*inputImageObj.std))
         self.setting_lowerTh.var.IntVar.set(lowerThreshold)
         self.setting_upperTh.var.IntVar.set(upperThreshold)
 
-    def _UpdateMinAreaText(self):
+    def _update_lbl_minarea(self):
         A = self.setting_minArea.Get()
         r = round(np.sqrt(A/np.pi),2)
         self.lblMinAreaInfo["text"] = f"A circle with radius {r} px has the same area" 
 
-    def DetectAutoParams(self, inputImageObj: ImageProperties) -> list[ISynapseROI]:
+    def detect(self) -> list[ISynapseROI]:
+        if self.image_prop is None:
+            raise RuntimeError(f"The detection functions requires the update() function to be called first")
         polygon = self.varCircularApprox.get()
         radius = self.setting_radius.Get()
         lowerThreshold = self.setting_lowerTh.Get()
         upperThreshold = self.setting_upperTh.Get()
         minArea = self.setting_minArea.Get() if polygon else 0
-        
 
-        result = self.Detect(inputImageObj.img, 
+        result = self.Detect(img=inputImageObj.img, 
                              lowerThreshold=lowerThreshold, 
                              upperThreshold=upperThreshold, 
-                             minArea=minArea, 
-                             warning_callback=self._Callback)
+                             minArea=minArea)
 
         if polygon:
             return result
@@ -162,19 +187,8 @@ class HysteresisTh_Integration(HysteresisTh, IDetectionAlgorithmIntegration):
                 if isinstance(s, CircularSynapseROI):
                     synapses_return.append(s)
                     continue
-                synapses_return.append(CircularSynapseROI().SetLocation(s.location[0], s.location[1]).SetRadius(radius))
+                synapses_return.append(CircularSynapseROI().set_location(x=s.location[0], y=s.location[1]).set_radius(radius))
             return synapses_return
-    
-    def _Callback(self, mode: Literal["ask", "info", "warning", "error"], message=""):
-        if mode == "ask":
-            return messagebox.askyesno("Neurotorch", message)
-        elif mode == "info":
-            messagebox.showinfo("Neurotorch", message)
-        elif mode == "warning":
-            messagebox.showwarning("Neurotorch", message)
-        elif mode == "error":
-            messagebox.showerror("Neurotorch", message)
-
             
     def Img_DetectionOverlay(self) -> tuple[tuple[np.ndarray]|None, list[patches.Patch]|None]:
         return ((self.thresholdFiltered_img, ), None)
@@ -182,13 +196,8 @@ class HysteresisTh_Integration(HysteresisTh, IDetectionAlgorithmIntegration):
 
 class LocalMax_Integration(LocalMax, IDetectionAlgorithmIntegration):
 
-    def __init__(self):
-        super().__init__()
-
-    def OptionsFrame(self, root, imgObjCallback) -> tk.LabelFrame:
-        self.root = root
-        self.imgObjCallback = imgObjCallback
-        self.optionsFrame = tk.LabelFrame(self.root, text="Options")
+    def get_options_frame(self, master) -> tk.LabelFrame:
+        super().get_options_frame(master=master)
 
         self.lblImgStats = tk.Label(self.optionsFrame)
         self.lblImgStats.grid(row=1, column=0, columnspan=3)
@@ -209,28 +218,29 @@ class LocalMax_Integration(LocalMax, IDetectionAlgorithmIntegration):
         self.setting_expandSize = GridSetting(self.optionsFrame, row=23, text="Expand size", unit="px", default=6, min_=0, max_=200, scaleMin=0, scaleMax=50, tooltip=Resource.GetString("algorithms/localMax/params/expandSize"))
         self.setting_minSignal = GridSetting(self.optionsFrame, row=24, text="Minimum Signal", unit="", default=0, min_=0, max_=2**15-1, scaleMin=0, scaleMax=400, tooltip=Resource.GetString("algorithms/localMax/params/minSignal"))
         self.setting_minArea = GridSetting(self.optionsFrame, row=25, text="Min. Area", unit="px", default=50, min_=1, max_=10000, scaleMin=0, scaleMax=200, tooltip=Resource.GetString("algorithms/localMax/params/minArea"))
-        self.setting_minArea.var.IntVar.trace_add("write", lambda _1,_2,_3: self._UpdateMinAreaText())
+        self.setting_minArea.var.IntVar.trace_add("write", lambda _1,_2,_3: self._update_lbl_minarea())
         self.lblMinAreaInfo = tk.Label(self.optionsFrame, text="")
         self.lblMinAreaInfo.grid(row=26, column=0, columnspan=3)
-        self._UpdateMinAreaText()
+        self._update_lbl_minarea()
         
 
         self.OptionsFrame_Update(None)
 
         return self.optionsFrame
     
-    def OptionsFrame_Update(self, inputImageObj: ImageProperties|None):
-        if inputImageObj is None:
+    def update(self, image_obj: ImageObject, image_prop: ImageProperties|None):
+        super().update(image_obj=image_obj, image_prop=image_prop)
+        if self.image_prop is None:
             self.lblImgStats["text"] = ""
             return
         
-        _t = f"Image Stats: range = [{int(inputImageObj.min)}, {int(inputImageObj.max)}], "
-        _t = _t + f"{np.round(inputImageObj.mean, 2)} ± {np.round(inputImageObj.std, 2)}, "
-        _t = _t + f"median = {np.round(inputImageObj.median, 2)}"
+        _t = f"Image Stats: range = [{int(self.image_prop.min)}, {int(self.image_prop.max)}], "
+        _t = _t + f"{np.round(self.image_prop.mean, 2)} ± {np.round(self.image_prop.std, 2)}, "
+        _t = _t + f"median = {np.round(self.image_prop.median, 2)}"
         self.lblImgStats["text"] = _t
-        self.CalcAutoParams(inputImageObj)
+        self.estimate_params()
 
-    def CalcAutoParams(self, inputImageObj: ImageProperties):
+    def estimate_params(self, inputImageObj: ImageProperties):
         if self.varAutoParams.get() != 1:
             return
         lowerThreshold = int(inputImageObj.mean + 2.5*inputImageObj.std)
@@ -238,47 +248,32 @@ class LocalMax_Integration(LocalMax, IDetectionAlgorithmIntegration):
         self.setting_lowerTh.var.IntVar.set(lowerThreshold)
         self.setting_upperTh.var.IntVar.set(upperThreshold)
 
-    def _UpdateMinAreaText(self):
+    def _update_lbl_minarea(self):
         A = self.setting_minArea.Get()
         r = round(np.sqrt(A/np.pi),2)
         self.lblMinAreaInfo["text"] = f"A circle with radius {r} px has the same area" 
 
     
-    def DetectAutoParams(self, inputImageObj: ImageProperties) -> list[ISynapseROI]:
+    def detect(self) -> list[ISynapseROI]:
         lowerThreshold = self.setting_lowerTh.Get()
         upperThreshold = self.setting_upperTh.Get()
-        sortBySignal = self.setting_sortBySignal.Get()
         expandSize = self.setting_expandSize.Get()
         maxPeakCount = self.setting_maxPeakCount.Get()
         minArea = self.setting_minArea.Get()
         minDistance = self.setting_minDistance.Get()
         minSignal = self.setting_minSignal.Get()
         radius = self.setting_radius.Get()
-        return self.Detect(inputImageObj.img,
+        return self.Detect(img=self.image_prop.img,
                            lowerThreshold=lowerThreshold, 
                            upperThreshold=upperThreshold, 
-                           sortBySignal=sortBySignal,
                            expandSize=expandSize,
                            maxPeakCount=maxPeakCount,
                            minArea=minArea,
                            minDistance=minDistance, 
                            minSignal=minSignal,
-                           radius=radius,
-                           ImgObj=self.imgObjCallback(),
-                           warning_callback=self._Callback)
-    
-    def _Callback(self, mode: Literal["ask", "info", "warning", "error"], message=""):
-        if mode == "ask":
-            return messagebox.askyesno("Neurotorch", message)
-        elif mode == "info":
-            messagebox.showinfo("Neurotorch", message)
-        elif mode == "warning":
-            messagebox.showwarning("Neurotorch", message)
-        elif mode == "error":
-            messagebox.showerror("Neurotorch", message)
-
+                           radius=radius)
             
-    def Img_DetectionOverlay(self) -> tuple[tuple[np.ndarray]|None, list[patches.Patch]|None]:
+    def get_rawdata_overlay(self) -> tuple[tuple[np.ndarray]|None, list[patches.Patch]|None]:
         if self.maxima is None:
             return (None, None)
         _patches = []

@@ -6,21 +6,30 @@ Neurotorch documentation
    :hidden:
    :caption: Getting started
 
-   installation
-   first_steps
-   tabs/tab_image
-   tabs/tab_signal
-   tabs/tab_roifinder
-   imagej
+   introduction/installation
+   introduction/first_steps
+   introduction/algorithm
    glossary
 
-.. toctree::
-   :hidden:
-   :caption: Algorithms
 
-   algorithm/differenceImage
-   algorithm/detection_algorithms
-   algorithm/signal_algorithms
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   :caption: Working with the GUI
+
+   gui/tab_image
+   gui/tab_signal
+   gui/roifinder/tab_roifinder
+   gui/imagej
+
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: API 
+
+   api/api
 
 .. warning::
    You find here an early alpha version of the documentation currently beeing written
@@ -35,5 +44,5 @@ It works with microscopic image series / videos and is able to open an variety o
 - **Image analysis**: Analyze each frame of the image and get a visual impression where signal of synapse activity was detected
 - **API**: You can access the core functions of Neurotorch also by importing it as an python module
 
-.. image:: media/neurotorch_overview.png
+.. image:: ../media/neurotorch_overview.png
   :alt: Overview of Neurotorchs GUI

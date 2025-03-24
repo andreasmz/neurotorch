@@ -1,35 +1,37 @@
 from .window import *
-from .components.general import *
 from .components.treeview import SynapseTreeview
+from .components.general import ScrolledFrame, GridSetting
 from ..utils import synapse_detection_integration as detection
-from ..utils.image import *
-from ..utils.synapse_detection import *
 
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
-import threading
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 import matplotlib.widgets as PltWidget
 import matplotlib.patches as patches
 from matplotlib.ticker import MaxNLocator
 import numpy as np
-import pandas as pd
-import logging
 
-logger = logging.getLogger("NeurotorchMZ")
 
-class TabROIFinder_AlgorithmChangedEvent(TabUpdateEvent):
+class TabROIFinder_InvalidateROIsEvent(TabUpdateEvent):
     pass
+
+class TabROIFinder_InvalidateEvent(TabUpdateEvent):
+    """ Internal event to invalidate different parts of the tab """
+    def __init__(self, algorithm:bool = False, image:bool = False, rois:bool = False, selectedROI: bool = False, selectedROI_tuple: tuple = None):
+        super().__init__()
+        self.algorithm = algorithm
+        self.image = image
+        self.rois = rois
+        self.selectedROIS = selectedROI
+        self.selectedROI_tuple = selectedROI_tuple
 
 class TabROIFinder(Tab):
 
-    def __init__(self, gui: Neurotorch_GUI):
-        super().__init__(gui)
+    def __init__(self, session: Session, root:ttk.Frame, frame: ttk.Frame):
+        super().__init__(session=session, root=root, frame=frame)
         self.tab_name = "Tab ROI Finder"
-        self._gui = gui
-        self.root = gui.root
-        self.detectionAlgorithm = None
+        self.detectionAlgorithm: detection.IDetectionAlgorithmIntegration|None = None
         self.roiPatches = {}
         self.roiPatches2 = {}
         self.treeROIs_entryPopup = None
@@ -38,11 +40,9 @@ class TabROIFinder(Tab):
         self.ax1_colorbar = None
         self.ax2_colorbar = None
 
-        self._synapses: dict[str, ISynapse] = {}
-
-    def Init(self):
-        self.tab = ttk.Frame(self._gui.tabMain)
-        self._gui.tabMain.add(self.tab, text="Synapse ROI Finder")
+    def init(self):
+        self.tab = ttk.Frame(self.frame)
+        self.frame.add(self.tab, text="Synapse ROI Finder")
         self.frameToolsContainer = ScrolledFrame(self.tab)
         self.frameToolsContainer.pack(side=tk.LEFT, fill="y", anchor=tk.NW)
         self.frameTools = self.frameToolsContainer.frame
@@ -52,9 +52,9 @@ class TabROIFinder(Tab):
         self.lblAlgorithm = tk.Label(self.frameOptions, text="Algorithm")
         self.lblAlgorithm.grid(row=0, column=0, columnspan=2, sticky="nw")
         self.radioAlgoVar = tk.StringVar(value="local_max")
-        self.radioAlgo1 = tk.Radiobutton(self.frameOptions, variable=self.radioAlgoVar, indicatoron=True, text="Threshold (Deprecated)", value="threshold", command=lambda:self.Invalidate_Algorithm())
-        self.radioAlgo2 = tk.Radiobutton(self.frameOptions, variable=self.radioAlgoVar, indicatoron=True, text="Hysteresis thresholding", value="hysteresis", command=lambda:self.Invalidate_Algorithm())
-        self.radioAlgo3 = tk.Radiobutton(self.frameOptions, variable=self.radioAlgoVar, indicatoron=True, text="Local Max", value="local_max", command=lambda:self.Invalidate_Algorithm())
+        self.radioAlgo1 = tk.Radiobutton(self.frameOptions, variable=self.radioAlgoVar, indicatoron=True, text="Threshold (Deprecated)", value="threshold", command=lambda:self.invoke_update(TabROIFinder_InvalidateEvent(algorithm=True, image=True)))
+        self.radioAlgo2 = tk.Radiobutton(self.frameOptions, variable=self.radioAlgoVar, indicatoron=True, text="Hysteresis thresholding", value="hysteresis", command=lambda:self.invoke_update(TabROIFinder_InvalidateEvent(algorithm=True, image=True)))
+        self.radioAlgo3 = tk.Radiobutton(self.frameOptions, variable=self.radioAlgoVar, indicatoron=True, text="Local Max", value="local_max", command=lambda:self.invoke_update(TabROIFinder_InvalidateEvent(algorithm=True, image=True)))
         ToolTip(self.radioAlgo1, msg=Resources.GetString("algorithms/threshold/description"), follow=True, delay=0.1)
         ToolTip(self.radioAlgo2, msg=Resources.GetString("algorithms/hysteresisTh/description"), follow=True, delay=0.1)
         ToolTip(self.radioAlgo3, msg=Resources.GetString("algorithms/localMax/description"), follow=True, delay=0.1)
@@ -65,32 +65,37 @@ class TabROIFinder(Tab):
         self.lblFrameOptions = tk.Label(self.frameOptions, text="Image Source")
         self.lblFrameOptions.grid(row=10, column=0, sticky="ne")
         ToolTip(self.lblFrameOptions, msg=Resources.GetString("tab3/imageSource"), follow=True, delay=0.1)
-        self.varImage = tk.StringVar(value="DiffMax")
-        self.varImage.trace_add("write", lambda _1,_2,_3: self.ComboImage_Changed())
+        self.varImage = tk.StringVar(value="Delta (maximimum)")
+        self.varImage.trace_add("write", lambda _1,_2,_3: self.comboImage_changed())
         self.comboImage = ttk.Combobox(self.frameOptions, textvariable=self.varImage, state="readonly")
-        self.comboImage['values'] = ["Diff", "DiffMax", "DiffStd", "DiffMax without Signal"]
+        self.comboImage['values'] = ["Delta", "Delta (maximum)", "Delta (std.)", "Delta (max.), signal removed"]
         self.comboImage.grid(row=10, column=1, sticky="news")
         self.varImageFrame = tk.StringVar()
-        self.varImageFrame.trace_add("write", lambda _1,_2,_3: self.ComboImage_Changed())
+        self.varImageFrame.trace_add("write", lambda _1,_2,_3: self.comboImage_changed())
         self.comboFrame = ttk.Combobox(self.frameOptions, textvariable=self.varImageFrame, state="disabled", width=5)
         self.comboFrame.grid(row=10, column=2, sticky="news")
-        tk.Label(self.frameOptions, text="Diff. Img Overlay").grid(row=11, column=0)
+        tk.Label(self.frameOptions, text="Delta images overlay").grid(row=11, column=0)
         self.setting_plotOverlay = GridSetting(self.frameOptions, row=11, type_="Checkbox", text="Plot raw algorithm output", default=0, tooltip=Resources.GetString("tab3/rawAlgorithmOutput"))
-        self.setting_plotOverlay.var.IntVar.trace_add("write", lambda _1,_2,_3: self.Invalidate_ROIs())
+        self.setting_plotOverlay.var.IntVar.trace_add("write", lambda _1,_2,_3: self.invoke_update(TabROIFinder_InvalidateEvent(rois=True)))
         self.setting_plotPixels = GridSetting(self.frameOptions, row=12, type_="Checkbox", text="Plot ROI pixels", default=0, tooltip=Resources.GetString("tab3/plotROIPixels"))
-        self.setting_plotPixels.var.IntVar.trace_add("write", lambda _1,_2,_3: self.Invalidate_ROIs())
+        self.setting_plotPixels.var.IntVar.trace_add("write", lambda _1,_2,_3: self.invoke_update(TabROIFinder_InvalidateEvent(rois=True)))
 
-        self.btnDetect = tk.Button(self.frameOptions, text="Detect", command=self.Detect)
+        self.btnDetect = tk.Button(self.frameOptions, text="Detect", command=self.detect)
         self.btnDetect.grid(row=15, column=0)
-
-        self.detectionAlgorithm = detection.IDetectionAlgorithmIntegration()
-        self.frameAlgoOptions = self.detectionAlgorithm.OptionsFrame(self.frameTools, self._gui.GetImageObject)
+        
+        self.frameAlgoOptions = self.detectionAlgorithm.OptionsFrame(self.frameTools, lambda: self.session.active_image_object)
         self.frameAlgoOptions.grid(row=1, column=0, sticky="news")
 
         self.frameROIS = tk.LabelFrame(self.frameTools, text="ROIs")
         self.frameROIS.grid(row=2, column=0, sticky="news")
 
-        self.tvSynapses = SynapseTreeview(self.frameROIS, self._gui, synapseCallback=self.Synapses,selectCallback=self.InvalidateSelectedROI, updateCallback=self.Invalidate_ROIs, allowSingleframe=True)
+        self.tvSynapses = SynapseTreeview(self.frameROIS, self.session, detection_result=self.session.roifinder_detection_result,selectCallback=lambda synapse, roi:self.invoke_update(TabROIFinder_InvalidateEvent(selectedROI=True, selectedROI_tuple=(synapse, roi))), updateCallback=lambda:self.invoke_update(TabROIFinder_InvalidateEvent(rois=True)), allowSingleframe=True)
+        self.tvSynapses = SynapseTreeview(self.frameROIS, self.session, 
+                                          detection_result=self.session.roifinder_detection_result, 
+                                          selectCallback=lambda synapse, 
+                                          roi:self.invoke_update(TabROIFinder_InvalidateEvent(selectedROI=True, selectedROI_tuple=(synapse, roi))), 
+                                          updateCallback=lambda:self.invoke_update(TabROIFinder_InvalidateEvent(rois=True)), 
+                                          allowSingleframe=True)
         self.tvSynapses.pack(fill="both")
 
         self.figure1 = plt.Figure(figsize=(20,10), dpi=100)
@@ -98,93 +103,70 @@ class TabROIFinder(Tab):
         self.ax2 = self.figure1.add_subplot(222, sharex=self.ax1, sharey=self.ax1)  
         self.ax3 = self.figure1.add_subplot(223)  
         self.ax4 = self.figure1.add_subplot(224, sharex=self.ax3)  
-        self.ClearImagePlot()
+        self.clear_image_plot()
         self.canvas1 = FigureCanvasTkAgg(self.figure1, self.tab)
         self.canvtoolbar1 = NavigationToolbar2Tk(self.canvas1,self.tab)
         self.canvtoolbar1.update()
         self.canvas1.get_tk_widget().pack(expand=True, fill="both", side=tk.LEFT)
-        self.canvas1.mpl_connect('resize_event', self._Canvas1Resize)
-        self.canvas1.mpl_connect('button_press_event', self.Canvas1ClickEvent)
+        self.canvas1.mpl_connect('resize_event', self._canvas1_resize)
+        self.canvas1.mpl_connect('button_press_event', self.canvas1_click)
         self.canvas1.draw()
 
         #tk.Grid.rowconfigure(self.frameTools, 3, weight=1)
 
         self.tvSynapses.SyncSynapses()
-        self.Update(TabROIFinder_AlgorithmChangedEvent())
+        self.Update(TabROIFinder_InvalidateEvent(algorithm=True, image=True))
 
 
-    # Public functions
-
-    @property
-    def synapses(self) -> list[ISynapse]:
-        """ The current list of synapses in this tab. If you modify values inside this list, make sure to call tvSynapses.SyncSynapses() to reflect the changes in the TreeView. """
-        return list(self._synapses.values())
-    
-    @synapses.setter
-    def synapses(self, val: list[ISynapse]):
-        if not isinstance(val, list) or not all(isinstance(v, ISynapse) for v in val):
-            raise ValueError("The synapse property expects a list of ISynapse")
-        self._synapses = {s.uuid:s for s in val}
+    # Convience functions
 
     @property
-    def synapses_dict(self) -> dict[str, ISynapse]:
-        """ 
-            The current list of synapses in this tab presented as dict with the UUID as key. 
-            If you modify values inside this list, make sure to call tvSynapses.SyncSynapses() to reflect the changes in the TreeView. 
-        """
-        return self._synapses
-    
-    @synapses_dict.setter
-    def synapses_dict(self, val: dict[str, ISynapse]):
-        if not isinstance(val, dict) or not all(isinstance(k, str) and isinstance(v, ISynapse) for k, v in val.items()):
-            raise ValueError("The synapse property expects a dictionary of ISynapses with their UUID as key")
-        self._synapses = val
-
-    def Synapses(self, newval: dict[str, ISynapse]|None = None) -> dict[str, ISynapse]:
-        """ Python does not provide a pointer concept. Therefore use this helper function combining a Getter/Setter"""
-        if newval is not None:
-            self._synapses = newval
-        return self._synapses
+    def detection_result(self) -> DetectionResult:
+        """ Convience property for self.session.roifinder_detection_result """
+        return self.session.roifinder_detection_result
 
     # Update and Invalidation functions
 
-    def Update(self, event: TabUpdateEvent):
+    def update_tab(self, event: TabUpdateEvent):
         """ The main function to update this tab. """
         if isinstance(event, ImageChangedEvent):
-            self.tvSynapses.ClearSynapses('non_staged')
+            self.tvSynapses.ClearSynapses(target='non_staged')
             self.tvSynapses.SyncSynapses()
-            self.ClearImagePlot()
-            self.ComboImage_Changed()
-        elif isinstance(event, TabROIFinder_AlgorithmChangedEvent):
-            self.Invalidate_Algorithm()
-            self.Invalidate_Image()
+            self.clear_image_plot()
+            self.comboImage_changed()
+        elif isinstance(event, TabROIFinder_InvalidateEvent):
+            if event.algorithm: self.invalidate_algorithm()
+            if event.image: self.invalidate_image()
+            if event.rois: self.invalidate_ROIs()
+            if event.selectedROIS: self.invalidate_selected_ROI(*event.selectedROI_tuple)
 
-    def ComboImage_Changed(self):
-        if self.varImage.get() != "Diff" or self._gui.signal.peaks is None:
+    def comboImage_changed(self):
+        signalObj = self.session.active_image_signal
+        
+        if signalObj is None or self.varImage.get() != "Delta" or signalObj.peaks is None:
             self.comboFrame['values'] = []
             self.comboFrame["state"] = "disabled"
             self.varImageFrame.set("")
         else:
-            self.comboFrame['values'] = [str(f+1) for f in list(self._gui.signal.peaks)]
+            self.comboFrame['values'] = [str(f+1) for f in list(signalObj.peaks)]
             self.comboFrame["state"] = "normal"
-        self.Invalidate_Algorithm()
-        self.Invalidate_Image()
+        
+        self.invalidate_algorithm()
+        self.invalidate_image()
+        
 
-    def Invalidate_Algorithm(self):
+    def invalidate_algorithm(self):
         match self.radioAlgoVar.get():
             case "threshold":
                 if isinstance(self.detectionAlgorithm, detection.Thresholding_Integration):
-                    self.detectionAlgorithm.OptionsFrame_Update(self.GetCurrentDetectionSource()[1])
                     return
                 self.detectionAlgorithm = detection.Thresholding_Integration()
             case "hysteresis":
                 if type(self.detectionAlgorithm) == detection.HysteresisTh_Integration:
-                    self.detectionAlgorithm.OptionsFrame_Update(self.GetCurrentDetectionSource()[1])
                     return
                 self.detectionAlgorithm = detection.HysteresisTh_Integration()
             case "local_max":
                 if type(self.detectionAlgorithm) == detection.LocalMax_Integration:
-                    self.detectionAlgorithm.OptionsFrame_Update(self.GetCurrentDetectionSource()[1])
                     return
                 self.detectionAlgorithm = detection.LocalMax_Integration()
             case _:
@@ -192,11 +174,11 @@ class TabROIFinder(Tab):
                 return
         if (self.frameAlgoOptions is not None):
             self.frameAlgoOptions.grid_forget()
-        self.frameAlgoOptions = self.detectionAlgorithm.OptionsFrame(self.frameTools, self._gui.GetImageObject)
-        self.detectionAlgorithm.OptionsFrame_Update(self.GetCurrentDetectionSource()[1])
+        self.frameAlgoOptions = self.detectionAlgorithm.get_options_frame(self.frameTools)
+        self.detectionAlgorithm.update(image_obj=self.session.active_image_object, image_prop=self.current_input_image)
         self.frameAlgoOptions.grid(row=1, column=0, sticky="news")
 
-    def ClearImagePlot(self):
+    def clear_image_plot(self):
         if self.ax1_colorbar is not None:
             self.ax1_colorbar.remove()
             self.ax1_colorbar = None
@@ -209,13 +191,15 @@ class TabROIFinder(Tab):
             ax.xaxis.set_major_locator(MaxNLocator(integer=True))
             if ax == self.ax1 or ax == self.ax2:
                 ax.yaxis.set_major_locator(MaxNLocator(integer=True))
-        self.ax1.set_title("Image (Mean)")
-        self.ax2.set_title("Diff Image")
+        self.ax1.set_title("Original (Mean)")
+        self.ax2.set_title("Delta Video")
 
-    def Invalidate_Image(self):
-        imgObj = self._gui.ImageObject
+    def invalidate_image(self):
+        imgObj = self.session.active_image_object
 
-        self.ax2.set_title("Diff Image")
+        self.detectionAlgorithm.update(image_obj=imgObj, image_prop=self.current_input_image)
+
+        self.ax2.set_title("Delta Video")
         self.ax1Image = None
         self.ax2Image = None    
         if self.ax1_colorbar is not None:
@@ -230,24 +214,24 @@ class TabROIFinder(Tab):
             ax.set_axis_off()
         
         if imgObj is None or imgObj.img is None or imgObj.imgDiff is None:
-            self.Invalidate_ROIs()
+            self.invoke_update(TabROIFinder_InvalidateEvent(rois=True))
             return
         
-        self.ax1Image = self.ax1.imshow(imgObj.imgView(imgObj.SPATIAL).Mean, cmap="Greys_r") 
+        self.ax1Image = self.ax1.imshow(imgObj.imgView(ImageView.SPATIAL).Mean, cmap="Greys_r") 
         self.ax1.set_axis_on()
         self.ax1_colorbar = self.figure1.colorbar(self.ax1Image, ax=self.ax1)
 
-        _ax2Title, ax2_ImgProp = self.GetCurrentDetectionSource()
+        _ax2Title, ax2_ImgProp = self.current_input_image, self.current_input_description
         self.ax2.set_title(_ax2Title)
         if ax2_ImgProp is not None:
             self.ax2Image = self.ax2.imshow(ax2_ImgProp.img, cmap="inferno")
             self.ax2_colorbar = self.figure1.colorbar(self.ax2Image, ax=self.ax2)
             self.ax2.set_axis_on()
 
-        self.Invalidate_ROIs()
+        self.invoke_update(TabROIFinder_InvalidateEvent(rois=True))
 
 
-    def Invalidate_ROIs(self):
+    def invalidate_ROIs(self):
         for axImg in self.ax1.get_images():
             if axImg != self.ax1Image: axImg.remove()
         for axImg in self.ax2.get_images():
@@ -266,7 +250,7 @@ class TabROIFinder(Tab):
         _ax2HasImage = len(self.ax2.get_images()) > 0
         
         # Plotting the ROIs
-        for synapse in self.synapses:
+        for synapse in self.detection_result.synapses:
             for roi in synapse.rois:
                 if isinstance(roi, detection.CircularSynapseROI):
                     c = patches.Circle(roi.location, roi.radius+0.5, color="red", fill=False)
@@ -284,17 +268,17 @@ class TabROIFinder(Tab):
                     self.roiPatches2[roi.uuid] = c2
 
         # Plotting the overlays
-        if self.GetCurrentDetectionSource()[1] is not None:
-            _currentSource = self.GetCurrentDetectionSource()[1].img
+        if self.current_input_image is not None:
+            _currentSource = self.current_input_image.img
             if self.setting_plotPixels.Get() == 1 and _ax1HasImage and _currentSource is not None:
                 _overlay = np.zeros(shape=_currentSource.shape, dtype=_currentSource.dtype)
-                for synapse in self.synapses:
+                for synapse in self.detection_result.synapses:
                     for roi in synapse.rois:
-                        _overlay[roi.GetImageMask(_currentSource.shape)] = 1
+                        _overlay[roi.get_coordinates(_currentSource.shape)] = 1
                 self.ax1.imshow(_overlay, alpha=_overlay*0.5, cmap="viridis")
 
             if self.setting_plotOverlay.Get() == 1 and _ax2HasImage:
-                _overlays, _patches = self.detectionAlgorithm.Img_DetectionOverlay()
+                _overlays, _patches = self.detectionAlgorithm.get_rawdata_overlay()
                 if _overlays is not None:
                     for _overlay in _overlays:
                         self.ax2.imshow(_overlay!=0, alpha=(_overlay != 0).astype(int)*0.5, cmap="gist_gray")
@@ -307,9 +291,9 @@ class TabROIFinder(Tab):
 
         self.tvSynapses.selection_clear()
 
-    def InvalidateSelectedROI(self, synapse: ISynapse|None=None, roi: ISynapseROI|None=None):
+    def invalidate_selected_ROI(self, synapse: ISynapse|None=None, roi: ISynapseROI|None=None):
         """ Called by self.tvSynapses when a item is selected. If root item is selected, synapse and roi are None. If a ISynapse is selected, roi is None """
-        imgObj = self._gui.ImageObject
+        imgObj = self.session.active_image_object
         self.ax3.clear()
         self.ax3.set_title("Image Signal")
         self.ax3.set_ylabel("mean brightness")
@@ -338,13 +322,13 @@ class TabROIFinder(Tab):
             else:
                 patch.set_color("green")
     
-        if synapse is not None and len(synapse.rois) == 1 and self._gui.ImageObject is not None and self._gui.ImageObject.img is not None:
+        if synapse is not None and len(synapse.rois) == 1 and imgObj is not None and imgObj.img is not None:
             self.ax3.set_axis_on()
             self.ax4.set_axis_on()
 
             roi = synapse.rois[0]
-            signal = roi.GetImageSignal(imgObj.img)
-            signalDiff = roi.GetImageSignal(imgObj.imgDiff)
+            signal = roi.get_signal_from_image(imgObj.img)
+            signalDiff = roi.get_signal_from_image(imgObj.imgDiff)
             if signal.shape[0] > 0:
                 self.ax3.plot(np.mean(signal, axis=1))
             if signalDiff.shape[0] > 0:
@@ -355,71 +339,83 @@ class TabROIFinder(Tab):
         self.figure1.tight_layout()
         self.canvas1.draw()
 
-        
-    def Detect(self, waitCompletion:bool=False):
-        if self.detectionAlgorithm is None or self._gui.ImageObject is None:
-            self._gui.root.bell()
-            return
-        if self.GetCurrentDetectionSource()[1] is None:
-            self._gui.root.bell()
-            return 
+    # Detection
 
-        def _Detect(job: Job):
-            self.tvSynapses.ClearSynapses('non_staged')
-            self.tvSynapses.SyncSynapses()
-            job.SetProgress(0, "Detecting ROIs")
-            rois = self.detectionAlgorithm.DetectAutoParams(self.GetCurrentDetectionSource()[1])
-            for r in rois:
-                s = SingleframeSynapse(r)
-                self._synapses[s.uuid] = s
-            self.tvSynapses.SyncSynapses()
-            job.SetStopped("Detecting ROIs")
-            self.Invalidate_ROIs()
-
-        job = Job(steps=1)
-        self._gui.statusbar.AddJob(job)
-        _thread = threading.Thread(target=_Detect, args=(job,), daemon=True)
-        _thread.start()
-        if waitCompletion:
-            _thread.join()
-
-    # Helper function
-
-    def GetCurrentDetectionSource(self) -> tuple[str, ImageProperties|None]:
-        imgObj = self._gui.ImageObject
-        signal = self._gui.signal
-        if imgObj is None or imgObj.img is None or imgObj.imgDiff is None:
-            return ("Diff. Image", None)
+    @property
+    def current_input_image(self) -> ImageProperties|None:
+        """ Return the current input image as a ImageProperties object which caches statistics about the image """
+        imgObj = self.session.active_image_object
+        signal = self.session.active_image_signal
+        self._current_input_description_str = "NO IMAGE" # Stores a string describing the current input image 
+        if imgObj is None or imgObj.imgDiff is None:
+            return None
         
         match(self.varImage.get()):
-            case "Diff":
+            case "Delta":
                 if self.varImageFrame.get() == "":
-                    return("INVALID FRAME",  None)
-                _frame = int(self.varImageFrame.get()) - 1
+                    self._current_input_description_str = "INVALID FRAME"
+                    return None
+                _frame = int(v) - 1 if (v := self.varImageFrame.get()).isdigit() else -1
                 if _frame < 0 or _frame >= imgObj.imgDiff.shape[0]:
-                    return("INVALID FRAME",  None)
-                return (f"Diff. Image (Frame {_frame + 1})", imgObj.imgDiff_FrameProps(_frame))
-            case "DiffMax":
-                return ("Diff. Image (Max.)", imgObj.imgDiffView(ImgObj.SPATIAL).MaxProps)
-            case "DiffStd":
-                return ("Diff. Image (Std.)", imgObj.imgDiffView(ImgObj.SPATIAL).StdNormedProps)
-            case "DiffMax without Signal":
-                if signal.imgObj_Sliced is None:
-                    return("NO SIGNAL", None)  
+                    self._current_input_description_str = "INVALID FRAME"
+                    return None
+                self._current_input_description_str = f"Delta (Frame {_frame + 1})"
+                return imgObj.imgDiff_FrameProps(_frame)
+            case "Delta (maximum)":
+                self._current_input_description_str = "Delta (maximum)"
+                return imgObj.imgDiffView(ImageView.SPATIAL).MaxProps
+            case "Delta (std.)":
+                self._current_input_description_str = "Delta (std.)"
+                return imgObj.imgDiffView(ImageView.SPATIAL).StdNormedProps
+            case "Delta (max.), signal removed":
+                if signal is None or signal.imgObj_Sliced is None:
+                    self._current_input_description_str = "SIGNAL MISSING"
+                    return None
                 elif signal.imgObj_Sliced is False:
-                    return("SIGNAL SLICED ALL FRAMES", None)  
-                return ("Diff. Image (Max) without signal", signal.imgObj_Sliced.imgDiffView(ImgObj.SPATIAL).MaxProps)
+                    self._current_input_description_str = "NO IMAGE"
+                    return None
+                self._current_input_description_str = "Delta (max.), signal removed"
+                return signal.imgObj_Sliced.imgDiffView(ImageView.SPATIAL).MaxProps
             case _:
-                return ("UNEXPECTED IMAGE SOURCE", None)
+                return None
+        
+    @property
+    def current_input_description(self) -> str:
+        """ Returns a string describing the current input image """
+        self.current_input_image
+        return self._current_input_description_str
+        
+    def detect(self) -> Task:
+        if self.detectionAlgorithm is None or self.session.active_image_object is None:
+            self.root.bell()
+            return
+        if self.current_input_image is None:
+            self.root.bell()
+            return 
 
+        def _detect(task: Task):
+            self.tvSynapses.ClearSynapses(target='non_staged')
+            self.tvSynapses.SyncSynapses()
+            task.set_step_progress(0, "")
+            rois = self.detectionAlgorithm.detect(self.current_input_image)
+            for r in rois:
+                s = SingleframeSynapse(r)
+                self.detection_result.add_synapse(s)
+            self.tvSynapses.SyncSynapses()
+            self.invoke_update(TabROIFinder_InvalidateEvent(rois=True))
+
+        return Task(_detect, "Detecting ROIs", run_async=True).set_step_mode(1).start()
+
+
+    # GUI events
     
-    def Canvas1ClickEvent(self, event):
+    def canvas1_click(self, event):
         if not event.dblclick or event.inaxes is None:
             return
         if (event.inaxes != self.ax1 and event.inaxes != self.ax2):
             return
         x, y = event.xdata, event.ydata
-        rois = [(s, r) for s in self.synapses for r in s.rois]
+        rois = [(s, r) for s in self.detection_result.synapses for r in s.rois]
         if len(rois) == 0: return
         rois.sort(key=lambda v: (v[1].location[0]-x)**2+(v[1].location[1]-y)**2 if v[1].location is not None else np.inf)
         synapse, roi = rois[0]
@@ -427,7 +423,7 @@ class TabROIFinder(Tab):
         if d <= 40:
             self.tvSynapses.Select(synapse=synapse, roi=roi)
 
-    def _Canvas1Resize(self, event):
+    def _canvas1_resize(self, event):
         if self.tab.winfo_width() > 300:
             self.figure1.tight_layout()
             self.canvas1.draw()

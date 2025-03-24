@@ -5,10 +5,10 @@ from PIL import Image
 from pathlib import Path
 import sys
 import threading
+import atexit
 import logging
 from logging.handlers import RotatingFileHandler
 logger = logging.getLogger("NeurotorchMZ")
-
 
 class Neurotorch_Settings:
     """ Static class to access user configurations and data """
@@ -57,6 +57,7 @@ class Neurotorch_Settings:
         try:
             with open(Neurotorch_Settings.app_data_path / "settings.ini", 'w') as configfile:
                 Neurotorch_Settings.config.write(configfile)
+            logger.debug("Saved the config")
         except Exception as ex:
             logger.warning(f"Failed to save the config. The error message was: \n---\n%s\n---" % str(ex))
 
@@ -109,10 +110,13 @@ stream_logging_handler.setFormatter(_fmt)
 stream_logging_handler.setLevel(logging.ERROR)
 logger.setLevel(logging.DEBUG)
 logger.addHandler(file_logging_handler)
-logger.addHandler(stream_logging_handler)    
+logger.addHandler(stream_logging_handler) 
+_exception_logger = logging.getLogger("NeurotorchMZ_Errors")   
+_exception_logger.setLevel(logging.DEBUG)
+_exception_logger.addHandler(file_logging_handler)
 
 def log_exceptions_hook(exc_type, exc_value=None, exc_traceback=None, thread=None):
-    logger.error(f"An {repr(exc_type)} happened: {exc_value}", exc_info=(exc_type, exc_value, exc_traceback))
+    _exception_logger.error(f"An {repr(exc_type)} happened: {exc_value}", exc_info=(exc_type, exc_value, exc_traceback))
     sys.__excepthook__(exc_type, exc_value, exc_traceback)
 
 def thread_exceptions_hook(args):
@@ -123,6 +127,9 @@ threading.excepthook = thread_exceptions_hook
 
 Neurotorch_Settings._CreateStatic()
 Neurotorch_Resources._CreateStatic()
+atexit.register(Neurotorch_Settings.SaveConfig)
 
 def log_exception_debug(ex: Exception, msg:str = None):
-    logger.debug("%s:\n---\n%s\n---" % (msg if msg is not None else f"An exception happened", str(ex)))
+    #logger.exception(msg, (type(ex), ex, ex.__traceback__))
+    logger.exception(msg)
+    #logger.debug("%s:\n---\n%s\n---" % (msg if msg is not None else f"An exception happened", repr(ex)))

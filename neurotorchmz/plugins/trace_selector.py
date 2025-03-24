@@ -6,7 +6,7 @@ import threading
 
 from ..gui.window import Neurotorch_GUI
 from ..gui.components.treeview import SynapseTreeview
-from ..gui.settings import Neurotorch_Settings as Settings
+from ..core.settings import Neurotorch_Settings as Settings
 from ..gui.tab3 import TabROIFinder
 
 class TraceSelector:

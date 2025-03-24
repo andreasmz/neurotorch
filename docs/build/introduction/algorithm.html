@@ -1,0 +1,169 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Algorithm and core concepts &mdash; NeurotorchMZ 25.3.1_dev documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+    <link rel="shortcut icon" href="../_static/neurotorch_logo.ico"/>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=dcb1c0c2"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Glossary" href="../glossary.html" />
+    <link rel="prev" title="First steps" href="first_steps.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            NeurotorchMZ
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation and Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="first_steps.html">First steps</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Algorithm and core concepts</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#delta-video">Delta video</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#denoising-the-delta-video">Denoising the delta video</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#image-views">Image views</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../glossary.html">Glossary</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Working with the GUI</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../gui/tab_image.html">Tab Image</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../gui/tab_signal.html">Tab Signal</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../gui/imagej.html">Fiji/ImageJ Integration</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/api.html">API</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">NeurotorchMZ</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Algorithm and core concepts</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/introduction/algorithm.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="algorithm-and-core-concepts">
+<h1>Algorithm and core concepts<a class="headerlink" href="#algorithm-and-core-concepts" title="Link to this heading"></a></h1>
+<section id="delta-video">
+<h2>Delta video<a class="headerlink" href="#delta-video" title="Link to this heading"></a></h2>
+<p>The main idea of Neurotorch is to use the differences between frames to find peaks of
+brightness. Therefore Neurotorch calculates the so called delta video.</p>
+<figure class="align-default" id="id1">
+<img alt="Overview of delta video frames around a stimulation" src="../_images/diffImage_overview.jpg" />
+<figcaption>
+<p><span class="caption-text">Example for a delta video around an external stimulation (frame 100).
+In the microscopic video (first row) you can see the increase in brightness in frame 100
+and 101, which result in bright spots in the delta video (row 2 and 3). For detection,
+values in the delta video below 0 are clipped to 0 (row 3)</span><a class="headerlink" href="#id1" title="Link to this image"></a></p>
+</figcaption>
+</figure>
+<section id="denoising-the-delta-video">
+<h3>Denoising the delta video<a class="headerlink" href="#denoising-the-delta-video" title="Link to this heading"></a></h3>
+<figure class="align-default" id="id2">
+<img alt="Different levels of denoising for the delta video compared" src="../_images/diffImage_convolution_compare.png" />
+<figcaption>
+<p><span class="caption-text">Different levels of denoising for the delta video compared. In general, a Gaussian kernel with σ=2px is good a compromise.</span><a class="headerlink" href="#id2" title="Link to this image"></a></p>
+</figcaption>
+</figure>
+<p>The performance of the algorithms can be enchanced by denoising the delta video frames. This is done by applying a Gaussian kernel
+on each frame of the video. The idea is that an increase in brightness is only significant,
+if neighbouring pixels show the same trend. You can choose different σ parameters or use the default of σ=2px.</p>
+<p>Note that this does not alter any image data, as only the delta video used for the Neurotorch`s algorithms is altered.</p>
+</section>
+<section id="image-views">
+<h3>Image views<a class="headerlink" href="#image-views" title="Link to this heading"></a></h3>
+<p>As an microscopic video is threedimensional, for displaying it must be reduced
+to an 2D image. Neurotorch knows four types of reducing it to 2D</p>
+<ul class="simple">
+<li><p>Mean</p></li>
+<li><p>Median</p></li>
+<li><p>Standard deviation (<em>Std</em>)</p></li>
+<li><p>Maximum</p></li>
+</ul>
+<p>Each of this functions is applied pixelwise.</p>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="first_steps.html" class="btn btn-neutral float-left" title="First steps" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../glossary.html" class="btn btn-neutral float-right" title="Glossary" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright © 2025, Andreas Brilka.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
