@@ -19,7 +19,8 @@
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" /> 
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="Starting Neurotorch and accessing the API" href="start.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -54,9 +55,36 @@
 <li class="toctree-l1"><a class="reference internal" href="../gui/tab_signal.html">Tab Signal</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../gui/imagej.html">Fiji/ImageJ Integration</a></li>
 </ul>
-<p class="caption" role="heading"><span class="caption-text">API</span></p>
+<p class="caption" role="heading"><span class="caption-text">Algorithms</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="api.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithm/detection_algorithms.html">Detection Algorithms</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="api.html">API</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="api.html#neurotorch-module">Neurotorch module</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="start.html">Starting Neurotorch and accessing the API</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Synapses and ROIs</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#neurotorchmz.utils.synapse_detection.CircularSynapseROI"><code class="docutils literal notranslate"><span class="pre">CircularSynapseROI</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#neurotorchmz.utils.synapse_detection.DetectionError"><code class="docutils literal notranslate"><span class="pre">DetectionError</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#neurotorchmz.utils.synapse_detection.DetectionResult"><code class="docutils literal notranslate"><span class="pre">DetectionResult</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#neurotorchmz.utils.synapse_detection.HysteresisTh"><code class="docutils literal notranslate"><span class="pre">HysteresisTh</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#neurotorchmz.utils.synapse_detection.IDetectionAlgorithm"><code class="docutils literal notranslate"><span class="pre">IDetectionAlgorithm</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#neurotorchmz.utils.synapse_detection.ISynapse"><code class="docutils literal notranslate"><span class="pre">ISynapse</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#neurotorchmz.utils.synapse_detection.ISynapseROI"><code class="docutils literal notranslate"><span class="pre">ISynapseROI</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#neurotorchmz.utils.synapse_detection.LocalMax"><code class="docutils literal notranslate"><span class="pre">LocalMax</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#neurotorchmz.utils.synapse_detection.MultiframeSynapse"><code class="docutils literal notranslate"><span class="pre">MultiframeSynapse</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#neurotorchmz.utils.synapse_detection.PolygonalSynapseROI"><code class="docutils literal notranslate"><span class="pre">PolygonalSynapseROI</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#neurotorchmz.utils.synapse_detection.SimpleCustering"><code class="docutils literal notranslate"><span class="pre">SimpleCustering</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#neurotorchmz.utils.synapse_detection.SingleframeSynapse"><code class="docutils literal notranslate"><span class="pre">SingleframeSynapse</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#neurotorchmz.utils.synapse_detection.SynapseClusteringAlgorithm"><code class="docutils literal notranslate"><span class="pre">SynapseClusteringAlgorithm</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#neurotorchmz.utils.synapse_detection.Thresholding"><code class="docutils literal notranslate"><span class="pre">Thresholding</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 
         </div>
@@ -73,6 +101,7 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="api.html">API</a></li>
       <li class="breadcrumb-item active">Synapses and ROIs</li>
       <li class="wy-breadcrumbs-aside">
             <a href="../_sources/api/synapse_detection.rst.txt" rel="nofollow"> View page source</a>
@@ -92,31 +121,21 @@
 <dd><p>Implements a circular ROI of a given radius</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.CircularSynapseROI.CLASS_DESC">
-<span class="sig-name descname"><span class="pre">CLASS_DESC</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'Circular</span> <span class="pre">Synapse</span> <span class="pre">ROI'</span></em><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.CircularSynapseROI.CLASS_DESC" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">CLASS_DESC</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'Circular</span> <span class="pre">ROI'</span></em><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.CircularSynapseROI.CLASS_DESC" title="Link to this definition"></a></dt>
 <dd><p>Every subclass defines a description string</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.CircularSynapseROI.GetImageMask">
-<span class="sig-name descname"><span class="pre">GetImageMask</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shape</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">array</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">array</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.CircularSynapseROI.GetImageMask" title="Link to this definition"></a></dt>
-<dd><p>Returns list of coordinates inside the ROI in the format ([Y0, Y1, Y2, …], [X0, X1, X2, …])</p>
+<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.CircularSynapseROI.get_coordinates">
+<span class="sig-name descname"><span class="pre">get_coordinates</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shape</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">array</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">array</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.CircularSynapseROI.get_coordinates" title="Link to this definition"></a></dt>
+<dd><p>Return coordinates of points inside the ROI and inside the given shape. They are returned as a tuple
+with the first parameter beeing the y coordinates and the second the x coordinates.</p>
+<p>Example output: ([Y0, Y1, Y2, …], [X0, X1, X2, …])</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns tuple[np.array, np.array]<span class="colon">:</span></dt>
 <dd class="field-odd"><p>The coordinates inside the ROI in the format [yy, xx]</p>
 </dd>
 </dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.CircularSynapseROI.SetRadius">
-<span class="sig-name descname"><span class="pre">SetRadius</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">radius</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Self</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.CircularSynapseROI.SetRadius" title="Link to this definition"></a></dt>
-<dd><p>Set the radius of the ROI</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.CircularSynapseROI.ToStr">
-<span class="sig-name descname"><span class="pre">ToStr</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.CircularSynapseROI.ToStr" title="Link to this definition"></a></dt>
-<dd><p>Display the synapse in the format ‘Circular ROI (X, Y r=r)’ or ‘Circular ROI’ if location or radius is not given</p>
 </dd></dl>
 
 <dl class="py attribute">
@@ -125,12 +144,20 @@
 <dd><p>Radius of the ROI</p>
 </dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.CircularSynapseROI.set_radius">
+<span class="sig-name descname"><span class="pre">set_radius</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">radius</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Self</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.CircularSynapseROI.set_radius" title="Link to this definition"></a></dt>
+<dd><p>Set the radius of the ROI</p>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.DetectionError">
 <em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">neurotorchmz.utils.synapse_detection.</span></span><span class="sig-name descname"><span class="pre">DetectionError</span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.DetectionError" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Error thrown by calling detect() on a IDetectionAlgorithm object indicating something went wrong in the
+detection process.</p>
+</dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.DetectionResult">
@@ -154,12 +181,52 @@ If you modify values inside this list, make sure to call tvSynapses.SyncSynapses
 <dl class="py class">
 <dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.HysteresisTh">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">neurotorchmz.utils.synapse_detection.</span></span><span class="sig-name descname"><span class="pre">HysteresisTh</span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.HysteresisTh" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<dd><dl class="py method">
+<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.HysteresisTh.detect">
+<span class="sig-name descname"><span class="pre">detect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lowerThreshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">upperThreshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">minArea</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#neurotorchmz.utils.synapse_detection.ISynapseROI" title="neurotorchmz.utils.synapse_detection.ISynapseROI"><span class="pre">ISynapseROI</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.HysteresisTh.detect" title="Link to this definition"></a></dt>
+<dd><p>Find ROIs in a given image. For details see the documentation</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>img</strong> (<em>np.ndarray</em>) – The image as 2D numpy array</p></li>
+<li><p><strong>lowerThreshold</strong> (<em>int</em><em>|</em><em>float</em>) – lower threshold for detection</p></li>
+<li><p><strong>upperThreshold</strong> (<em>int</em><em>|</em><em>float</em>) – upper threshold for detection</p></li>
+<li><p><strong>minArea</strong> (<em>int</em><em>|</em><em>float</em>) – Consider only ROIs with a pixel area greater than the given value</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.HysteresisTh.reset">
+<span class="sig-name descname"><span class="pre">reset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.HysteresisTh.reset" title="Link to this definition"></a></dt>
+<dd><p>Abstract funtion which must be overwritten by a subclass to reset internal variables and states</p>
+</dd></dl>
+
+</dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.IDetectionAlgorithm">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">neurotorchmz.utils.synapse_detection.</span></span><span class="sig-name descname"><span class="pre">IDetectionAlgorithm</span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.IDetectionAlgorithm" title="Link to this definition"></a></dt>
-<dd><p>Abstract class</p>
+<dd><p>Abstract base class for a detection algorithm implementation</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.IDetectionAlgorithm.detect">
+<span class="sig-name descname"><span class="pre">detect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#neurotorchmz.utils.synapse_detection.ISynapseROI" title="neurotorchmz.utils.synapse_detection.ISynapseROI"><span class="pre">ISynapseROI</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.IDetectionAlgorithm.detect" title="Link to this definition"></a></dt>
+<dd><p>Given an input image as 2D np.ndarray and algorithm dependend arbitary arguments,
+return a list of ISynapseROI.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>img</strong> (<em>np.ndarray</em>) – The input image as 2D array</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.IDetectionAlgorithm.reset">
+<span class="sig-name descname"><span class="pre">reset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.IDetectionAlgorithm.reset" title="Link to this definition"></a></dt>
+<dd><p>Abstract funtion which must be overwritten by a subclass to reset internal variables and states</p>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="py class">
@@ -167,15 +234,9 @@ If you modify values inside this list, make sure to call tvSynapses.SyncSynapses
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">neurotorchmz.utils.synapse_detection.</span></span><span class="sig-name descname"><span class="pre">ISynapse</span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.ISynapse" title="Link to this definition"></a></dt>
 <dd><p>This abstract class defines the concept of a synapse. Currently there are two types of synapses: Singleframe and Multiframe.</p>
 <dl class="py method">
-<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.ISynapse.ROIDescriptionStr">
-<span class="sig-name descname"><span class="pre">ROIDescriptionStr</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.ISynapse.ROIDescriptionStr" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.ISynapse.get_roi_description">
+<span class="sig-name descname"><span class="pre">get_roi_description</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.ISynapse.get_roi_description" title="Link to this definition"></a></dt>
 <dd><p>Abstract function for displaying information about the rois. Needs to be implemented by each subclass</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.ISynapse.SetName">
-<span class="sig-name descname"><span class="pre">SetName</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Self</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.ISynapse.SetName" title="Link to this definition"></a></dt>
-<dd><p>Set the name of the synapse</p>
 </dd></dl>
 
 <dl class="py property">
@@ -185,8 +246,8 @@ If you modify values inside this list, make sure to call tvSynapses.SyncSynapses
 </dd></dl>
 
 <dl class="py property">
-<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.ISynapse.locationStr">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">locationStr</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.ISynapse.locationStr" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.ISynapse.location_string">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">location_string</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.ISynapse.location_string" title="Link to this definition"></a></dt>
 <dd><p>Returns the location of the synapse in the format ‘X, Y’ or ‘’ if the location is not set</p>
 </dd></dl>
 
@@ -206,6 +267,12 @@ If you modify values inside this list, make sure to call tvSynapses.SyncSynapses
 <dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.ISynapse.rois_dict">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">rois_dict</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#neurotorchmz.utils.synapse_detection.ISynapseROI" title="neurotorchmz.utils.synapse_detection.ISynapseROI"><span class="pre">ISynapseROI</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.ISynapse.rois_dict" title="Link to this definition"></a></dt>
 <dd><p>Returns the rois as dictionary with their UUID as key</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.ISynapse.set_name">
+<span class="sig-name descname"><span class="pre">set_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Self</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.ISynapse.set_name" title="Link to this definition"></a></dt>
+<dd><p>Set the name of the synapse</p>
 </dd></dl>
 
 <dl class="py attribute">
@@ -234,16 +301,18 @@ But for any kind of displaying convert them to X, Y to not cofuse the user</p>
 <dd><p>Every subclass defines a description string</p>
 </dd></dl>
 
-<dl class="py method">
-<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.ISynapseROI.Distance">
-<span class="sig-name descname"><span class="pre">Distance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">roi2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Self</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.ISynapseROI.Distance" title="Link to this definition"></a></dt>
-<dd><p>Returns the distance between the locations of the ROIs or np.inf if at least one has no location</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.ISynapseROI.frame">
+<span class="sig-name descname"><span class="pre">frame</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.ISynapseROI.frame" title="Link to this definition"></a></dt>
+<dd><p>The associate frame for this ROI or None if the object just defines a shape</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.ISynapseROI.GetImageMask">
-<span class="sig-name descname"><span class="pre">GetImageMask</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shape</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">array</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">array</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.ISynapseROI.GetImageMask" title="Link to this definition"></a></dt>
-<dd><p>Returns list of coordinates inside the ROI in the format ([Y0, Y1, Y2, …], [X0, X1, X2, …])</p>
+<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.ISynapseROI.get_coordinates">
+<span class="sig-name descname"><span class="pre">get_coordinates</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shape</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">array</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">array</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.ISynapseROI.get_coordinates" title="Link to this definition"></a></dt>
+<dd><p>Return coordinates of points inside the ROI and inside the given shape. They are returned as a tuple
+with the first parameter beeing the y coordinates and the second the x coordinates.</p>
+<p>Example output: ([Y0, Y1, Y2, …], [X0, X1, X2, …])</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns tuple[np.array, np.array]<span class="colon">:</span></dt>
 <dd class="field-odd"><p>The coordinates inside the ROI in the format [yy, xx]</p>
@@ -252,28 +321,51 @@ But for any kind of displaying convert them to X, Y to not cofuse the user</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.ISynapseROI.GetImageSignal">
-<span class="sig-name descname"><span class="pre">GetImageSignal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.ISynapseROI.GetImageSignal" title="Link to this definition"></a></dt>
-<dd><p>Given an 3D ImageObject (t, y, x), flatten x and y to the pixels given by GetImageMask providing a shape (t, num_image_mask_pixel)</p>
+<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.ISynapseROI.get_distance">
+<span class="sig-name descname"><span class="pre">get_distance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">roi2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Self</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.ISynapseROI.get_distance" title="Link to this definition"></a></dt>
+<dd><p>Returns the distance between the locations of the ROIs or np.inf if at least one has no location</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.ISynapseROI.LocationStr">
-<span class="sig-name descname"><span class="pre">LocationStr</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.ISynapseROI.LocationStr" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.ISynapseROI.get_signal_from_image">
+<span class="sig-name descname"><span class="pre">get_signal_from_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.ISynapseROI.get_signal_from_image" title="Link to this definition"></a></dt>
+<dd><p>Given an 3D ImageObject (t, y, x), flatten x and y to the pixels given by get_coordinates providing a shape (t, num_image_mask_pixel)</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.ISynapseROI.location">
+<span class="sig-name descname"><span class="pre">location</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">tuple</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.ISynapseROI.location" title="Link to this definition"></a></dt>
+<dd><p>(Estimated or actual) center of the synapse; used for selecting it in the plot and ordering</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.ISynapseROI.location_string">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">location_string</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.ISynapseROI.location_string" title="Link to this definition"></a></dt>
 <dd><p>Returns the location of the synapse in the format ‘X, Y’ or ‘’ if the location is not set</p>
 </dd></dl>
 
+<dl class="py attribute">
+<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.ISynapseROI.region_props">
+<span class="sig-name descname"><span class="pre">region_props</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">RegionProperties</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.ISynapseROI.region_props" title="Link to this definition"></a></dt>
+<dd><p>Stores skimage RegionProperties for the ROI</p>
+</dd></dl>
+
 <dl class="py method">
-<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.ISynapseROI.SetFrame">
-<span class="sig-name descname"><span class="pre">SetFrame</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Self</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.ISynapseROI.SetFrame" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.ISynapseROI.serialize">
+<span class="sig-name descname"><span class="pre">serialize</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.ISynapseROI.serialize" title="Link to this definition"></a></dt>
+<dd><p>Serialize the object</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.ISynapseROI.set_frame">
+<span class="sig-name descname"><span class="pre">set_frame</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Self</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.ISynapseROI.set_frame" title="Link to this definition"></a></dt>
 <dd><p>Set the frame of the synapse or removes it by providing None</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.ISynapseROI.SetLocation">
-<span class="sig-name descname"><span class="pre">SetLocation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">location</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Self</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.ISynapseROI.SetLocation" title="Link to this definition"></a></dt>
-<dd><p>Set the location of the synapse by either providing a tuple or Y and X explicitly
-which is for example used for sorting them. There is no need to provide an exact center</p>
+<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.ISynapseROI.set_location">
+<span class="sig-name descname"><span class="pre">set_location</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">location</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Self</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.ISynapseROI.set_location" title="Link to this definition"></a></dt>
+<dd><p>Set the location of the synapse by either providing a tuple or Y and X explicitly</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -286,39 +378,9 @@ which is for example used for sorting them. There is no need to provide an exact
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.ISynapseROI.SetRegionProps">
-<span class="sig-name descname"><span class="pre">SetRegionProps</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">region_props</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">RegionProperties</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Self</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.ISynapseROI.SetRegionProps" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.ISynapseROI.set_region_props">
+<span class="sig-name descname"><span class="pre">set_region_props</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">region_props</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">RegionProperties</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Self</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.ISynapseROI.set_region_props" title="Link to this definition"></a></dt>
 <dd><p>Set skimage.RegionProperties for this synapse</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.ISynapseROI.ToStr">
-<span class="sig-name descname"><span class="pre">ToStr</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.ISynapseROI.ToStr" title="Link to this definition"></a></dt>
-<dd><p>Display the synapse in the format ‘ISynapseROI (X, Y)’ or ‘ISynapseROI’ if location is not given</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.ISynapseROI.frame">
-<span class="sig-name descname"><span class="pre">frame</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.ISynapseROI.frame" title="Link to this definition"></a></dt>
-<dd><p>The associate frame for this ROI or None if the object just defines a shape</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.ISynapseROI.location">
-<span class="sig-name descname"><span class="pre">location</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">tuple</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.ISynapseROI.location" title="Link to this definition"></a></dt>
-<dd><p>(Estimated or actual) center of the synapse; used for selecting it in the plot and ordering</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.ISynapseROI.regionProps">
-<span class="sig-name descname"><span class="pre">regionProps</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">RegionProperties</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.ISynapseROI.regionProps" title="Link to this definition"></a></dt>
-<dd><p>Stores skimage RegionProperties for the ROI</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.ISynapseROI.serialize">
-<span class="sig-name descname"><span class="pre">serialize</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.ISynapseROI.serialize" title="Link to this definition"></a></dt>
-<dd><p>Serialize the object</p>
 </dd></dl>
 
 <dl class="py attribute">
@@ -332,17 +394,31 @@ which is for example used for sorting them. There is no need to provide an exact
 <dl class="py class">
 <dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.LocalMax">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">neurotorchmz.utils.synapse_detection.</span></span><span class="sig-name descname"><span class="pre">LocalMax</span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.LocalMax" title="Link to this definition"></a></dt>
-<dd><p>Implementation of the</p>
+<dd><p>Implementation of the LocalMax algorithm for ROI detection. For details see the documentation</p>
 <dl class="py method">
-<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.LocalMax.Detect">
-<span class="sig-name descname"><span class="pre">Detect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lowerThreshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">upperThreshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">expandSize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maxPeakCount</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">minArea</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">minDistance</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">minSignal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sortBySignal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">imgObj</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ImageObject</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#neurotorchmz.utils.synapse_detection.ISynapseROI" title="neurotorchmz.utils.synapse_detection.ISynapseROI"><span class="pre">ISynapseROI</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.LocalMax.Detect" title="Link to this definition"></a></dt>
-<dd><p>Detect ROIs in the given 2D image</p>
+<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.LocalMax.detect">
+<span class="sig-name descname"><span class="pre">detect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lowerThreshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">upperThreshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">expandSize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">minArea</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">minDistance</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#neurotorchmz.utils.synapse_detection.ISynapseROI" title="neurotorchmz.utils.synapse_detection.ISynapseROI"><span class="pre">ISynapseROI</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.LocalMax.detect" title="Link to this definition"></a></dt>
+<dd><p>Detect ROIs in the given 2D image. For details see the documentation</p>
+<p>Find ROIs in a given image. For details see the documentation</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>img</strong> (<em>np.ndarray</em>) – The image as 2D numpy array</p></li>
+<li><p><strong>lowerThreshold</strong> (<em>int</em><em>|</em><em>float</em>) – The lower threshold</p></li>
+<li><p><strong>upperThreshold</strong> (<em>int</em><em>|</em><em>float</em>) – The upper threshold</p></li>
+<li><p><strong>expandSize</strong> (<em>int</em>) – Pixel to expand the peak search into</p></li>
+<li><p><strong>minArea</strong> (<em>int</em>) – Minimum area of a ROI</p></li>
+<li><p><strong>minDistance</strong> (<em>int</em>) – Mimum distance between two ROIs</p></li>
+<li><p><strong>radius</strong> (<em>int</em><em>|</em><em>float</em><em>|</em><em>None</em>) – Returns circular ROIs if radius &gt;= 0 and polygonal ROIs if radius is None. Raises exception otherwise</p></li>
+</ul>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.LocalMax.Reset">
-<span class="sig-name descname"><span class="pre">Reset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.LocalMax.Reset" title="Link to this definition"></a></dt>
-<dd><p>Resets the</p>
+<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.LocalMax.reset">
+<span class="sig-name descname"><span class="pre">reset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.LocalMax.reset" title="Link to this definition"></a></dt>
+<dd><p>Abstract funtion which must be overwritten by a subclass to reset internal variables and states</p>
 </dd></dl>
 
 </dd></dl>
@@ -352,44 +428,44 @@ which is for example used for sorting them. There is no need to provide an exact
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">neurotorchmz.utils.synapse_detection.</span></span><span class="sig-name descname"><span class="pre">MultiframeSynapse</span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.MultiframeSynapse" title="Link to this definition"></a></dt>
 <dd><p>Implements a synapse which can hold multiple rois (one for each frame)</p>
 <dl class="py method">
-<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.MultiframeSynapse.AddROI">
-<span class="sig-name descname"><span class="pre">AddROI</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">roi</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#neurotorchmz.utils.synapse_detection.ISynapseROI" title="neurotorchmz.utils.synapse_detection.ISynapseROI"><span class="pre">ISynapseROI</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Self</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.MultiframeSynapse.AddROI" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.MultiframeSynapse.add_roi">
+<span class="sig-name descname"><span class="pre">add_roi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">roi</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#neurotorchmz.utils.synapse_detection.ISynapseROI" title="neurotorchmz.utils.synapse_detection.ISynapseROI"><span class="pre">ISynapseROI</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Self</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.MultiframeSynapse.add_roi" title="Link to this definition"></a></dt>
 <dd><p>Add a ROI to the synapse</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.MultiframeSynapse.AddROIs">
-<span class="sig-name descname"><span class="pre">AddROIs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rois</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#neurotorchmz.utils.synapse_detection.ISynapseROI" title="neurotorchmz.utils.synapse_detection.ISynapseROI"><span class="pre">ISynapseROI</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Self</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.MultiframeSynapse.AddROIs" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.MultiframeSynapse.add_rois">
+<span class="sig-name descname"><span class="pre">add_rois</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rois</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#neurotorchmz.utils.synapse_detection.ISynapseROI" title="neurotorchmz.utils.synapse_detection.ISynapseROI"><span class="pre">ISynapseROI</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Self</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.MultiframeSynapse.add_rois" title="Link to this definition"></a></dt>
 <dd><p>Add a range of rois to the synapse</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.MultiframeSynapse.ClearROIs">
-<span class="sig-name descname"><span class="pre">ClearROIs</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Self</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.MultiframeSynapse.ClearROIs" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.MultiframeSynapse.clear_rois">
+<span class="sig-name descname"><span class="pre">clear_rois</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Self</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.MultiframeSynapse.clear_rois" title="Link to this definition"></a></dt>
 <dd><p>Remove all rois</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.MultiframeSynapse.ROIDescriptionStr">
-<span class="sig-name descname"><span class="pre">ROIDescriptionStr</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.MultiframeSynapse.ROIDescriptionStr" title="Link to this definition"></a></dt>
-<dd><p>In future return information about the rois. Currently, only the text ‘Multiframe Synapse’ is returned</p>
+<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.MultiframeSynapse.get_roi_description">
+<span class="sig-name descname"><span class="pre">get_roi_description</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.MultiframeSynapse.get_roi_description" title="Link to this definition"></a></dt>
+<dd><p>In the future return information about the rois. Currently, only the text ‘Multiframe Synapse’ is returned</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.MultiframeSynapse.location">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">location</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">tuple</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.MultiframeSynapse.location" title="Link to this definition"></a></dt>
+<dd><p>Get the location of the synapse</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.MultiframeSynapse.RemoveExplicitLocation">
-<span class="sig-name descname"><span class="pre">RemoveExplicitLocation</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Self</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.MultiframeSynapse.RemoveExplicitLocation" title="Link to this definition"></a></dt>
-<dd><p>Set the location to None</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.MultiframeSynapse.RemoveROI">
-<span class="sig-name descname"><span class="pre">RemoveROI</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">roi</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#neurotorchmz.utils.synapse_detection.ISynapseROI" title="neurotorchmz.utils.synapse_detection.ISynapseROI"><span class="pre">ISynapseROI</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Self</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.MultiframeSynapse.RemoveROI" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.MultiframeSynapse.remove_roi">
+<span class="sig-name descname"><span class="pre">remove_roi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">roi</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#neurotorchmz.utils.synapse_detection.ISynapseROI" title="neurotorchmz.utils.synapse_detection.ISynapseROI"><span class="pre">ISynapseROI</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Self</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.MultiframeSynapse.remove_roi" title="Link to this definition"></a></dt>
 <dd><p>Remove a roi</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.MultiframeSynapse.SetLocation">
-<span class="sig-name descname"><span class="pre">SetLocation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">location</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Self</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.MultiframeSynapse.SetLocation" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.MultiframeSynapse.set_location">
+<span class="sig-name descname"><span class="pre">set_location</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">location</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Self</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.MultiframeSynapse.set_location" title="Link to this definition"></a></dt>
 <dd><p>Set the location of the synapse by either providing a tuple or Y and X explicitly
 which is for example used for sorting them. There is no need to provide an exact center</p>
 <dl class="field-list simple">
@@ -404,15 +480,9 @@ which is for example used for sorting them. There is no need to provide an exact
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.MultiframeSynapse.SetROIs">
-<span class="sig-name descname"><span class="pre">SetROIs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rois</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#neurotorchmz.utils.synapse_detection.ISynapseROI" title="neurotorchmz.utils.synapse_detection.ISynapseROI"><span class="pre">ISynapseROI</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Self</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.MultiframeSynapse.SetROIs" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.MultiframeSynapse.set_rois">
+<span class="sig-name descname"><span class="pre">set_rois</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rois</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#neurotorchmz.utils.synapse_detection.ISynapseROI" title="neurotorchmz.utils.synapse_detection.ISynapseROI"><span class="pre">ISynapseROI</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Self</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.MultiframeSynapse.set_rois" title="Link to this definition"></a></dt>
 <dd><p>Remove all rois and append all rois in the given list</p>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.MultiframeSynapse.location">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">location</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">tuple</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.MultiframeSynapse.location" title="Link to this definition"></a></dt>
-<dd><p>Get the location of the synapse</p>
 </dd></dl>
 
 </dd></dl>
@@ -423,14 +493,22 @@ which is for example used for sorting them. There is no need to provide an exact
 <dd><p>Implements a polygonal synapse ROI</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.PolygonalSynapseROI.CLASS_DESC">
-<span class="sig-name descname"><span class="pre">CLASS_DESC</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'Polyonal</span> <span class="pre">Synapse</span> <span class="pre">ROI'</span></em><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.PolygonalSynapseROI.CLASS_DESC" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">CLASS_DESC</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'Polyonal</span> <span class="pre">ROI'</span></em><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.PolygonalSynapseROI.CLASS_DESC" title="Link to this definition"></a></dt>
 <dd><p>Every subclass defines a description string</p>
 </dd></dl>
 
+<dl class="py attribute">
+<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.PolygonalSynapseROI.coords">
+<span class="sig-name descname"><span class="pre">coords</span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.PolygonalSynapseROI.coords" title="Link to this definition"></a></dt>
+<dd><p>List of points inside the polygon in the format [(Y, X), (Y, X), ..]</p>
+</dd></dl>
+
 <dl class="py method">
-<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.PolygonalSynapseROI.GetImageMask">
-<span class="sig-name descname"><span class="pre">GetImageMask</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shape</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">array</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">array</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.PolygonalSynapseROI.GetImageMask" title="Link to this definition"></a></dt>
-<dd><p>Returns list of coordinates inside the ROI in the format ([Y0, Y1, Y2, …], [X0, X1, X2, …])</p>
+<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.PolygonalSynapseROI.get_coordinates">
+<span class="sig-name descname"><span class="pre">get_coordinates</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shape</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">array</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">array</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.PolygonalSynapseROI.get_coordinates" title="Link to this definition"></a></dt>
+<dd><p>Return coordinates of points inside the ROI and inside the given shape. They are returned as a tuple
+with the first parameter beeing the y coordinates and the second the x coordinates.</p>
+<p>Example output: ([Y0, Y1, Y2, …], [X0, X1, X2, …])</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns tuple[np.array, np.array]<span class="colon">:</span></dt>
 <dd class="field-odd"><p>The coordinates inside the ROI in the format [yy, xx]</p>
@@ -438,9 +516,15 @@ which is for example used for sorting them. There is no need to provide an exact
 </dl>
 </dd></dl>
 
+<dl class="py attribute">
+<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.PolygonalSynapseROI.polygon">
+<span class="sig-name descname"><span class="pre">polygon</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.PolygonalSynapseROI.polygon" title="Link to this definition"></a></dt>
+<dd><p>List of polygon points in the format [(Y, X), (Y, X), ..]</p>
+</dd></dl>
+
 <dl class="py method">
-<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.PolygonalSynapseROI.SetPolygon">
-<span class="sig-name descname"><span class="pre">SetPolygon</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">polygon</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coords</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">region_props</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">RegionProperties</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.PolygonalSynapseROI.SetPolygon" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.PolygonalSynapseROI.set_polygon">
+<span class="sig-name descname"><span class="pre">set_polygon</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">polygon</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coords</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">region_props</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">RegionProperties</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.PolygonalSynapseROI.set_polygon" title="Link to this definition"></a></dt>
 <dd><p>Set the polygon by providing the coordinate tuples and either a) the pixel coords or b) a RegionProperties object (from which the coords are derived)</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -451,24 +535,6 @@ which is for example used for sorting them. There is no need to provide an exact
 </ul>
 </dd>
 </dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.PolygonalSynapseROI.ToStr">
-<span class="sig-name descname"><span class="pre">ToStr</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.PolygonalSynapseROI.ToStr" title="Link to this definition"></a></dt>
-<dd><p>Display the synapse in the format ‘ISynapseROI (X, Y)’ or ‘ISynapseROI’ if location is not given</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.PolygonalSynapseROI.coords">
-<span class="sig-name descname"><span class="pre">coords</span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.PolygonalSynapseROI.coords" title="Link to this definition"></a></dt>
-<dd><p>List of points inside the polygon in the format [(Y, X), (Y, X), ..]</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.PolygonalSynapseROI.polygon">
-<span class="sig-name descname"><span class="pre">polygon</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.PolygonalSynapseROI.polygon" title="Link to this definition"></a></dt>
-<dd><p>List of polygon points in the format [(Y, X), (Y, X), ..]</p>
 </dd></dl>
 
 </dd></dl>
@@ -483,21 +549,21 @@ which is for example used for sorting them. There is no need to provide an exact
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">neurotorchmz.utils.synapse_detection.</span></span><span class="sig-name descname"><span class="pre">SingleframeSynapse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">roi</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#neurotorchmz.utils.synapse_detection.ISynapseROI" title="neurotorchmz.utils.synapse_detection.ISynapseROI"><span class="pre">ISynapseROI</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.SingleframeSynapse" title="Link to this definition"></a></dt>
 <dd><p>Implements a synapse class which can hold exactly one ROI</p>
 <dl class="py method">
-<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.SingleframeSynapse.ROIDescriptionStr">
-<span class="sig-name descname"><span class="pre">ROIDescriptionStr</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.SingleframeSynapse.ROIDescriptionStr" title="Link to this definition"></a></dt>
-<dd><p>Displays information about the roi by calling roi.ToStr()</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.SingleframeSynapse.SetROI">
-<span class="sig-name descname"><span class="pre">SetROI</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">roi</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#neurotorchmz.utils.synapse_detection.ISynapseROI" title="neurotorchmz.utils.synapse_detection.ISynapseROI"><span class="pre">ISynapseROI</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Self</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.SingleframeSynapse.SetROI" title="Link to this definition"></a></dt>
-<dd><p>Set the ROI or remove it by passing None or no argument</p>
+<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.SingleframeSynapse.get_roi_description">
+<span class="sig-name descname"><span class="pre">get_roi_description</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.SingleframeSynapse.get_roi_description" title="Link to this definition"></a></dt>
+<dd><p>Displays information about the roi by calling str(roi)</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.SingleframeSynapse.location">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">location</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">tuple</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.SingleframeSynapse.location" title="Link to this definition"></a></dt>
 <dd><p>Get the location of the synapse accessed from the ROI</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.SingleframeSynapse.set_roi">
+<span class="sig-name descname"><span class="pre">set_roi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">roi</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#neurotorchmz.utils.synapse_detection.ISynapseROI" title="neurotorchmz.utils.synapse_detection.ISynapseROI"><span class="pre">ISynapseROI</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Self</span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.SingleframeSynapse.set_roi" title="Link to this definition"></a></dt>
+<dd><p>Set the ROI or remove it by passing None or no argument</p>
 </dd></dl>
 
 </dd></dl>
@@ -509,12 +575,42 @@ which is for example used for sorting them. There is no need to provide an exact
 a new list of synapses.</p>
 </dd></dl>
 
+<dl class="py class">
+<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.Thresholding">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">neurotorchmz.utils.synapse_detection.</span></span><span class="sig-name descname"><span class="pre">Thresholding</span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.Thresholding" title="Link to this definition"></a></dt>
+<dd><p>Implementation of the thresholding detection algorithm. For details see the documentation</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.Thresholding.detect">
+<span class="sig-name descname"><span class="pre">detect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">minArea</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#neurotorchmz.utils.synapse_detection.ISynapseROI" title="neurotorchmz.utils.synapse_detection.ISynapseROI"><span class="pre">ISynapseROI</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.Thresholding.detect" title="Link to this definition"></a></dt>
+<dd><p>Find ROIs in a given image. For details see the documentation</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>img</strong> (<em>np.ndarray</em>) – The image as 2D numpy array</p></li>
+<li><p><strong>threshold</strong> (<em>int</em><em>|</em><em>float</em>) – Detection is performed on a thresholded image</p></li>
+<li><p><strong>radius</strong> (<em>int</em><em>|</em><em>float</em><em>|</em><em>None</em>) – Returns circular ROIs if radius &gt;= 0 and polygonal ROIs if radius is None. Raises exception otherwise</p></li>
+<li><p><strong>minArea</strong> (<em>int</em><em>|</em><em>float</em>) – Consider only ROIs with a pixel area greater than the provided value</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="neurotorchmz.utils.synapse_detection.Thresholding.reset">
+<span class="sig-name descname"><span class="pre">reset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#neurotorchmz.utils.synapse_detection.Thresholding.reset" title="Link to this definition"></a></dt>
+<dd><p>Abstract funtion which must be overwritten by a subclass to reset internal variables and states</p>
+</dd></dl>
+
+</dd></dl>
+
 </section>
 
 
            </div>
           </div>
-          <footer>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="start.html" class="btn btn-neutral float-left" title="Starting Neurotorch and accessing the API" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
 
   <hr/>
 

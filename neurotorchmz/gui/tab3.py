@@ -83,7 +83,7 @@ class TabROIFinder(Tab):
         self.btnDetect = tk.Button(self.frameOptions, text="Detect", command=self.detect)
         self.btnDetect.grid(row=15, column=0)
         
-        self.frameAlgoOptions = self.detectionAlgorithm.OptionsFrame(self.frameTools, lambda: self.session.active_image_object)
+        self.frameAlgoOptions = self.detectionAlgorithm.get_options_frame(self.frameTools)
         self.frameAlgoOptions.grid(row=1, column=0, sticky="news")
 
         self.frameROIS = tk.LabelFrame(self.frameTools, text="ROIs")

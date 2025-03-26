@@ -1,12 +1,6 @@
 Tab ROI Finder
 ========================
 
-.. toctree::
-   :maxdepth: 2
-   :hidden:
-
-   algorithms
-
 .. note:: 
     **Key features and short summary:**
     
@@ -15,7 +9,7 @@ Tab ROI Finder
     - Choosing the right algorithm and parameters is tricky at first, but mandatory to find any valid results. Take some time to read the docs!
     - Export or import your result to ImageJ, TraceSelector (if installed) or as a multimeasure csv file
 
-.. image:: /../../media/docs/tab_roifinder_01.png
+.. image:: /../media/nt/tab_roifinder/tab_roifinder_01.png
   :alt: Screenshot of Tab ROI Finder
 
 
@@ -24,9 +18,9 @@ ROIs (regions of interest) is a term adapted from ImageJ and is defined in Neuro
 (usually a synapse or similar structure). A ROI in ImageJ can have a variety of shapes, but Neurotorch currently
 support two types: circular and polygonal ROI.
 
-The typicall workflow would be to open an image (for details see :doc:`../../introduction/first_steps`), parameter choosing and then
+The typicall workflow would be to open an image (for details see :doc:`/introduction/first_steps`), parameter choosing and then
 clicking the Detect button in the upper left. While Neurotorch tries to guess the parameters for most algorithms,
-you still should understand what they mean and change them if necessary (:doc:`../algorithm/detection_algorithms`)
+you still should understand what they mean and change them if necessary (:doc:`/algorithm/detection_algorithms`)
 
 ------------------------
 Workflow
@@ -35,15 +29,15 @@ Workflow
 ^^^^^^^^^^^^^^^^^^^^^^^^
 Algorithm
 ^^^^^^^^^^^^^^^^^^^^^^^^
-.. image:: /media/docs/tab_roifinder_algorithm.png
+.. image:: /../media/nt/tab_roifinder/tab_roifinder_algorithm.png
   :alt: The plots of the Tab ROI Finder
 
---> For choosing an algorithm, see :doc:`../algorithm/detection_algorithms`
+--> For choosing an algorithm, see :doc:`/algorithm/detection_algorithms`
 
 - **Image Source**: The source for the detection algorithm. For example when you have noisy image, you should use DiffStd (standard deviation of difference image) rather
-  than DiffMax (maximum of difference image). You can also use a single signal frame (use the Signal Tab [:doc:`tab_signal`] to find them) as source as well. The DiffMax without signal
+  than DiffMax (maximum of difference image). You can also use a single signal frame (use the Signal Tab [:doc:`/gui/tab_signal`] to find them) as source as well. The DiffMax without signal
   option allows you to detect synapses apart from the bright signal frames (for example spontanous releases)
-- **Plot raw algorithm output**: Some algorithm provide aditional details on their internal steps. For details, see :doc:`../algorithm/detection_algorithms`. If present, they will be plotted as 
+- **Plot raw algorithm output**: Some algorithm provide aditional details on their internal steps. For details, see :doc:`/algorithm/detection_algorithms`. If present, they will be plotted as 
   a bright overlay in the source image plot (upper right)
 - **Plot ROI pixels**: If selected, the actual pixels of the ROIs will be plotted as yellow pixels in the microscopic image (upper left)
 
@@ -51,15 +45,15 @@ Algorithm
 Options (algorithm parameters)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. image:: ../../media/docs/local_max_settings.png
+.. image:: /../media/nt/tab_roifinder/local_max_settings.png
   :alt: Setting of the local max algorithm
 
-Setting proper parameters is important. For details, see :doc:`../algorithm/detection_algorithms`
+Setting proper parameters is important. For details, see :doc:`/algorithm/detection_algorithms`
 
 ^^^^^^^^^^^^^^^^^^^^^^^^
 Output
 ^^^^^^^^^^^^^^^^^^^^^^^^
-.. image:: ../../media/docs/tab_roifinder_plots.png
+.. image:: /../media/nt/tab_roifinder/tab_roifinder_plots.png
   :alt: The plots of the Tab ROI Finder
 
 * **A**: The microscopic video displayed as mean image + the detected ROIs (the selected one is yellow, the others red)
@@ -67,14 +61,14 @@ Output
 * **C**: The image signal as slice of the mean value at each frame in the given ROI
 * **D**: The detection signal averaged per frame in the selected ROI
 
-.. image:: ../../media/docs/plots_navigation_bar.png
+.. image:: /../media/nt/tab_roifinder/plots_navigation_bar.png
   :alt: Each plot has a navigation bar
 
 * Image **A** and **B** support clicking on ROIs, which selectes them in the tree view
 * Use the navigation to zoom into the image. You can also zoom into the colorbar right to each plot. Use the home button to reset
 * To save the plots, you find a button in the navigation bar below.
 
-.. image:: ../../media/docs/tab_roifinder_tv.png
+.. image:: /../media/nt/tab_roifinder/tab_roifinder_tv.png
   :alt: The synapse treeview
 
 The result of the detection is summarized in the so called *synapse tree view*. Use the right click menu to add, modify or delete them. Double click to expand a node.

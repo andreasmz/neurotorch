@@ -6,18 +6,17 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from matplotlib import patches
 
-from .image import ImageProperties
+from ..core.session import *
 from ..gui.components.general import *
-from ..core.settings import Neurotorch_Resources as Resource
-from .synapse_detection import *
 
 class IDetectionAlgorithmIntegration:
     """ 
         GUI integration of a synapse detection algorithm. Provides an option frame for setting information about an image
     """
     
-    def __init__(self):
+    def __init__(self, session: Session):
         # The algorithm is choosing on its own what data to use. For this, an IMGObject is provided
+        self.session = session
         self.provides_rawPlot: bool = False
         """ If set to true, the GUI knows that this algorithms provides raw information from the detection """
 
@@ -34,12 +33,12 @@ class IDetectionAlgorithmIntegration:
         self.optionsFrame = tk.LabelFrame(self.master, text="Setting")
         return self.optionsFrame
     
-    def update(self, image_obj: ImageObject, image_prop: ImageProperties|None):
+    def update(self, image_prop: ImageProperties|None):
         """
             This function is called by the GUI to notify the detection algorithm integration object about a change in either the image object or the
             image input
         """
-        self.image_obj = image_obj
+        self.image_obj = self.session.active_image_object
         self.image_prop = image_prop
 
     def detect(self) -> list[ISynapseROI]:
@@ -60,7 +59,7 @@ class IDetectionAlgorithmIntegration:
         return (None, None)
     
     def add_signal_to_result(self, rois: list[ISynapseROI], sort:bool = False) -> list[ISynapseROI]:
-        """ Given a list of ROI, add the signal strength. If set, sort the list descending """
+        """ Add the measured signal strength to a given a list of ROI. If sort is set to true, sort the list descending """
         if self.image_obj is not None:
             for roi in rois:
                 roi.strength = np.max(np.mean(roi.get_signal_from_image(self.image_obj.imgDiff), axis=1))
@@ -73,9 +72,9 @@ class Thresholding_Integration(Thresholding, IDetectionAlgorithmIntegration):
     def get_options_frame(self, master) -> tk.LabelFrame:
         super().get_options_frame(master=master)
 
-        self.setting_threshold = GridSetting(self.optionsFrame, row=5, text="Threshold", unit="", default=50, min_=0, max_=2**15-1, scaleMin=1, scaleMax=200, tooltip=Resource.GetString("algorithms/threshold/params/threshold"))
-        self.setting_radius = GridSetting(self.optionsFrame, row=6, text="Radius", unit="px", default=6, min_=0, max_=1000, scaleMin=-1, scaleMax=30, tooltip=Resource.GetString("algorithms/threshold/params/radius"))
-        self.setting_minArea = GridSetting(self.optionsFrame, row=7, text="Minimal area", unit="px", default=40, min_=0, max_=1000, scaleMin=0, scaleMax=200, tooltip=Resource.GetString("algorithms/threshold/params/minArea"))
+        self.setting_threshold = GridSetting(self.optionsFrame, row=5, text="Threshold", unit="", default=50, min_=0, max_=2**15-1, scaleMin=1, scaleMax=200, tooltip=Resources.GetString("algorithms/threshold/params/threshold"))
+        self.setting_radius = GridSetting(self.optionsFrame, row=6, text="Radius", unit="px", default=6, min_=0, max_=1000, scaleMin=-1, scaleMax=30, tooltip=Resources.GetString("algorithms/threshold/params/radius"))
+        self.setting_minArea = GridSetting(self.optionsFrame, row=7, text="Minimal area", unit="px", default=40, min_=0, max_=1000, scaleMin=0, scaleMax=200, tooltip=Resources.GetString("algorithms/threshold/params/minArea"))
         self.setting_minArea.var.IntVar.trace_add("write", lambda _1,_2,_3: self._update_lbl_minarea())
         self._update_lbl_minarea()
         
@@ -88,7 +87,7 @@ class Thresholding_Integration(Thresholding, IDetectionAlgorithmIntegration):
         radius = self.setting_radius.Get()
         minArea = self.setting_minArea.Get()
         minArea = None if minArea < 0 else minArea 
-        return self.Detect(img=self.image_prop.img, threshold=threshold, radius=radius, minArea=minArea)
+        return self.detect(img=self.image_prop.img, threshold=threshold, radius=radius, minArea=minArea)
 
     def get_rawdata_overlay(self) -> tuple[tuple[np.ndarray]|None, list[patches.Patch]|None]:
         return ((self.imgThresholded,), None)
@@ -113,19 +112,19 @@ class HysteresisTh_Integration(HysteresisTh, IDetectionAlgorithmIntegration):
         self.checkAutoParams = ttk.Checkbutton(self.optionsFrame, variable=self.varAutoParams)
         self.checkAutoParams.grid(row=5, column=1, sticky="nw")
 
-        self.setting_lowerTh = GridSetting(self.optionsFrame, row=10, text="Lower threshold", unit="", default=50, min_=0, max_=2**15-1, scaleMin=1, scaleMax=200, tooltip=Resource.GetString("algorithms/hysteresisTh/params/lowerThreshold"))
-        self.setting_upperTh = GridSetting(self.optionsFrame, row=11, text="Upper threshold", unit="", default=70, min_=0, max_=2**15-1, scaleMin=1, scaleMax=200, tooltip=Resource.GetString("algorithms/hysteresisTh/params/upperThreshold"))
+        self.setting_lowerTh = GridSetting(self.optionsFrame, row=10, text="Lower threshold", unit="", default=50, min_=0, max_=2**15-1, scaleMin=1, scaleMax=200, tooltip=Resources.GetString("algorithms/hysteresisTh/params/lowerThreshold"))
+        self.setting_upperTh = GridSetting(self.optionsFrame, row=11, text="Upper threshold", unit="", default=70, min_=0, max_=2**15-1, scaleMin=1, scaleMax=200, tooltip=Resources.GetString("algorithms/hysteresisTh/params/upperThreshold"))
         self.lblPolygonalROIs = tk.Label(self.optionsFrame, text="Polygonal ROIs")
         self.lblPolygonalROIs.grid(row=12, column=0, sticky="ne")
-        ToolTip(self.lblPolygonalROIs, msg=Resource.GetString("algorithms/hysteresisTh/params/polygonalROIs"), follow=True, delay=0.1)
+        ToolTip(self.lblPolygonalROIs, msg=Resources.GetString("algorithms/hysteresisTh/params/polygonalROIs"), follow=True, delay=0.1)
         self.varCircularApprox = tk.IntVar(value=1)
         self.checkCircularApprox = ttk.Checkbutton(self.optionsFrame, variable=self.varCircularApprox)
         self.checkCircularApprox.grid(row=12, column=1, sticky="nw")
-        self.setting_radius = GridSetting(self.optionsFrame, row=13, text="Radius", unit="px", default=6, min_=0, max_=1000, scaleMin=1, scaleMax=30, tooltip=Resource.GetString("algorithms/hysteresisTh/params/radius"))
+        self.setting_radius = GridSetting(self.optionsFrame, row=13, text="Radius", unit="px", default=6, min_=0, max_=1000, scaleMin=1, scaleMax=30, tooltip=Resources.GetString("algorithms/hysteresisTh/params/radius"))
         self.setting_radius.SetVisibility(not self.varCircularApprox.get())
         self.varCircularApprox.trace_add("write", lambda _1,_2,_3:self.setting_radius.SetVisibility(not self.varCircularApprox.get()))
         
-        self.setting_minArea = GridSetting(self.optionsFrame, row=14, text="Min. Area", unit="px", default=50, min_=1, max_=10000, scaleMin=0, scaleMax=200, tooltip=Resource.GetString("algorithms/hysteresisTh/params/minArea"))
+        self.setting_minArea = GridSetting(self.optionsFrame, row=14, text="Min. Area", unit="px", default=50, min_=1, max_=10000, scaleMin=0, scaleMax=200, tooltip=Resources.GetString("algorithms/hysteresisTh/params/minArea"))
         self.setting_minArea.var.IntVar.trace_add("write", lambda _1,_2,_3: self._update_lbl_minarea())
         self.lblMinAreaInfo = tk.Label(self.optionsFrame, text="")
         self.lblMinAreaInfo.grid(row=15, column=0, columnspan=3)
@@ -135,8 +134,8 @@ class HysteresisTh_Integration(HysteresisTh, IDetectionAlgorithmIntegration):
         
         return self.optionsFrame
     
-    def update(self, image_obj: ImageObject, image_prop: ImageProperties|None):
-        super().update(image_obj=image_obj, image_prop=image_prop)
+    def update(self, image_prop: ImageProperties|None):
+        super().update(image_prop=image_prop)
         if self.image_prop is None:
             self.lblImgStats["text"] = ""
             return
@@ -154,7 +153,7 @@ class HysteresisTh_Integration(HysteresisTh, IDetectionAlgorithmIntegration):
         if self.varAutoParams.get() != 1 or self.image_prop is None:
             return
         lowerThreshold = int(self.image_prop.mean + 2.5*self.image_prop.std)
-        upperThreshold = max(lowerThreshold, min(self.image_prop.max/2, self.image_prop.mean + 5*inputImageObj.std))
+        upperThreshold = max(lowerThreshold, min(self.image_prop.max/2, self.image_prop.mean + 5*self.image_prop.std))
         self.setting_lowerTh.var.IntVar.set(lowerThreshold)
         self.setting_upperTh.var.IntVar.set(upperThreshold)
 
@@ -172,7 +171,7 @@ class HysteresisTh_Integration(HysteresisTh, IDetectionAlgorithmIntegration):
         upperThreshold = self.setting_upperTh.Get()
         minArea = self.setting_minArea.Get() if polygon else 0
 
-        result = self.Detect(img=inputImageObj.img, 
+        result = self.detect(img=self.image_prop.img, 
                              lowerThreshold=lowerThreshold, 
                              upperThreshold=upperThreshold, 
                              minArea=minArea)
@@ -207,29 +206,28 @@ class LocalMax_Integration(LocalMax, IDetectionAlgorithmIntegration):
         self.checkAutoParams = ttk.Checkbutton(self.optionsFrame, variable=self.varAutoParams)
         self.checkAutoParams.grid(row=5, column=1, sticky="nw")
 
-        self.setting_radius = GridSetting(self.optionsFrame, row=10, text="Radius", unit="px", default=6, min_=-1, max_=1000, scaleMin=-1, scaleMax=30, tooltip=Resource.GetString("algorithms/localMax/params/radius"))
-        self.setting_lowerTh = GridSetting(self.optionsFrame, row=11, text="Lower threshold", unit="", default=50, min_=0, max_=2**15-1, scaleMin=1, scaleMax=400, tooltip=Resource.GetString("algorithms/localMax/params/lowerThreshold"))
-        self.setting_upperTh = GridSetting(self.optionsFrame, row=12, text="Upper threshold", unit="", default=70, min_=0, max_=2**15-1, scaleMin=1, scaleMax=400, tooltip=Resource.GetString("algorithms/localMax/params/upperThreshold"))
-        self.setting_sortBySignal = GridSetting(self.optionsFrame, row=13, text="Sort by signal strength", type_="Checkbox", default=1, min_=0, tooltip=Resource.GetString("algorithms/localMax/params/sortBySignal"))
+        self.setting_radius = GridSetting(self.optionsFrame, row=10, text="Radius", unit="px", default=6, min_=-1, max_=1000, scaleMin=-1, scaleMax=30, tooltip=Resources.GetString("algorithms/localMax/params/radius"))
+        self.setting_lowerTh = GridSetting(self.optionsFrame, row=11, text="Lower threshold", unit="", default=50, min_=0, max_=2**15-1, scaleMin=1, scaleMax=400, tooltip=Resources.GetString("algorithms/localMax/params/lowerThreshold"))
+        self.setting_upperTh = GridSetting(self.optionsFrame, row=12, text="Upper threshold", unit="", default=70, min_=0, max_=2**15-1, scaleMin=1, scaleMax=400, tooltip=Resources.GetString("algorithms/localMax/params/upperThreshold"))
+        self.setting_sortBySignal = GridSetting(self.optionsFrame, row=13, text="Sort by signal strength", type_="Checkbox", default=1, min_=0, tooltip=Resources.GetString("algorithms/localMax/params/sortBySignal"))
         
         tk.Label(self.optionsFrame, text="Advanced settings").grid(row=20, column=0, columnspan=4, sticky="nw")
-        self.setting_maxPeakCount = GridSetting(self.optionsFrame, row=21, text="Max. Peak Count", unit="", default=0, min_=0, max_=200, scaleMin=0, scaleMax=100, tooltip=Resource.GetString("algorithms/localMax/params/maxPeakCount"))
-        self.setting_minDistance = GridSetting(self.optionsFrame, row=22, text="Min. Distance", unit="px", default=20, min_=1, max_=1000, scaleMin=1, scaleMax=100, tooltip=Resource.GetString("algorithms/localMax/params/minDistance"))
-        self.setting_expandSize = GridSetting(self.optionsFrame, row=23, text="Expand size", unit="px", default=6, min_=0, max_=200, scaleMin=0, scaleMax=50, tooltip=Resource.GetString("algorithms/localMax/params/expandSize"))
-        self.setting_minSignal = GridSetting(self.optionsFrame, row=24, text="Minimum Signal", unit="", default=0, min_=0, max_=2**15-1, scaleMin=0, scaleMax=400, tooltip=Resource.GetString("algorithms/localMax/params/minSignal"))
-        self.setting_minArea = GridSetting(self.optionsFrame, row=25, text="Min. Area", unit="px", default=50, min_=1, max_=10000, scaleMin=0, scaleMax=200, tooltip=Resource.GetString("algorithms/localMax/params/minArea"))
+        self.setting_maxPeakCount = GridSetting(self.optionsFrame, row=21, text="Max. Peak Count", unit="", default=0, min_=0, max_=200, scaleMin=0, scaleMax=100, tooltip=Resources.GetString("algorithms/localMax/params/maxPeakCount"))
+        self.setting_minDistance = GridSetting(self.optionsFrame, row=22, text="Min. Distance", unit="px", default=20, min_=1, max_=1000, scaleMin=1, scaleMax=100, tooltip=Resources.GetString("algorithms/localMax/params/minDistance"))
+        self.setting_expandSize = GridSetting(self.optionsFrame, row=23, text="Expand size", unit="px", default=6, min_=0, max_=200, scaleMin=0, scaleMax=50, tooltip=Resources.GetString("algorithms/localMax/params/expandSize"))
+        self.setting_minSignal = GridSetting(self.optionsFrame, row=24, text="Minimum Signal", unit="", default=0, min_=0, max_=2**15-1, scaleMin=0, scaleMax=400, tooltip=Resources.GetString("algorithms/localMax/params/minSignal"))
+        self.setting_minArea = GridSetting(self.optionsFrame, row=25, text="Min. Area", unit="px", default=50, min_=1, max_=10000, scaleMin=0, scaleMax=200, tooltip=Resources.GetString("algorithms/localMax/params/minArea"))
         self.setting_minArea.var.IntVar.trace_add("write", lambda _1,_2,_3: self._update_lbl_minarea())
         self.lblMinAreaInfo = tk.Label(self.optionsFrame, text="")
         self.lblMinAreaInfo.grid(row=26, column=0, columnspan=3)
         self._update_lbl_minarea()
-        
 
-        self.OptionsFrame_Update(None)
+        self.update(None)
 
         return self.optionsFrame
     
-    def update(self, image_obj: ImageObject, image_prop: ImageProperties|None):
-        super().update(image_obj=image_obj, image_prop=image_prop)
+    def update(self, image_prop: ImageProperties|None):
+        super().update(image_prop=image_prop)
         if self.image_prop is None:
             self.lblImgStats["text"] = ""
             return
@@ -263,7 +261,7 @@ class LocalMax_Integration(LocalMax, IDetectionAlgorithmIntegration):
         minDistance = self.setting_minDistance.Get()
         minSignal = self.setting_minSignal.Get()
         radius = self.setting_radius.Get()
-        return self.Detect(img=self.image_prop.img,
+        return self.detect(img=self.image_prop.img,
                            lowerThreshold=lowerThreshold, 
                            upperThreshold=upperThreshold, 
                            expandSize=expandSize,

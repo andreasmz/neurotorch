@@ -49,12 +49,6 @@ class Session(Serializable):
         self._ijH = None
         self.api = SessionAPI(self)
 
-    def serialize(self, **kwargs) -> dict:
-        pass
-    
-    def deserialize(self, serialize_dict:dict, **kwargs):
-        pass
-
     def launch(self, background: bool = False):
         """
             Launches the GUI. The parameter background controls if a thread is used. Can only be called once
@@ -128,6 +122,12 @@ class Session(Serializable):
         if self.window is not None:
             from ..gui.window import ImageChangedEvent # Import not in the file header to avoid circular imports. It is already imported in launch(), so minimal performance loss
             self.window.invoke_tab_update_event(ImageChangedEvent())
+
+    def serialize(self, **kwargs) -> dict:
+        pass
+    
+    def deserialize(self, serialize_dict:dict, **kwargs):
+        pass
 
 
 class SessionAPI:

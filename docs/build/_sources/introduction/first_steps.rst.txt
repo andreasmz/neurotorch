@@ -13,10 +13,10 @@ but as a beginning, consider the following image
     :widths: 50 50
     :align: center
 
-    * - .. image:: ../media/sample_synaptic_activity01.gif
+    * - .. image:: /../media/nt/algorithm/sample_synaptic_activity01.gif
            :alt: Example of synaptic activity tagged with iGluSnFR3
 
-      - .. image:: ../media/sample_synaptic_activity_rois_01.gif
+      - .. image:: /../media/nt/algorithm/sample_synaptic_activity_rois_01.gif
            :alt: Detected ROIs in the image
 
     * - Example of synaptic activity

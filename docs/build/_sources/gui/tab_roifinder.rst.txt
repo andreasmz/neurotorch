@@ -1,12 +1,6 @@
 Tab ROI Finder
 ========================
 
-.. toctree::
-   :maxdepth: 2
-   :hidden:
-
-   algorithms
-
 .. note:: 
     **Key features and short summary:**
     

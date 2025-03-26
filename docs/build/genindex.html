@@ -51,7 +51,13 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="gui/tab_image.html">Tab Image</a></li>
 <li class="toctree-l1"><a class="reference internal" href="gui/tab_signal.html">Tab Signal</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gui/tab_roifinder.html">Tab ROI Finder</a></li>
 <li class="toctree-l1"><a class="reference internal" href="gui/imagej.html">Fiji/ImageJ Integration</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Algorithms</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="algorithm/detection_algorithms.html">Detection Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithm/signal_algorithms.html">Signal algorithms</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API</span></p>
 <ul>
@@ -112,9 +118,9 @@
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.MultiframeSynapse.AddROI">AddROI() (neurotorchmz.utils.synapse_detection.MultiframeSynapse method)</a>
+      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.MultiframeSynapse.add_roi">add_roi() (neurotorchmz.utils.synapse_detection.MultiframeSynapse method)</a>
 </li>
-      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.MultiframeSynapse.AddROIs">AddROIs() (neurotorchmz.utils.synapse_detection.MultiframeSynapse method)</a>
+      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.MultiframeSynapse.add_rois">add_rois() (neurotorchmz.utils.synapse_detection.MultiframeSynapse method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -134,7 +140,7 @@
       </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.MultiframeSynapse.ClearROIs">ClearROIs() (neurotorchmz.utils.synapse_detection.MultiframeSynapse method)</a>
+      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.MultiframeSynapse.clear_rois">clear_rois() (neurotorchmz.utils.synapse_detection.MultiframeSynapse method)</a>
 </li>
       <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.PolygonalSynapseROI.coords">coords (neurotorchmz.utils.synapse_detection.PolygonalSynapseROI attribute)</a>
 </li>
@@ -144,17 +150,23 @@
 <h2 id="D">D</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.LocalMax.Detect">Detect() (neurotorchmz.utils.synapse_detection.LocalMax method)</a>
+      <li><a href="glossary.html#term-delta-video"><strong>delta video:</strong></a>
 </li>
-      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.DetectionError">DetectionError</a>
+      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.HysteresisTh.detect">detect() (neurotorchmz.utils.synapse_detection.HysteresisTh method)</a>
+
+      <ul>
+        <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.IDetectionAlgorithm.detect">(neurotorchmz.utils.synapse_detection.IDetectionAlgorithm method)</a>
 </li>
+        <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.LocalMax.detect">(neurotorchmz.utils.synapse_detection.LocalMax method)</a>
+</li>
+        <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.Thresholding.detect">(neurotorchmz.utils.synapse_detection.Thresholding method)</a>
+</li>
+      </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.DetectionError">DetectionError</a>
+</li>
       <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.DetectionResult">DetectionResult (class in neurotorchmz.utils.synapse_detection)</a>
-</li>
-      <li><a href="glossary.html#term-difference-image"><strong>difference image:</strong></a>
-</li>
-      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.ISynapseROI.Distance">Distance() (neurotorchmz.utils.synapse_detection.ISynapseROI method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -178,17 +190,27 @@
 <h2 id="G">G</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.CircularSynapseROI.GetImageMask">GetImageMask() (neurotorchmz.utils.synapse_detection.CircularSynapseROI method)</a>
+      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.CircularSynapseROI.get_coordinates">get_coordinates() (neurotorchmz.utils.synapse_detection.CircularSynapseROI method)</a>
 
       <ul>
-        <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.ISynapseROI.GetImageMask">(neurotorchmz.utils.synapse_detection.ISynapseROI method)</a>
+        <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.ISynapseROI.get_coordinates">(neurotorchmz.utils.synapse_detection.ISynapseROI method)</a>
 </li>
-        <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.PolygonalSynapseROI.GetImageMask">(neurotorchmz.utils.synapse_detection.PolygonalSynapseROI method)</a>
+        <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.PolygonalSynapseROI.get_coordinates">(neurotorchmz.utils.synapse_detection.PolygonalSynapseROI method)</a>
 </li>
       </ul></li>
+      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.ISynapseROI.get_distance">get_distance() (neurotorchmz.utils.synapse_detection.ISynapseROI method)</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.ISynapseROI.GetImageSignal">GetImageSignal() (neurotorchmz.utils.synapse_detection.ISynapseROI method)</a>
+      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.ISynapse.get_roi_description">get_roi_description() (neurotorchmz.utils.synapse_detection.ISynapse method)</a>
+
+      <ul>
+        <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.MultiframeSynapse.get_roi_description">(neurotorchmz.utils.synapse_detection.MultiframeSynapse method)</a>
+</li>
+        <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.SingleframeSynapse.get_roi_description">(neurotorchmz.utils.synapse_detection.SingleframeSynapse method)</a>
+</li>
+      </ul></li>
+      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.ISynapseROI.get_signal_from_image">get_signal_from_image() (neurotorchmz.utils.synapse_detection.ISynapseROI method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -238,10 +260,12 @@
       </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.ISynapse.locationStr">locationStr (neurotorchmz.utils.synapse_detection.ISynapse property)</a>
+      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.ISynapse.location_string">location_string (neurotorchmz.utils.synapse_detection.ISynapse property)</a>
+
+      <ul>
+        <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.ISynapseROI.location_string">(neurotorchmz.utils.synapse_detection.ISynapseROI property)</a>
 </li>
-      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.ISynapseROI.LocationStr">LocationStr() (neurotorchmz.utils.synapse_detection.ISynapseROI method)</a>
-</li>
+      </ul></li>
   </ul></td>
 </tr></table>
 
@@ -304,20 +328,18 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.CircularSynapseROI.radius">radius (neurotorchmz.utils.synapse_detection.CircularSynapseROI attribute)</a>
 </li>
-      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.ISynapseROI.regionProps">regionProps (neurotorchmz.utils.synapse_detection.ISynapseROI attribute)</a>
+      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.ISynapseROI.region_props">region_props (neurotorchmz.utils.synapse_detection.ISynapseROI attribute)</a>
 </li>
-      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.MultiframeSynapse.RemoveExplicitLocation">RemoveExplicitLocation() (neurotorchmz.utils.synapse_detection.MultiframeSynapse method)</a>
+      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.MultiframeSynapse.remove_roi">remove_roi() (neurotorchmz.utils.synapse_detection.MultiframeSynapse method)</a>
 </li>
-      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.MultiframeSynapse.RemoveROI">RemoveROI() (neurotorchmz.utils.synapse_detection.MultiframeSynapse method)</a>
-</li>
-      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.LocalMax.Reset">Reset() (neurotorchmz.utils.synapse_detection.LocalMax method)</a>
-</li>
-      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.ISynapse.ROIDescriptionStr">ROIDescriptionStr() (neurotorchmz.utils.synapse_detection.ISynapse method)</a>
+      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.HysteresisTh.reset">reset() (neurotorchmz.utils.synapse_detection.HysteresisTh method)</a>
 
       <ul>
-        <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.MultiframeSynapse.ROIDescriptionStr">(neurotorchmz.utils.synapse_detection.MultiframeSynapse method)</a>
+        <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.IDetectionAlgorithm.reset">(neurotorchmz.utils.synapse_detection.IDetectionAlgorithm method)</a>
 </li>
-        <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.SingleframeSynapse.ROIDescriptionStr">(neurotorchmz.utils.synapse_detection.SingleframeSynapse method)</a>
+        <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.LocalMax.reset">(neurotorchmz.utils.synapse_detection.LocalMax method)</a>
+</li>
+        <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.Thresholding.reset">(neurotorchmz.utils.synapse_detection.Thresholding method)</a>
 </li>
       </ul></li>
   </ul></td>
@@ -342,27 +364,27 @@
 </li>
       <li><a href="api/start.html#neurotorchmz.core.session.Session.set_active_image_object">set_active_image_object() (neurotorchmz.core.session.Session method)</a>
 </li>
-      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.ISynapseROI.SetFrame">SetFrame() (neurotorchmz.utils.synapse_detection.ISynapseROI method)</a>
+      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.ISynapseROI.set_frame">set_frame() (neurotorchmz.utils.synapse_detection.ISynapseROI method)</a>
 </li>
-      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.ISynapseROI.SetLocation">SetLocation() (neurotorchmz.utils.synapse_detection.ISynapseROI method)</a>
+      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.ISynapseROI.set_location">set_location() (neurotorchmz.utils.synapse_detection.ISynapseROI method)</a>
 
       <ul>
-        <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.MultiframeSynapse.SetLocation">(neurotorchmz.utils.synapse_detection.MultiframeSynapse method)</a>
+        <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.MultiframeSynapse.set_location">(neurotorchmz.utils.synapse_detection.MultiframeSynapse method)</a>
 </li>
       </ul></li>
-      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.ISynapse.SetName">SetName() (neurotorchmz.utils.synapse_detection.ISynapse method)</a>
+      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.ISynapse.set_name">set_name() (neurotorchmz.utils.synapse_detection.ISynapse method)</a>
 </li>
-      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.PolygonalSynapseROI.SetPolygon">SetPolygon() (neurotorchmz.utils.synapse_detection.PolygonalSynapseROI method)</a>
+      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.PolygonalSynapseROI.set_polygon">set_polygon() (neurotorchmz.utils.synapse_detection.PolygonalSynapseROI method)</a>
 </li>
-      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.CircularSynapseROI.SetRadius">SetRadius() (neurotorchmz.utils.synapse_detection.CircularSynapseROI method)</a>
+      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.CircularSynapseROI.set_radius">set_radius() (neurotorchmz.utils.synapse_detection.CircularSynapseROI method)</a>
 </li>
-      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.ISynapseROI.SetRegionProps">SetRegionProps() (neurotorchmz.utils.synapse_detection.ISynapseROI method)</a>
+      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.ISynapseROI.set_region_props">set_region_props() (neurotorchmz.utils.synapse_detection.ISynapseROI method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.SingleframeSynapse.SetROI">SetROI() (neurotorchmz.utils.synapse_detection.SingleframeSynapse method)</a>
+      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.SingleframeSynapse.set_roi">set_roi() (neurotorchmz.utils.synapse_detection.SingleframeSynapse method)</a>
 </li>
-      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.MultiframeSynapse.SetROIs">SetROIs() (neurotorchmz.utils.synapse_detection.MultiframeSynapse method)</a>
+      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.MultiframeSynapse.set_rois">set_rois() (neurotorchmz.utils.synapse_detection.MultiframeSynapse method)</a>
 </li>
       <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.SimpleCustering">SimpleCustering (class in neurotorchmz.utils.synapse_detection)</a>
 </li>
@@ -388,14 +410,8 @@
 <h2 id="T">T</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.CircularSynapseROI.ToStr">ToStr() (neurotorchmz.utils.synapse_detection.CircularSynapseROI method)</a>
-
-      <ul>
-        <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.ISynapseROI.ToStr">(neurotorchmz.utils.synapse_detection.ISynapseROI method)</a>
+      <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.Thresholding">Thresholding (class in neurotorchmz.utils.synapse_detection)</a>
 </li>
-        <li><a href="api/synapse_detection.html#neurotorchmz.utils.synapse_detection.PolygonalSynapseROI.ToStr">(neurotorchmz.utils.synapse_detection.PolygonalSynapseROI method)</a>
-</li>
-      </ul></li>
   </ul></td>
 </tr></table>
 

@@ -17,7 +17,17 @@ from .components.general import Statusbar
 from ..core.session import *
 from ..core.session import __version__
 from ..core.task_system import Task
+from ..utils.plugin_manager import Plugin, PluginManager
 
+
+class TabUpdateEvent:
+    pass
+
+class ImageChangedEvent(TabUpdateEvent):
+    pass
+
+class SignalChangedEvent(TabUpdateEvent):
+    pass
 
 class Neurotorch_GUI:
     def __init__(self, session: Session):
@@ -103,7 +113,7 @@ class Neurotorch_GUI:
         for t in self.tabs.values(): t.init()
         self.tabMain.select(self.tabs[TabImage].tab)
 
-        #self.plugin_mng = PluginManager(self)
+        self.plugin_manager = PluginManager(self.session)
 
         self.root.protocol("WM_DELETE_WINDOW", self._on_closing)
         self.tabMain.pack(expand=1, fill="both")
@@ -125,7 +135,7 @@ class Neurotorch_GUI:
             self.invoke_tab_about_update(t, event)
         return self._update_task
 
-    def invoke_tab_about_update(self, tab: Tab, event: TabUpdateEvent) -> Task:
+    def invoke_tab_about_update(self, tab: 'Tab', event: TabUpdateEvent) -> Task:
         """ Add a UpdateEvent to the queue and start the update loop if not already running """
         self._pending_updates.append((tab, event))
         self._update_task.start()
@@ -274,14 +284,7 @@ class Neurotorch_GUI:
         logger.debug("Neurotorch is now in debugging mode")
 
 
-class TabUpdateEvent:
-    pass
 
-class ImageChangedEvent(TabUpdateEvent):
-    pass
-
-class SignalChangedEvent(TabUpdateEvent):
-    pass
 
 class Tab:
 

@@ -41,4 +41,4 @@ print(f"Generating documentation for neurotorchmz version {neurotorchmz.__versio
 
 html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
-html_favicon = 'media/neurotorch_logo.ico'
+html_favicon = '../media/neurotorch_logo.ico'

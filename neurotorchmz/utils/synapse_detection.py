@@ -365,7 +365,7 @@ class DetectionResult:
         
 class IDetectionAlgorithm:
     """ Abstract base class for a detection algorithm implementation """
-    def Detect(self, img: np.ndarray, **kwargs) -> list[ISynapseROI]:
+    def detect(self, img: np.ndarray, **kwargs) -> list[ISynapseROI]:
         """
             Given an input image as 2D np.ndarray and algorithm dependend arbitary arguments,
             return a list of ISynapseROI.
@@ -374,7 +374,7 @@ class IDetectionAlgorithm:
         """
         pass
     
-    def Reset(self):
+    def reset(self):
         """ 
             Abstract funtion which must be overwritten by a subclass to reset internal variables and states
         """
@@ -382,7 +382,7 @@ class IDetectionAlgorithm:
 
 class DetectionError(Exception):
     """
-        Error thrown by calling Detect() on a IDetectionAlgorithm object indicating something went wrong in the
+        Error thrown by calling detect() on a IDetectionAlgorithm object indicating something went wrong in the
         detection process.
     """
     pass
@@ -395,9 +395,9 @@ class Thresholding(IDetectionAlgorithm):
 
     def __init__(self): 
         super().__init__()
-        self.Reset()
+        self.reset()
 
-    def Reset(self):
+    def reset(self):
         self.imgThresholded: np.ndarray|None = None
         """ Internal variable; The image after it is thresholded """
         self.imgLabeled: np.ndarray|None = None
@@ -405,7 +405,7 @@ class Thresholding(IDetectionAlgorithm):
         self.imgRegProps = None
         """ Internal variable; Holding the region properties of each detected label """
 
-    def Detect(self, 
+    def detect(self, 
                img:np.ndarray, 
                threshold: int|float, 
                radius: int|float|None, 
@@ -437,19 +437,19 @@ class Thresholding(IDetectionAlgorithm):
 class HysteresisTh(IDetectionAlgorithm):
     def __init__(self): 
         super().__init__()
-        self.Reset()
+        self.reset()
 
-    def Reset(self):
+    def reset(self):
         self.thresholded_img = None
         self.labeled_img = None
         self.region_props = None
         self.thresholdFiltered_img = None
 
-    def Detect(self, 
+    def detect(self, 
                img:np.ndarray, 
                lowerThreshold: int|float, 
                upperThreshold: int|float, 
-               minArea
+               minArea: int|float
         ) -> list[ISynapseROI]:
         """
             Find ROIs in a given image. For details see the documentation
@@ -457,8 +457,7 @@ class HysteresisTh(IDetectionAlgorithm):
             :param np.ndarray img: The image as 2D numpy array
             :param int|float lowerThreshold: lower threshold for detection
             :param int|float upperThreshold: upper threshold for detection
-            :param int|float|None radius: Returns circular ROIs if radius >= 0 and polygonal ROIs if radius is None. Raises exception otherwise
-            :param int|float minROISize: Consider only ROIs with a pixel area greater 
+            :param int|float minArea: Consider only ROIs with a pixel area greater than the given value
         """
         self.thresholded_img = (img > lowerThreshold).astype(int)
         self.thresholded_img[self.thresholded_img > 0] = 1
@@ -493,17 +492,14 @@ class HysteresisTh(IDetectionAlgorithm):
 
 class LocalMax(IDetectionAlgorithm):
     """ 
-        Implementation of the 
-     
+        Implementation of the LocalMax algorithm for ROI detection. For details see the documentation
     """
-
 
     def __init__(self): 
         super().__init__()
-        self.Reset()
+        self.reset()
 
-    def Reset(self):
-        """ Resets the """
+    def reset(self):
         self.imgThresholded = None
         self.imgThresholded_labeled = None
         self.imgMaximumFiltered = None
@@ -516,30 +512,40 @@ class LocalMax(IDetectionAlgorithm):
         self.region_props = None
         self.labeledImage = None
 
-    def Detect(self, 
+    def detect(self, 
                img:np.ndarray, 
                lowerThreshold: int|float,
                upperThreshold: int|float,
                expandSize: int,
-               maxPeakCount: int,
                minArea: int,
                minDistance: int,
-               minSignal: int,
-               radius: int|float,
-               sortBySignal: bool,
-               imgObj: ImageObject|None = None
+               radius: int|float|None
                ) -> list[ISynapseROI]:
         """
-            Detect ROIs in the given 2D image 
-        """
-        self.Reset()
+            Detect ROIs in the given 2D image. For details see the documentation
 
+            Find ROIs in a given image. For details see the documentation
+
+            :param np.ndarray img: The image as 2D numpy array
+            :param int|float lowerThreshold: The lower threshold
+            :param int|float upperThreshold: The upper threshold
+            :param int expandSize: Pixel to expand the peak search into
+            :param int minArea: Minimum area of a ROI
+            :param int minDistance: Mimum distance between two ROIs
+            :param int|float|None radius: Returns circular ROIs if radius >= 0 and polygonal ROIs if radius is None. Raises exception otherwise
+
+        """
+        if len(img.shape) != 2:
+            raise ValueError("img must be a 2D numpy array")
+        if radius is not None and radius < 0:
+            raise ValueError("Radius must be positive or None")
         if lowerThreshold >= upperThreshold:
             upperThreshold = lowerThreshold
+        
+        self.reset()
 
         self.imgThresholded = (img >= lowerThreshold)
         self.imgThresholded_labeled = measure.label(self.imgThresholded, connectivity=1)
-        #_numpeaks = maxPeakCount if maxPeakCount > 0 else np.inf
         self.maxima = peak_local_max(img, min_distance=minDistance, threshold_abs=upperThreshold) # ((Y, X), ..)
         self.maxima_labeled = np.zeros(shape=img.shape, dtype=int)
         for i in range(self.maxima.shape[0]):
@@ -566,7 +572,7 @@ class LocalMax(IDetectionAlgorithm):
         synapses = []
         for i in range(len(self.region_props)):
             region = self.region_props[i]
-            if radius < 0:
+            if radius is None:
                 contours = measure.find_contours(np.pad(region.image_filled, 1, constant_values=0), 0.9)
                 contour = contours[0]
                 for c in contours: # Find the biggest contour and assume its the one wanted
@@ -587,15 +593,8 @@ class LocalMax(IDetectionAlgorithm):
                 _imgSynapse[synapse.get_coordinates(img.shape)] = 1
                 _regProp = measure.regionprops(_imgSynapse, intensity_image=img)
                 synapse.set_region_props(_regProp[0])
-            synapse.strength = np.max(np.mean(synapse.get_signal_from_image(imgObj.imgDiff), axis=1))
-            if minSignal <= 0 or synapse.strength >= minSignal:
-                synapses.append(synapse)
-        if sortBySignal or maxPeakCount > 0:
-            synapses.sort(key=lambda x: x.strength, reverse=True)
-        if maxPeakCount > 0:
-            synapses = synapses[:maxPeakCount]
-        if not sortBySignal:
-            synapses.sort(key=lambda x: (x.location[1], x.location[0]))
+            synapses.append(synapse)
+        synapses.sort(key=lambda x: (x.location[1], x.location[0]))
             
         return synapses 
     
@@ -608,12 +607,12 @@ class SynapseClusteringAlgorithm:
         a new list of synapses.
     """
 
-    def Cluster(rois: list[ISynapseROI]) -> list[ISynapse]:
+    def cluster(rois: list[ISynapseROI]) -> list[ISynapse]:
         pass
 
 class SimpleCustering(SynapseClusteringAlgorithm):
 
-    def Cluster(rois: list[ISynapseROI]) -> list[ISynapse]:
+    def cluster(rois: list[ISynapseROI]) -> list[ISynapse]:
         locations = [r.location for r in rois]
         distances = pdist(locations)
         wardmatrix = ward(distances)

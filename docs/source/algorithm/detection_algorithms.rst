@@ -30,6 +30,12 @@ Local Max
 
 The local maximum algorithm is in general the best algorithm to choose. It tries to find local maxima and extends
 them into their neighborhood if certain criteria are met. In contrast to hysteresis thresholding it can work with 
-images with ares of high and local signal strength. Like hysteresis thresholding is provides an auto parameter option
+images with ares of high and local signal strength. Like hysteresis thresholding it provides an auto parameter option
 to set the most common parameters depending on the image properties.
 
+=========================== =========================== ==========================================================
+Parameter                   Type                        Description
+=========================== =========================== ==========================================================
+lower threshold             integer or float            Defines the noise level, as all values greater or equal
+                                                        this threshold are considered 
+=========================== =========================== ==========================================================

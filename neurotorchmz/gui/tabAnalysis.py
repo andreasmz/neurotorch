@@ -80,7 +80,7 @@ class TabAnalysis(Tab):
         self.btn3DPlot = tk.Button(self.frameDisplay, text="3D Multiframe Plot", command=lambda:self.show_external_plot("3D Multiframe Plot", self.plot_3D_multiframe))
         self.btn3DPlot.grid(row=10, column=1)
         
-        self.frameAlgoOptions = self.detectionAlgorithm.OptionsFrame(self.frameTools, lambda: self.session.active_image_object)
+        self.frameAlgoOptions = self.detectionAlgorithm.get_options_frame(self.frameTools, lambda: self.session.active_image_object)
         self.frameAlgoOptions.grid(row=2, column=0, sticky="news")
 
         self.frameROIS = tk.LabelFrame(self.frameTools, text="ROIs")
@@ -318,7 +318,7 @@ class TabAnalysis(Tab):
             for i, p in enumerate(signalObj.peaks):
                 task.set_step_progress(i, f"detecting ROIs in frame {p}")
                 rois.extend([r.set_frame(p) for r in self.detectionAlgorithm.DetectAutoParams(imgObj.imgDiff_FrameProps(p))])
-            synapses = SimpleCustering.Cluster(rois)
+            synapses = SimpleCusteringcluster(rois)
             self.detection_result.synapses = synapses
             self.tvSynapses.SyncSynapses()
             self.invoke_update(TabAnalysis_InvalidateEvent(rois=True))

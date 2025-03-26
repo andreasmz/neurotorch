@@ -7,7 +7,7 @@ Delta video
 The main idea of Neurotorch is to use the differences between frames to find peaks of
 brightness. Therefore Neurotorch calculates the so called delta video.
 
-.. figure:: ../media/diffImage_overview.jpg
+.. figure:: /../media/nt/algorithm/diffImage_overview.jpg
   :alt: Overview of delta video frames around a stimulation
 
   Example for a delta video around an external stimulation (frame 100).
@@ -19,7 +19,7 @@ brightness. Therefore Neurotorch calculates the so called delta video.
 Denoising the delta video
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. figure:: ../media/diffImage_convolution_compare.png
+.. figure:: /../media/nt/algorithm/diffImage_convolution_compare.png
   :alt: Different levels of denoising for the delta video compared
 
   Different levels of denoising for the delta video compared. In general, a Gaussian kernel with σ=2px is good a compromise.
