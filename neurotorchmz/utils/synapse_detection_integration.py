@@ -58,16 +58,32 @@ class IDetectionAlgorithmIntegration:
         """
         return (None, None)
     
-    def add_signal_to_result(self, rois: list[ISynapseROI], sort:bool = False) -> list[ISynapseROI]:
-        """ Add the measured signal strength to a given a list of ROI. If sort is set to true, sort the list descending """
+    def filter_rois(self, rois: list[ISynapseROI], 
+               sort:None|Literal['Strength', 'Location'] = None, 
+               min_signal: float|None = None, 
+               max_peaks: int|None = None) -> list[ISynapseROI]:
+        """ Add the measured signal strength to a given a list of ROI. If sort is set to true, sort the list accordingly """
         if self.image_obj is not None:
             for roi in rois:
-                roi.strength = np.max(np.mean(roi.get_signal_from_image(self.image_obj.imgDiff), axis=1))
-        if sort:
+                roi.signal_strength = np.max(np.mean(roi.get_signal_from_image(self.image_obj.imgDiff), axis=1))
+        if max_peaks is not None: 
+            signal_strengths = sorted([r.signal_strength for r in rois], reverse=False)
+            count_cutoff = signal_strengths[min(len(signal_strengths - 1))]
+            min_signal = max(count_cutoff, min_signal) if min_signal is not None else count_cutoff
+        if min_signal is not None:
+            rois = [r for r in rois if r.signal_strength > min_signal] 
+        if sort == "Strength":
             rois.sort(key=lambda x: x.strength, reverse=True)
+        elif sort == "Location":
+            rois.sort(key=lambda x: (x.location[0], x.location[1]))
+        
         return rois
 
 class Thresholding_Integration(Thresholding, IDetectionAlgorithmIntegration):
+
+    def __init__(self, session: Session):
+        super().__init__()
+        IDetectionAlgorithmIntegration.__init__(self, session=session)
 
     def get_options_frame(self, master) -> tk.LabelFrame:
         super().get_options_frame(master=master)
@@ -76,6 +92,8 @@ class Thresholding_Integration(Thresholding, IDetectionAlgorithmIntegration):
         self.setting_radius = GridSetting(self.optionsFrame, row=6, text="Radius", unit="px", default=6, min_=0, max_=1000, scaleMin=-1, scaleMax=30, tooltip=Resources.GetString("algorithms/threshold/params/radius"))
         self.setting_minArea = GridSetting(self.optionsFrame, row=7, text="Minimal area", unit="px", default=40, min_=0, max_=1000, scaleMin=0, scaleMax=200, tooltip=Resources.GetString("algorithms/threshold/params/minArea"))
         self.setting_minArea.var.IntVar.trace_add("write", lambda _1,_2,_3: self._update_lbl_minarea())
+        self.lblMinAreaInfo = tk.Label(self.optionsFrame, text="")
+        self.lblMinAreaInfo.grid(row=8, column=0, columnspan=3)
         self._update_lbl_minarea()
         
         return self.optionsFrame
@@ -100,6 +118,10 @@ class Thresholding_Integration(Thresholding, IDetectionAlgorithmIntegration):
     
 
 class HysteresisTh_Integration(HysteresisTh, IDetectionAlgorithmIntegration):
+
+    def __init__(self, session: Session):
+        super().__init__()
+        IDetectionAlgorithmIntegration.__init__(self, session=session)
         
     def get_options_frame(self, master) -> tk.LabelFrame:
         super().get_options_frame(master=master)
@@ -154,8 +176,8 @@ class HysteresisTh_Integration(HysteresisTh, IDetectionAlgorithmIntegration):
             return
         lowerThreshold = int(self.image_prop.mean + 2.5*self.image_prop.std)
         upperThreshold = max(lowerThreshold, min(self.image_prop.max/2, self.image_prop.mean + 5*self.image_prop.std))
-        self.setting_lowerTh.var.IntVar.set(lowerThreshold)
-        self.setting_upperTh.var.IntVar.set(upperThreshold)
+        self.setting_lowerTh.Set(lowerThreshold)
+        self.setting_upperTh.Set(upperThreshold)
 
     def _update_lbl_minarea(self):
         A = self.setting_minArea.Get()
@@ -195,6 +217,10 @@ class HysteresisTh_Integration(HysteresisTh, IDetectionAlgorithmIntegration):
 
 class LocalMax_Integration(LocalMax, IDetectionAlgorithmIntegration):
 
+    def __init__(self, session: Session):
+        super().__init__()
+        IDetectionAlgorithmIntegration.__init__(self, session=session)
+
     def get_options_frame(self, master) -> tk.LabelFrame:
         super().get_options_frame(master=master)
 
@@ -206,10 +232,15 @@ class LocalMax_Integration(LocalMax, IDetectionAlgorithmIntegration):
         self.checkAutoParams = ttk.Checkbutton(self.optionsFrame, variable=self.varAutoParams)
         self.checkAutoParams.grid(row=5, column=1, sticky="nw")
 
-        self.setting_radius = GridSetting(self.optionsFrame, row=10, text="Radius", unit="px", default=6, min_=-1, max_=1000, scaleMin=-1, scaleMax=30, tooltip=Resources.GetString("algorithms/localMax/params/radius"))
-        self.setting_lowerTh = GridSetting(self.optionsFrame, row=11, text="Lower threshold", unit="", default=50, min_=0, max_=2**15-1, scaleMin=1, scaleMax=400, tooltip=Resources.GetString("algorithms/localMax/params/lowerThreshold"))
-        self.setting_upperTh = GridSetting(self.optionsFrame, row=12, text="Upper threshold", unit="", default=70, min_=0, max_=2**15-1, scaleMin=1, scaleMax=400, tooltip=Resources.GetString("algorithms/localMax/params/upperThreshold"))
-        self.setting_sortBySignal = GridSetting(self.optionsFrame, row=13, text="Sort by signal strength", type_="Checkbox", default=1, min_=0, tooltip=Resources.GetString("algorithms/localMax/params/sortBySignal"))
+        self.setting_polygonal_ROIS = GridSetting(self.optionsFrame, row=10, text="Polygonal ROIs", type_="Checkbox", default=1)
+        self.setting_polygonal_ROIS.var.IntVar.trace_add("write", lambda _1,_2,_3:self.setting_radius.SetVisibility(not self.setting_polygonal_ROIS.Get()))
+        self.setting_polygonal_ROIS.var.SetCallback(lambda: self.setting_radius.SetVisibility(not self.setting_polygonal_ROIS.Get()))
+
+        self.setting_radius = GridSetting(self.optionsFrame, row=11, text="Radius", unit="px", default=6, min_=1, max_=1000, scaleMin=-1, scaleMax=30, tooltip=Resources.GetString("algorithms/localMax/params/radius"))
+        self.setting_radius.SetVisibility(not self.setting_polygonal_ROIS.Get())
+        self.setting_lowerTh = GridSetting(self.optionsFrame, row=12, text="Lower threshold", unit="", default=50, min_=0, max_=2**15-1, scaleMin=1, scaleMax=400, tooltip=Resources.GetString("algorithms/localMax/params/lowerThreshold"))
+        self.setting_upperTh = GridSetting(self.optionsFrame, row=13, text="Upper threshold", unit="", default=70, min_=0, max_=2**15-1, scaleMin=1, scaleMax=400, tooltip=Resources.GetString("algorithms/localMax/params/upperThreshold"))
+        self.setting_sortBySignal = GridSetting(self.optionsFrame, row=14, text="Sort by signal strength", type_="Checkbox", default=1, min_=0, tooltip=Resources.GetString("algorithms/localMax/params/sortBySignal"))
         
         tk.Label(self.optionsFrame, text="Advanced settings").grid(row=20, column=0, columnspan=4, sticky="nw")
         self.setting_maxPeakCount = GridSetting(self.optionsFrame, row=21, text="Max. Peak Count", unit="", default=0, min_=0, max_=200, scaleMin=0, scaleMax=100, tooltip=Resources.GetString("algorithms/localMax/params/maxPeakCount"))
@@ -219,7 +250,7 @@ class LocalMax_Integration(LocalMax, IDetectionAlgorithmIntegration):
         self.setting_minArea = GridSetting(self.optionsFrame, row=25, text="Min. Area", unit="px", default=50, min_=1, max_=10000, scaleMin=0, scaleMax=200, tooltip=Resources.GetString("algorithms/localMax/params/minArea"))
         self.setting_minArea.var.IntVar.trace_add("write", lambda _1,_2,_3: self._update_lbl_minarea())
         self.lblMinAreaInfo = tk.Label(self.optionsFrame, text="")
-        self.lblMinAreaInfo.grid(row=26, column=0, columnspan=3)
+        self.lblMinAreaInfo.grid(row=26, column=1, columnspan=2)
         self._update_lbl_minarea()
 
         self.update(None)
@@ -238,18 +269,21 @@ class LocalMax_Integration(LocalMax, IDetectionAlgorithmIntegration):
         self.lblImgStats["text"] = _t
         self.estimate_params()
 
-    def estimate_params(self, inputImageObj: ImageProperties):
-        if self.varAutoParams.get() != 1:
+    def estimate_params(self):
+        """
+            Estimate some parameters based on the provided image.
+        """
+        if self.varAutoParams.get() != 1 or self.image_prop is None:
             return
-        lowerThreshold = int(inputImageObj.mean + 2.5*inputImageObj.std)
-        upperThreshold = max(lowerThreshold, min(inputImageObj.max/2, inputImageObj.mean + 5*inputImageObj.std))
-        self.setting_lowerTh.var.IntVar.set(lowerThreshold)
-        self.setting_upperTh.var.IntVar.set(upperThreshold)
+        lowerThreshold = int(self.image_prop.mean + 2.5*self.image_prop.std)
+        upperThreshold = max(lowerThreshold, min(self.image_prop.max/2, self.image_prop.mean + 5*self.image_prop.std))
+        self.setting_lowerTh.Set(lowerThreshold)
+        self.setting_upperTh.Set(upperThreshold)
 
     def _update_lbl_minarea(self):
         A = self.setting_minArea.Get()
         r = round(np.sqrt(A/np.pi),2)
-        self.lblMinAreaInfo["text"] = f"A circle with radius {r} px has the same area" 
+        self.lblMinAreaInfo["text"] = f"A circle with radius {r} px\n has the same area" 
 
     
     def detect(self) -> list[ISynapseROI]:
@@ -260,16 +294,15 @@ class LocalMax_Integration(LocalMax, IDetectionAlgorithmIntegration):
         minArea = self.setting_minArea.Get()
         minDistance = self.setting_minDistance.Get()
         minSignal = self.setting_minSignal.Get()
-        radius = self.setting_radius.Get()
-        return self.detect(img=self.image_prop.img,
+        radius = None if self.setting_polygonal_ROIS.Get() == 1 else self.setting_radius.Get()
+        rois = self.detect(img=self.image_prop.img,
                            lowerThreshold=lowerThreshold, 
                            upperThreshold=upperThreshold, 
                            expandSize=expandSize,
-                           maxPeakCount=maxPeakCount,
                            minArea=minArea,
                            minDistance=minDistance, 
-                           minSignal=minSignal,
                            radius=radius)
+        return self.add_signal_to_result(rois=rois, sort=False)
             
     def get_rawdata_overlay(self) -> tuple[tuple[np.ndarray]|None, list[patches.Patch]|None]:
         if self.maxima is None:

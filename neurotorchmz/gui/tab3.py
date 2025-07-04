@@ -39,6 +39,7 @@ class TabROIFinder(Tab):
         self.ax2Image = None
         self.ax1_colorbar = None
         self.ax2_colorbar = None
+        self.frameAlgoOptions: tk.Frame|None = None
 
     def init(self):
         self.tab = ttk.Frame(self.frame)
@@ -65,7 +66,7 @@ class TabROIFinder(Tab):
         self.lblFrameOptions = tk.Label(self.frameOptions, text="Image Source")
         self.lblFrameOptions.grid(row=10, column=0, sticky="ne")
         ToolTip(self.lblFrameOptions, msg=Resources.GetString("tab3/imageSource"), follow=True, delay=0.1)
-        self.varImage = tk.StringVar(value="Delta (maximimum)")
+        self.varImage = tk.StringVar(value="Delta (maximum)")
         self.varImage.trace_add("write", lambda _1,_2,_3: self.comboImage_changed())
         self.comboImage = ttk.Combobox(self.frameOptions, textvariable=self.varImage, state="readonly")
         self.comboImage['values'] = ["Delta", "Delta (maximum)", "Delta (std.)", "Delta (max.), signal removed"]
@@ -82,9 +83,6 @@ class TabROIFinder(Tab):
 
         self.btnDetect = tk.Button(self.frameOptions, text="Detect", command=self.detect)
         self.btnDetect.grid(row=15, column=0)
-        
-        self.frameAlgoOptions = self.detectionAlgorithm.get_options_frame(self.frameTools)
-        self.frameAlgoOptions.grid(row=1, column=0, sticky="news")
 
         self.frameROIS = tk.LabelFrame(self.frameTools, text="ROIs")
         self.frameROIS.grid(row=2, column=0, sticky="news")
@@ -115,7 +113,7 @@ class TabROIFinder(Tab):
         #tk.Grid.rowconfigure(self.frameTools, 3, weight=1)
 
         self.tvSynapses.SyncSynapses()
-        self.Update(TabROIFinder_InvalidateEvent(algorithm=True, image=True))
+        self.update_tab(TabROIFinder_InvalidateEvent(algorithm=True, image=True))
 
 
     # Convience functions
@@ -160,22 +158,22 @@ class TabROIFinder(Tab):
             case "threshold":
                 if isinstance(self.detectionAlgorithm, detection.Thresholding_Integration):
                     return
-                self.detectionAlgorithm = detection.Thresholding_Integration()
+                self.detectionAlgorithm = detection.Thresholding_Integration(self.session)
             case "hysteresis":
                 if type(self.detectionAlgorithm) == detection.HysteresisTh_Integration:
                     return
-                self.detectionAlgorithm = detection.HysteresisTh_Integration()
+                self.detectionAlgorithm = detection.HysteresisTh_Integration(self.session)
             case "local_max":
                 if type(self.detectionAlgorithm) == detection.LocalMax_Integration:
                     return
-                self.detectionAlgorithm = detection.LocalMax_Integration()
+                self.detectionAlgorithm = detection.LocalMax_Integration(self.session)
             case _:
                 self.detectionAlgorithm = None
                 return
         if (self.frameAlgoOptions is not None):
             self.frameAlgoOptions.grid_forget()
         self.frameAlgoOptions = self.detectionAlgorithm.get_options_frame(self.frameTools)
-        self.detectionAlgorithm.update(image_obj=self.session.active_image_object, image_prop=self.current_input_image)
+        self.detectionAlgorithm.update(image_prop=self.current_input_image)
         self.frameAlgoOptions.grid(row=1, column=0, sticky="news")
 
     def clear_image_plot(self):
@@ -195,9 +193,9 @@ class TabROIFinder(Tab):
         self.ax2.set_title("Delta Video")
 
     def invalidate_image(self):
-        imgObj = self.session.active_image_object
+        imgObj = self.active_image_object
 
-        self.detectionAlgorithm.update(image_obj=imgObj, image_prop=self.current_input_image)
+        self.detectionAlgorithm.update(image_prop=self.current_input_image)
 
         self.ax2.set_title("Delta Video")
         self.ax1Image = None
@@ -221,7 +219,7 @@ class TabROIFinder(Tab):
         self.ax1.set_axis_on()
         self.ax1_colorbar = self.figure1.colorbar(self.ax1Image, ax=self.ax1)
 
-        _ax2Title, ax2_ImgProp = self.current_input_image, self.current_input_description
+        ax2_ImgProp, _ax2Title = self.current_input_image, self.current_input_description
         self.ax2.set_title(_ax2Title)
         if ax2_ImgProp is not None:
             self.ax2Image = self.ax2.imshow(ax2_ImgProp.img, cmap="inferno")

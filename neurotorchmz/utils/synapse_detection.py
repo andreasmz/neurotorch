@@ -40,6 +40,8 @@ class ISynapseROI:
         """ A unique UUID to identify the synapse """
         self.frame: int|None = None
         """ The associate frame for this ROI or None if the object just defines a shape """
+        self.signal_strength: float|None = None
+        """ Optional parameter to determine the current signal strength of the ROI """
     
     # Serialization functions
 
@@ -365,6 +367,10 @@ class DetectionResult:
         
 class IDetectionAlgorithm:
     """ Abstract base class for a detection algorithm implementation """
+
+    def __init__(self):
+        pass
+    
     def detect(self, img: np.ndarray, **kwargs) -> list[ISynapseROI]:
         """
             Given an input image as 2D np.ndarray and algorithm dependend arbitary arguments,
@@ -466,7 +472,7 @@ class HysteresisTh(IDetectionAlgorithm):
         self.thresholdFiltered_img = np.zeros(shape=img.shape)
         labels_ok = []
 
-        synapses = []
+        rois = []
         for i in range(len(self.region_props)):
             region = self.region_props[i]
             if region.area >= minArea and region.intensity_max >= upperThreshold:
@@ -481,11 +487,11 @@ class HysteresisTh(IDetectionAlgorithm):
                 contour[:, 0] = contour[:, 0] + startX
                 contour[:, 1] = contour[:, 1] + startY
                 synapse = PolygonalSynapseROI().set_polygon(polygon=contour, region_props=region)
-                synapses.append(synapse)
+                rois.append(synapse)
 
                 self.thresholdFiltered_img[region.bbox[0]:region.bbox[2], region.bbox[1]:region.bbox[3]] += region.image_filled*(i+1)
         
-        return synapses
+        return rois
     
 
 
@@ -569,7 +575,7 @@ class LocalMax(IDetectionAlgorithm):
 
         self.region_props = measure.regionprops(self.labeledImage, intensity_image=img)
         
-        synapses = []
+        rois = []
         for i in range(len(self.region_props)):
             region = self.region_props[i]
             if radius is None:
@@ -593,10 +599,9 @@ class LocalMax(IDetectionAlgorithm):
                 _imgSynapse[synapse.get_coordinates(img.shape)] = 1
                 _regProp = measure.regionprops(_imgSynapse, intensity_image=img)
                 synapse.set_region_props(_regProp[0])
-            synapses.append(synapse)
-        synapses.sort(key=lambda x: (x.location[1], x.location[0]))
+            rois.append(synapse)
             
-        return synapses 
+        return rois 
     
 
 

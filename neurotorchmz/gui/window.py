@@ -10,6 +10,9 @@ from typing import Literal
 import logging
 import matplotlib
 from pathlib import Path
+import platform
+import subprocess
+import os
 from collections import deque
 matplotlib.use('TkAgg')
 
@@ -96,6 +99,7 @@ class Neurotorch_GUI:
         self.menuNeurotorch = tk.Menu(self.menubar,tearoff=0)
         self.menubar.add_cascade(label="Neurotorch",menu=self.menuNeurotorch)
         self.menuNeurotorch.add_command(label="About", command=self.menuNeurotorch_about_click)
+        self.menuNeurotorch.add_command(label="Open logs", command=self.menuNeurotorch_logs_click)
 
         self.menuDebug = tk.Menu(self.menubar,tearoff=0)
         if edition == Edition.NEUROTORCH_DEBUG:
@@ -153,7 +157,7 @@ class Neurotorch_GUI:
             tab, event = self._pending_updates.pop()
             num_pending_updates = len(self._pending_updates)
             task.set_message(" %s %s" % (tab.tab_name, f'({num_pending_updates} more updates queued)' if num_pending_updates > 0 else ''))
-            tab.Update(event)
+            tab.update_tab(event)
             #update_index += 1
 
 
@@ -241,6 +245,15 @@ class Neurotorch_GUI:
     def menuNeurotorch_about_click(self):
         messagebox.showinfo("Neurotorch", f"© Andreas Brilka 2025\nYou are running Neurotorch {__version__}")
 
+    def menuNeurotorch_logs_click(self):
+        log_path = Settings.app_data_path / "log.txt"
+        if platform.system() == 'Darwin':       # macOS
+            subprocess.call(('open', log_path))
+        elif platform.system() == 'Windows':    # Windows
+            os.startfile(log_path)
+        else:                                   # linux variants
+            subprocess.call(('xdg-open', log_path))
+
     def menuDebug_load_peaks_click(self):
         path = Settings.app_data_path / "img_peaks.dump"
         if not path.exists() or not path.is_file():
@@ -314,6 +327,11 @@ class Tab:
     def window(self) -> Neurotorch_GUI:
         """ Convience function to get the window faster """
         return self.session.window
+    
+    @property
+    def active_image_object(self) -> ImageObject|None:
+        """ Convinience function for the currently active session image object """
+        return self.session.active_image_object
 
 
 from ..gui.tabWelcome import TabWelcome

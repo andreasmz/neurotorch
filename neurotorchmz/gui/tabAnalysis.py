@@ -39,6 +39,7 @@ class TabAnalysis(Tab):
         self.ax2Image = None
         self.ax1_colorbar = None
         self.ax2_colorbar = None
+        self.frameAlgoOptions: tk.Frame|None = None
 
     def init(self):
         self.tab = ttk.Frame(self.frame)
@@ -79,9 +80,6 @@ class TabAnalysis(Tab):
         self.sliderPeak.var.SetCallback(self.sliderPeak_changed)
         self.btn3DPlot = tk.Button(self.frameDisplay, text="3D Multiframe Plot", command=lambda:self.show_external_plot("3D Multiframe Plot", self.plot_3D_multiframe))
         self.btn3DPlot.grid(row=10, column=1)
-        
-        self.frameAlgoOptions = self.detectionAlgorithm.get_options_frame(self.frameTools, lambda: self.session.active_image_object)
-        self.frameAlgoOptions.grid(row=2, column=0, sticky="news")
 
         self.frameROIS = tk.LabelFrame(self.frameTools, text="ROIs")
         self.frameROIS.grid(row=3, column=0, sticky="news")
@@ -112,7 +110,7 @@ class TabAnalysis(Tab):
         #tk.Grid.rowconfigure(self.frameTools, 3, weight=1)
 
         self.tvSynapses.SyncSynapses()
-        self.Update(TabAnalysis_InvalidateEvent(algorithm=True, image=True))
+        self.update_tab(TabAnalysis_InvalidateEvent(algorithm=True, image=True))
 
     # Update and Invalidation functions
 
@@ -142,22 +140,22 @@ class TabAnalysis(Tab):
             case "threshold":
                 if isinstance(self.detectionAlgorithm, detection.Thresholding_Integration):
                     return
-                self.detectionAlgorithm = detection.Thresholding_Integration()
+                self.detectionAlgorithm = detection.Thresholding_Integration(self.session)
             case "hysteresis":
                 if type(self.detectionAlgorithm) == detection.HysteresisTh_Integration:
                     return
-                self.detectionAlgorithm = detection.HysteresisTh_Integration()
+                self.detectionAlgorithm = detection.HysteresisTh_Integration(self.session)
             case "local_max":
                 if type(self.detectionAlgorithm) == detection.LocalMax_Integration:
                     return
-                self.detectionAlgorithm = detection.LocalMax_Integration()
+                self.detectionAlgorithm = detection.LocalMax_Integration(self.session)
             case _:
                 self.detectionAlgorithm = None
                 return
         if (self.frameAlgoOptions is not None):
             self.frameAlgoOptions.grid_forget()
         self.frameAlgoOptions = self.detectionAlgorithm.get_options_frame(self.frameTools)
-        self.detectionAlgorithm.update(image_obj=self.session.active_image_object, image_prop=self.current_input_image)
+        self.detectionAlgorithm.update(image_prop=self.current_input_image)
         self.frameAlgoOptions.grid(row=2, column=0, sticky="news")
 
     def clear_image_plot(self):

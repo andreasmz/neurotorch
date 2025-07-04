@@ -59,6 +59,7 @@ class Session(Serializable):
             raise RuntimeError("The Neurotorch GUI has already been started")
         from ..gui.window import Neurotorch_GUI
         self.window = Neurotorch_GUI(session=self)
+        logger.info(f"Started NeurotorchMZ (GUI) version {__version__}")
         if background:
             task = threading.Thread(target=self.window.launch, name="Neurotorch GUI", args=(self.edition,))
             task.start()
