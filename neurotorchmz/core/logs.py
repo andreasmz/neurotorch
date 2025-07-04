@@ -27,10 +27,10 @@ logger.addHandler(stream_logging_handler)
 _exception_logger = logging.getLogger("NeurotorchMZ_Errors")   
 _exception_logger.setLevel(logging.DEBUG)
 
-def _ini_file_handler(app_data_path: Path) -> None:
+def _ini_file_handler(path: Path) -> None:
     """ Should be called from the settings handler when the AppData Path is set to initialize the file handler for logging """
     global file_logging_handler, _fmtFile, logger
-    file_logging_handler = RotatingFileHandler(app_data_path / "log.txt", mode="a", maxBytes=(1024**2), backupCount=10)
+    file_logging_handler = RotatingFileHandler(path, mode="a", maxBytes=(1024**2), backupCount=10)
     file_logging_handler.setFormatter(_fmtFile)
     file_logging_handler.setLevel(logging.DEBUG)
     logger.addHandler(file_logging_handler)

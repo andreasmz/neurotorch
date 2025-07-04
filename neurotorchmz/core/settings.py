@@ -4,6 +4,7 @@ import configparser
 from pathlib import Path
 import atexit
 
+from . import logs
 from .logs import logger
 
 # Initialize paths
@@ -18,6 +19,8 @@ app_data_path.mkdir(parents=True, exist_ok=True)
 tmp_path.mkdir(exist_ok=True, parents=False)
 user_plugin_path.mkdir(exist_ok=True, parents=False)
 
+logs._ini_file_handler(app_data_path / "logs.txt")
+
 # Clear temp files
 for f in tmp_path.iterdir():
     if f.is_file():
@@ -29,17 +32,17 @@ for f in tmp_path.iterdir():
 
 config = configparser.ConfigParser()
 
-def _ReadConfig():
+def _read_config():
     """ Initializes the config parser """
     config.read(app_data_path / "settings.ini")
     if "SETTINGS" not in config.sections():
         config.add_section("SETTINGS")
     if not (app_data_path / "settings.ini").exists():
-        SaveConfig()
+        save_config()
 
-_ReadConfig()
+_read_config()
 
-def ClearTempFiles():
+def clear_temp_files():
     """ Clears the temporary files and folders """
     for f in tmp_path.iterdir():
         if f.is_file():
@@ -57,21 +60,21 @@ def ClearTempFiles():
             else:
                 logger.debug(f"Cleared folder {f.name} from the tmp folder")
 
-ClearTempFiles()
+clear_temp_files()
 
-def GetSettings(key: str) -> str|None:
+def get_setting(key: str) -> str|None:
     """ Retrieve a setting. If the key does not exist, return None """
     if not config.has_option("SETTINGS", key):
         return None
     return config.get("SETTINGS", key)
 
-def SetSetting(key: str, value: str, save: bool = False):
+def set_setting(key: str, value: str, save: bool = False):
     """ Set a setting. If save=True, the file is saved to disk """
     config.set("SETTINGS", key, value)
     if save:
-        SaveConfig()
+        save_config()
 
-def SaveConfig():
+def save_config():
     """ Writes the config file to disk"""
     try:
         with open(app_data_path / "settings.ini", 'w') as configfile:
@@ -80,9 +83,5 @@ def SaveConfig():
     except Exception as ex:
         logger.warning(f"Failed to save the config. The error message was: \n---\n%s\n---" % str(ex))
 
-def _LoadPlugins():
-    """ This function loads plugins from a) the shipped plugin folder contained in the package itself and b) the AppData folder """
-    user_plugin_path = (app_data_path / "plugins").mkdir(parents=True, exist_ok=True)
-
-atexit.register(SaveConfig)
-atexit.register(ClearTempFiles)
+atexit.register(save_config)
+atexit.register(clear_temp_files)

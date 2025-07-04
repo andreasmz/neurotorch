@@ -10,7 +10,7 @@ from .logs import logger
 with open(settings.resource_path / "strings.json") as f:
     _json = json.load(f)
 
-def GetString(path:str) -> str:
+def get_string(path:str) -> str:
     """ Retreive a key by supplying the adress with slashes (example: tab2/algorithms/diffMax). Returns '' if the key is not found and the path itself if it does not point to a end node """
     _folder = _json
     paths = path.split("/")
@@ -23,7 +23,7 @@ def GetString(path:str) -> str:
         return _folder
     return path
 
-def GetImage(filename: str) -> Image.Image:
+def get_image(filename: str) -> Image.Image:
     """ Open a image. Raises FileNotFoundError if the file can't be opened """
     path = settings.resource_path / filename
     if not path.exists() or not path.is_file():
