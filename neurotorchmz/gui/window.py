@@ -33,10 +33,8 @@ class SignalChangedEvent(TabUpdateEvent):
 
 class Neurotorch_GUI:
     def __init__(self, session: Session):
-        self.root = None
         self.session = session
         self.tabs : dict[type, Tab] = {}
-
         self._pending_updates: deque[tuple[Tab, TabUpdateEvent]] = deque()
 
     def launch(self, edition:Edition=Edition.NEUROTORCH):
@@ -90,7 +88,7 @@ class Neurotorch_GUI:
 
         if (edition != Edition.NEUROTORCH_LIGHT):
             self.session.import_ijh()
-            self.session.ijH.MenubarImageJH(self.menubar)
+            self.session.ijH.MenubarImageJH(self.menubar) # type: ignore
 
         self.menuPlugins = tk.Menu(self.menubar,tearoff=0)
         self.menubar.add_cascade(label="Plugins",menu=self.menuPlugins)
@@ -144,7 +142,7 @@ class Neurotorch_GUI:
         self._update_task.start()
         return self._update_task
 
-    def _update_loop(self, task: Task):
+    def _update_loop(self, task: Task, **kwargs):
         """ Process the update queue as long as items are contained """
         #num_total_updates = len(self._pending_updates) # Used to set the progress bar
         #num_pending_updates = len(self._pending_updates) # Cache pending updates count
@@ -225,7 +223,7 @@ class Neurotorch_GUI:
             imgObj.SetConvolutionFunction(ImageObject.Conv_MeanMaxDiff, func_args=args)   
         else:
             raise ValueError(f"Mode parameter has an unkown value '{mode}'")
-        self.session.active_image_object.PrecomputeImage().add_callback(lambda: self.invoke_tab_update_event(ImageChangedEvent()))
+        imgObj.PrecomputeImage().add_callback(lambda: self.invoke_tab_update_event(ImageChangedEvent()))
 
     def menuImage_clear_cache_click(self):
         if self.session.active_image_object is None:
@@ -245,16 +243,15 @@ class Neurotorch_GUI:
         messagebox.showinfo("Neurotorch", f"© Andreas Brilka 2025\nYou are running Neurotorch {__version__}")
 
     def menuNeurotorch_logs_click(self):
-        log_path = Settings.app_data_path / "log.txt"
         if platform.system() == 'Darwin':       # macOS
-            subprocess.call(('open', log_path))
+            subprocess.call(('open', settings.log_path))
         elif platform.system() == 'Windows':    # Windows
-            os.startfile(log_path)
+            os.startfile(settings.log_path)
         else:                                   # linux variants
-            subprocess.call(('xdg-open', log_path))
+            subprocess.call(('xdg-open', settings.log_path))
 
     def menuDebug_load_peaks_click(self):
-        path = Settings.app_data_path / "img_peaks.dump"
+        path = settings.app_data_path / "img_peaks.dump"
         if not path.exists() or not path.is_file():
             self.root.bell()
             return
@@ -263,7 +260,7 @@ class Neurotorch_GUI:
             _img = pickle.load(f)
             _name = "img_peaks.dump"
             imgObj = ImageObject()
-            task = Task((lambda t, **kwargs: imgObj.SetImagePrecompute(**kwargs)), name="Open image", run_async=True)
+            task = Task(lambda task, **kwargs: imgObj.SetImagePrecompute(**kwargs), name="Open image", run_async=True)
             task.add_callback(lambda: self.session.set_active_image_object(imgObj))
             task.set_error_callback(self._open_image_error_callback)
             task.start(img=_img, name=_name, run_async=False)
@@ -285,26 +282,27 @@ class Neurotorch_GUI:
                     _peaksExtended.extend([int(p),int(p+1)])
             else:
                 logger.info(f"Skipped peak {p} as it is to near to the edge")
-        _peaksExtended.extend([int(p+2)])
+        _peaksExtended.extend([int(max(signalObj.peaks) + 2)])
         logger.info("Exported frames", _peaksExtended)
-        savePath = Settings.app_data_path / "img_peaks.dump"
+        savePath = settings.app_data_path / "img_peaks.dump"
         with open(savePath, 'wb') as f:
             pickle.dump(imgObj.img[_peaksExtended, :, :], f, protocol=pickle.HIGHEST_PROTOCOL)
 
     def menuDebug_enable_debugging_click(self):
-        stream_logging_handler.setLevel(logging.DEBUG)
-        logger.debug("Neurotorch is now in debugging mode")
-
-
+        logs.start_debugging()
 
 
 class Tab:
 
-    def __init__(self, session: Session, root:ttk.Frame, frame: ttk.Frame):
+    def __init__(self, session: Session, root:tk.Tk, notebook: ttk.Notebook, _tab_name: str|None = None):
         self.session = session
-        self.tab_name = None
+        """ The current session object """
         self.root = root
-        self.frame = frame
+        """ The tkinter root object """
+        self.notebook = notebook
+        """ The current notebook frame """
+        self.tab = ttk.Frame(self.notebook)
+        self.tab_name: str|None = _tab_name
 
     def init(self):
         """
@@ -320,11 +318,15 @@ class Tab:
 
     def invoke_update(self, event: TabUpdateEvent):
         """ Invoke an update on the tab """
+        if self.session.window is None:
+            raise RuntimeError(f"Can't invoke a tab update in headleass mode")
         self.session.window.invoke_tab_about_update(tab=self, event=event)
 
     @property
     def window(self) -> Neurotorch_GUI:
         """ Convience function to get the window faster """
+        if self.session.window is None:
+            raise RuntimeError(f"Can't invoke a tab update in headleass mode")
         return self.session.window
     
     @property

@@ -10,16 +10,14 @@ class TabImage_ViewChangedEvent(TabUpdateEvent):
 
 class TabImage(Tab):
 
-    def __init__(self, session: Session, root:ttk.Frame, frame: ttk.Frame):
-        super().__init__(session=session, root=root, frame=frame)
-        self.tab_name = "Tab Image"
+    def __init__(self, session: Session, root:tk.Tk, notebook: ttk.Notebook):
+        super().__init__(session, root, notebook, _tab_name="Tab Image")
         self.imshow2D = None
         self.imshow3D = None
         self.colorbar = None
 
     def init(self):
-        self.tab = ttk.Frame(self.frame)
-        self.frame.add(self.tab, text="Image")
+        self.notebook.add(self.tab, text="Image")
         #ToolTip(self.tab, msg=self.__doc__, follow=True, delay=0.1)
 
         self.frameRadioImageMode = tk.Frame(self.tab)

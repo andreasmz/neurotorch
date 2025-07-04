@@ -21,9 +21,8 @@ class TabSignal_RefindPeaksEvent(TabUpdateEvent):
     pass
 
 class TabSignal(Tab):
-    def __init__(self, session: Session, root:ttk.Frame, frame: ttk.Frame):
-        super().__init__(session=session, root=root, frame=frame)
-        self.tab_name = "Tab Signal"
+    def __init__(self, session: Session, root:tk.Tk, notebook: ttk.Notebook):
+        super().__init__(session, root, notebook, _tab_name="Tab Signal")
         self.signalDetectionAlgorithms = [SigDetect_DiffMax(), SigDetect_DiffStd()]
         self.currentSigDecAlgo : ISignalDetectionAlgorithm = self.signalDetectionAlgorithms[0]
         self.ax1Image = None
@@ -31,8 +30,7 @@ class TabSignal(Tab):
         self.signal_artist = None # Holds the plot of the signal in the axSignal
 
     def init(self):
-        self.tab = ttk.Frame(self.frame)
-        self.frame.add(self.tab, text="Signal")
+        self.notebook.add(self.tab, text="Signal")
 
         self.frameMain = tk.Frame(self.tab)
         self.frameMain.pack(side=tk.LEFT, fill="both", expand=True)

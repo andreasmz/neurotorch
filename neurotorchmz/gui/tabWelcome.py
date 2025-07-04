@@ -5,13 +5,12 @@ import os, sys
 import subprocess
 
 class TabWelcome(Tab):
-    def __init__(self, session: Session, root:ttk.Frame, frame: ttk.Frame):
-        super().__init__(session, root, frame)
-        self.tab_name = "Tab Welcome"
+
+    def __init__(self, session: Session, root:tk.Tk, notebook: ttk.Notebook):
+        super().__init__(session, root, notebook, _tab_name="Tab Welcome")
 
     def init(self):
-        self.tab = ttk.Frame(self.frame)
-        self.frame.add(self.tab, text="Welcome to Neurotorch")
+        self.notebook.add(self.tab, text="Welcome to Neurotorch")
 
         self.frame = tk.Frame(self.tab, background="white")
         self.frame.bind("<Configure>", self._FrameResizeEvent)

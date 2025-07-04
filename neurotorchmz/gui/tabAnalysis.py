@@ -28,9 +28,8 @@ class TabAnalysis_InvalidateEvent(TabUpdateEvent):
 
 class TabAnalysis(Tab):
 
-    def __init__(self, session: Session, root:ttk.Frame, frame: ttk.Frame):
-        super().__init__(session=session, root=root, frame=frame)
-        self.tab_name = "Tab Analysis"
+    def __init__(self, session: Session, root:tk.Tk, notebook: ttk.Notebook):
+        super().__init__(session, root, notebook, _tab_name="Tab Analysis")
         self.detectionAlgorithm: detection.IDetectionAlgorithmIntegration = None
         self.roiPatches = {}
         self.roiPatches2 = {}
@@ -42,8 +41,7 @@ class TabAnalysis(Tab):
         self.frameAlgoOptions: tk.Frame|None = None
 
     def init(self):
-        self.tab = ttk.Frame(self.frame)
-        self.frame.add(self.tab, text="Synapse Analyzer (Beta version)")
+        self.notebook.add(self.tab, text="Synapse Analyzer (Beta version)")
         self.frameToolsContainer = ScrolledFrame(self.tab)
         self.frameToolsContainer.pack(side=tk.LEFT, fill="y", anchor=tk.NW)
         self.frameTools = self.frameToolsContainer.frame

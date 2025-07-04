@@ -2,7 +2,7 @@ import itertools
 import threading
 import time
 from enum import Enum
-from typing import Callable, Self, Any, Dict
+from typing import Callable, Self, Any, Protocol
 
 from .logs import logger
 
@@ -23,6 +23,10 @@ class TaskState(Enum):
 class TaskError(Exception):
     pass
 
+class _TaskFunction(Protocol):
+    """ The protocoll for a valid function inside a task """
+    def __call__(self, task: "Task", **kwargs) -> Any: ...
+
 class Task:
     """
         A class, which allows to efficiently handle work in the background by running them in a thread. Please note: Due to the Python Interpreter Lock, the function will
@@ -31,11 +35,11 @@ class Task:
     _id_count = itertools.count() # Count the created tasks for unique naming
     _tasks: list["Task"] = [] # List of running and recently finished tasks. Garbage collected when accessing this list
 
-    def __init__(self, function:Callable[..., None], name:str, run_async:bool=True, keep_alive:bool=False, background: bool = False):
+    def __init__(self, function:_TaskFunction, name:str, run_async:bool=True, keep_alive:bool=False, background: bool = False):
         """
             Creating a new task in either a new thread (sync == False) or in a synchronous manner
 
-            :param Callable[[Self, ...], None] function: When running start, this function will be called. 
+            :param Callable[[Self, ...], Any] function: When running start, this function will be called. 
             The function must accept as first parameter a Task and may accept arbitary arguments passed when calling task.start()
             :param str|None name: The name of the task
             :param bool run_async: If set to true, the task will run in a new thread
@@ -63,8 +67,8 @@ class Task:
         self.error: Exception|None = None
         self.tstart: float|None = None
         self.tend: float|None = None
-        self.callbacks: list[Callable[[], None]] = []
-        self.error_callback: Callable[[Exception], None] | None = None
+        self.callbacks: list[Callable[[], Any]] = []
+        self.error_callback: Callable[[Exception], Any] | None = None
 
         self._result: None # Return value of the finished func() call
         self._progress: float|None = None
@@ -261,14 +265,14 @@ class Task:
 
     # Callback related functions
 
-    def add_callback(self, callback: Callable[[], None]) -> Self:
+    def add_callback(self, callback: Callable[[], Any]) -> Self:
         """ Add a callback for this task. Can be called even after the task finished """
         self.callbacks.append(callback)
         if self.finished and self.error is None:
             callback()
         return self
     
-    def set_error_callback(self, error_callback: Callable[[Exception], None]) -> Self:
+    def set_error_callback(self, error_callback: Callable[[Exception], Any]) -> Self:
         """ 
             Provide a function which is called when an error happens in the task. The exception will be passed to the supplied function.
             Note that when setting an error callback, the exception not raised anymore by the task object. The function works even after

@@ -9,6 +9,7 @@ from .logs import logger
 
 # Initialize paths
 app_data_path = platformdirs.user_data_path(appname="NeurotorchMZ", appauthor=False, roaming=True, ensure_exists=True)
+log_path = app_data_path / "logs.txt"
 tmp_path: Path = app_data_path / "tmp"
 user_plugin_path = app_data_path / "plugins"
 preinstalled_plugin_path = Path(__file__).parent.parent / "plugins"
@@ -19,7 +20,7 @@ app_data_path.mkdir(parents=True, exist_ok=True)
 tmp_path.mkdir(exist_ok=True, parents=False)
 user_plugin_path.mkdir(exist_ok=True, parents=False)
 
-logs._ini_file_handler(app_data_path / "logs.txt")
+logs._ini_file_handler(log_path)
 
 # Clear temp files
 for f in tmp_path.iterdir():
