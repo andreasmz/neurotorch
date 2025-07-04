@@ -5,7 +5,7 @@ from pathlib import Path
 import atexit
 
 from . import settings
-from .logger import logger
+from .logs import logger
 
 with open(settings.resource_path / "strings.json") as f:
     _json = json.load(f)

@@ -4,7 +4,7 @@ import configparser
 from pathlib import Path
 import atexit
 
-from .logger import logger
+from .logs import logger
 
 # Initialize paths
 app_data_path = platformdirs.user_data_path(appname="NeurotorchMZ", appauthor=False, roaming=True, ensure_exists=True)
