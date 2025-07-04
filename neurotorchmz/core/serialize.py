@@ -1,28 +1,25 @@
-from abc import ABC, abstractmethod
-from typing import Self, Any
-import base64
+from typing import Self
+import pickle
 
-class Serializable(ABC):
+class Serializable:
     """
-        Serialize objects
+        Abstract base class for objects that are serializable
     """
+    # Dev Note: Still in an early development stage
 
-    def __init__(self):
-        super().__init__()
+    def pickle(self, **kwargs) -> bytes:
+        """ Pickles the object and returns it as a binary string"""
+        return pickle.dumps(self.serialize(**kwargs))
 
-    def serialize_encode_base64(self, obj: Any) -> str:
-        """ Pickles the object and returns it as base64 str """
+    def load_pickle(self, b: bytes) -> Self:
+        """ Decodes a pickle object """
+        return self.deserialize(pickle.loads(b))
 
-    def serialize_decode_base64(self, s: str) -> str:
-        """ Decodes a pickled and base64 encoded object """
-        b = base64.encode(s)
-
-
-    @abstractmethod
     def serialize(self, **kwargs) -> dict:
+        """ Serialize the current class object into a dict """
         raise NotImplementedError()
 
-    @abstractmethod
-    def deserialize(self, serialize_dict: dict, **kwargs):
+    def deserialize(self, serialize_dict: dict, **kwargs) -> Self:
+        """ Deserialize the given dict into a class object """
         raise NotImplementedError()
     
