@@ -22,7 +22,6 @@ from ..core.session import __version__
 from ..core.task_system import Task
 from ..utils.plugin_manager import Plugin, PluginManager
 
-
 class TabUpdateEvent:
     pass
 
@@ -36,7 +35,7 @@ class Neurotorch_GUI:
     def __init__(self, session: Session):
         self.root = None
         self.session = session
-        self.tabs : dict[type: Tab] = {}
+        self.tabs : dict[type, Tab] = {}
 
         self._pending_updates: deque[tuple[Tab, TabUpdateEvent]] = deque()
 
@@ -44,7 +43,7 @@ class Neurotorch_GUI:
         self.edition = edition
         self.root = tk.Tk()
         self.set_window_title("")
-        self.root.iconbitmap(default=(Resources.path / "neurotorch_logo.ico"))
+        self.root.iconbitmap(default=(settings.resource_path / "neurotorch_logo.ico"))
         self.root.geometry("900x600")
         self.root.state("zoomed")
         self.statusbar = Statusbar(self.root, self.root)
@@ -81,7 +80,7 @@ class Neurotorch_GUI:
         self.menuFilter.add_command(label="Clear cache", command=self.menuImage_clear_cache_click)
         self.menuFilter.add_separator()
         self.menuFilter.add_command(label="Cummulative imgDiff", command=lambda: self.menuImage_denoise_click('MeanMaxDiff', None))
-        ToolTip(self.menuFile, msg=Resources.GetString("menubar/filters/meanMaxDiff"), follow=True, delay=0.5)
+        ToolTip(self.menuFile, msg=resources.get_string("menubar/filters/meanMaxDiff"), follow=True, delay=0.5)
 
         if edition == Edition.NEUROTORCH_DEBUG:
             self.menuDenoiseImg = tk.Menu(self.menuImage,tearoff=0)

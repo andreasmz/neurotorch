@@ -17,7 +17,7 @@ class TabWelcome(Tab):
         self.frame.bind("<Configure>", self._FrameResizeEvent)
         self.frame.pack(expand=True, fill="both")
 
-        self.coverimg = Resources.GetImage("neurotorch_coverimage_4.webp")
+        self.coverimg = resources.get_image("neurotorch_coverimage_4.webp")
         self.canvas = tk.Canvas(self.frame, background="black")
         self.canvas.pack(expand=True, fill="both")
         self.frameBottom_L = tk.Frame(self.frame)
