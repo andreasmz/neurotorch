@@ -332,6 +332,18 @@ class Task:
             
             with self._standby_cv:
                 self._standby_cv.wait()
+
+    def join(self) -> bool:
+        """ Join the task. Returns False if in sync mode or the task has not been started yet, otherwise True """
+        if self.thread is None:
+            return False
+        if self.finished:
+            return True
+        if self.thread.is_alive():
+            self.thread.join()
+            return True
+        return False
+            
     
     # Format functions
 
