@@ -1,12 +1,10 @@
-from typing import Callable, Self, Any
-import threading
 import itertools
+import threading
 import time
-import sys
 from enum import Enum
-import logging
+from typing import Callable, Self, Any, Dict
 
-logger = logging.getLogger("NeurotorchMZ")
+from .logs import logger
 
 class TaskState(Enum):
     
@@ -31,13 +29,13 @@ class Task:
         still be running effectively on one core
     """
     _id_count = itertools.count() # Count the created tasks for unique naming
-    _tasks: list[Self] = [] # List of running and recently finished tasks. Garbage collected when accessing this list
+    _tasks: list["Task"] = [] # List of running and recently finished tasks. Garbage collected when accessing this list
 
-    def __init__(self, function:Callable[[Self, Any], None], name:str, run_async:bool=True, keep_alive:bool=False, background: bool = False):
+    def __init__(self, function:Callable[..., None], name:str, run_async:bool=True, keep_alive:bool=False, background: bool = False):
         """
             Creating a new task in either a new thread (sync == False) or in a synchronous manner
 
-            :param Callable[[Self, Any], None] function: When running start, this function will be called. 
+            :param Callable[[Self, ...], None] function: When running start, this function will be called. 
             The function must accept as first parameter a Task and may accept arbitary arguments passed when calling task.start()
             :param str|None name: The name of the task
             :param bool run_async: If set to true, the task will run in a new thread
@@ -47,26 +45,26 @@ class Task:
         if keep_alive and not run_async:
             raise ValueError("Can't keep a synchronous thread alive")
 
-        self.thread: threading.Thread|bool|None = None # Either a None (not started), a thread (async mode) or a boolean (sync mode; false while running, true when finished)
+        self.thread: threading.Thread|None = None # Either None (not started or in sync mode) or a thread (async mode)
         self._standby_cv = threading.Condition()
         self.reset(function=function, name=name, run_async=run_async, keep_alive=keep_alive, background=background)
         Task._tasks.append(self)
 
-    def reset(self, function:Callable[[Self, Any], None], name:str, run_async:bool=True, keep_alive:bool=False, background: bool = False):
+    def reset(self, function:Callable[..., None], name:str, run_async:bool=True, keep_alive:bool=False, background: bool = False):
         """ Reinitalize the task object as it would have been newly created but keeps the resources like the thread for example """
         if keep_alive and not run_async:
             raise ValueError("Can't keep a synchronous thread alive")
 
-        self.func: Callable[[Self, Any], None] = function # The function of the task
-        self.name: str = name
-        self.run_async: bool = run_async
-        self.background: bool = background
-        self.keep_alive: bool = keep_alive
-        self.error: Exception|bool|None = None
+        self.func = function # The function of the task
+        self.name = name
+        self.run_async = run_async
+        self.background = background
+        self.keep_alive = keep_alive
+        self.error: Exception|None = None
         self.tstart: float|None = None
         self.tend: float|None = None
         self.callbacks: list[Callable[[], None]] = []
-        self.error_callback: Callable[[Exception], None] = None
+        self.error_callback: Callable[[Exception], None] | None = None
 
         self._result: None # Return value of the finished func() call
         self._progress: float|None = None
@@ -76,23 +74,28 @@ class Task:
 
     # Static functions
 
-    def get_tasks() -> list[Self]:
+    @staticmethod
+    def get_tasks() -> list["Task"]:
         """ Get a list of all tasks ever created """
         return Task._tasks
 
-    def get_active_tasks() -> list[Self]:
+    @staticmethod
+    def get_active_tasks() -> list["Task"]:
         """ Get a list of all currently running tasks """
         return [t for t in Task._tasks if (t.state == TaskState.RUNNING)]
     
-    def get_recently_ended_tasks() -> list[Self]:
+    @staticmethod
+    def get_recently_ended_tasks() -> list["Task"]:
         """ Get a list of task which ended either successfully or with an error not more then 5 seconds ago """
-        return [t for t in Task._tasks if (t.state == TaskState.FINISHED or t.state == TaskState.STANDBY) and t.time_since_end <= 5]
+        return [t for t in Task._tasks if (t.state == TaskState.FINISHED or t.state == TaskState.STANDBY) and t.time_since_end is not None and t.time_since_end <= 5]
     
-    def get_recently_failed_tasks() -> list[Self]:
-        return [t for t in Task._tasks if t.state == TaskState.ERROR and t.time_since_end <= 5]
+    @staticmethod
+    def get_recently_failed_tasks() -> list["Task"]:
+        return [t for t in Task._tasks if t.state == TaskState.ERROR and t.time_since_end is not None and t.time_since_end <= 5]
 
-    def gc_task_list():
-        """ The task class stores all created tasks. Calling this function will garbage collect this list and remove inactive tasks"""
+    @staticmethod
+    def gc_task_list() -> None:
+        """ The task class stores all created tasks. Calling this function will garbage collect this list and remove inactive tasks """
         Task._tasks = [t for t in Task._tasks if not t.inactive]
 
     # Runtime related functions
@@ -165,6 +168,7 @@ class Task:
     def set_percentage_mode(self) -> Self:
         """ Report progress in percent (default) """
         self._step_count = None
+        return self
 
     def set_indeterminate(self) -> Self:
         """ Marks the task as indeterminate; task.progress will now always return None """
@@ -174,6 +178,7 @@ class Task:
     def set_message(self, description: str|None = None) -> Self:
         """ Set the given text as short info message about the current state """
         self._progress_str = str(description)
+        return self
 
     def set_step_mode(self, step_count: int) -> Self:
         """ 
@@ -252,6 +257,7 @@ class Task:
     
     def reinitalize(self) -> Self:
         """ Reset all properties of this task"""
+        raise NotImplementedError()
 
     # Callback related functions
 
@@ -287,6 +293,7 @@ class Task:
                 self.thread.start()
         else:
             self._task_wrapper(**kwargs)
+        return self
 
     def _task_wrapper(self, **kwargs):
         """ 
