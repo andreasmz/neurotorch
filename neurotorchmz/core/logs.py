@@ -9,6 +9,8 @@ from logging.handlers import RotatingFileHandler
 logger = logging.getLogger("NeurotorchMZ")
 """ The root logger for NeurotorchMZ. The level defaults to DEBUG to allow derived Handlers (e.g. StreamHandler, RotatingFileHandler) to set custom (higher) levels """
 
+debugging = False
+
 _fmt = logging.Formatter('[%(asctime)s %(levelname)s]: %(message)s')
 _fmtFile = logging.Formatter('[%(asctime)s|%(levelname)s|%(module)s]: %(message)s')
 
@@ -44,11 +46,14 @@ def thread_exceptions_hook(exc_type: type[BaseException], exc_value: BaseExcepti
     logger.exception(f"An {repr(exc_type)} happened in thread: {exc_value}", exc_info=(exc_type, exc_value, exc_traceback))
     sys.__excepthook__(exc_type, exc_value, exc_traceback)
 
+def start_debugging():
+    """ Starts the debugging of not started yet """
+    global debugging
+    if debugging:
+        return
+    debugging = True
+    stream_logging_handler.setLevel(logging.DEBUG)
+    logger.debug(f"Started debugging")
+
 sys.excepthook = log_exceptions_hook
 threading.excepthook = thread_exceptions_hook
-
-
-# def log_exception_debug(ex: Exception, msg:str|None = None):
-#     #logger.exception(msg, (type(ex), ex, ex.__traceback__))
-#     logger.exception(msg)
-#     #logger.debug("%s:\n---\n%s\n---" % (msg if msg is not None else f"An exception happened", repr(ex)))

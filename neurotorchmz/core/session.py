@@ -1,12 +1,13 @@
+""" Module holding code to launch and manage a Neurotorch program """
 from .. import __version__, __author__
-from ..core.settings import (Neurotorch_Settings as Settings, Neurotorch_Resources as Resources, logger, log_exception_debug, stream_logging_handler)
+from ..core import settings, resources, logs
+from ..core.logs import logger
 from ..core.serialize import Serializable
 from ..utils.image import *
 from ..utils.signal_detection import SignalObject
 from ..utils.synapse_detection import *
 
 from enum import Enum
-import logging
 import threading
 from pathlib import Path
 
@@ -30,22 +31,20 @@ class Session(Serializable):
         """
             A session is the main entry into Neurotorch. It stores the loaded data and provides update functions for the GUI
 
-            :param bool headless: If set to true, no GUI is launched. This allows to use the API without launching a GUI
             :param Edition edition: Which edition of Neurotorch (for example NEUROTORCH_LIGHT, NEUROTORCH_DEBUG, ...) should be launched
         """
         self.edition: Edition = edition
         if self.edition == Edition.NEUROTORCH_DEBUG:
-            stream_logging_handler.setLevel(logging.DEBUG)
-            logger.debug("Enabled debugging output to console")
+            logs.start_debugging()
 
         self.window = None 
-        self._window_thread = None
+        self._window_thread: threading.Thread|None = None
 
         self._image_path: Path|None = None
         self._image_object: ImageObject| None = None
         self._signal_object: SignalObject| None = None
-        self._roifinder_detection_result: DetectionResult|None = DetectionResult()
-        self._snalysis_detection_result: DetectionResult|None = DetectionResult()
+        self._roifinder_detection_result: DetectionResult = DetectionResult()
+        self._snalysis_detection_result: DetectionResult = DetectionResult()
         self._ijH = None
         self.api = SessionAPI(self)
 
@@ -123,12 +122,6 @@ class Session(Serializable):
         if self.window is not None:
             from ..gui.window import ImageChangedEvent # Import not in the file header to avoid circular imports. It is already imported in launch(), so minimal performance loss
             self.window.invoke_tab_update_event(ImageChangedEvent())
-
-    def serialize(self, **kwargs) -> dict:
-        pass
-    
-    def deserialize(self, serialize_dict:dict, **kwargs):
-        pass
 
 
 class SessionAPI:
