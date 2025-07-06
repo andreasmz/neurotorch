@@ -1,25 +1,23 @@
+from ..core.task_system import Task  
+from ..core.serialize import Serializable, DeserializeError, SerializeError
+from ..core.logs import logger
+
 import collections
-from typing import Callable, Literal, Self
+from enum import Enum
+from typing import Callable, Literal, Self, Any, cast, Protocol
 import numpy as np
 import pims
 import tifffile
 import nd2
 from pathlib import Path
-from scipy.ndimage import gaussian_filter
 import gc
-import logging
-
-logger = logging.getLogger("NeurotorchMZ")
-
-from ..core.task_system import Task  
-from ..core.serialize import Serializable
 
 class ImageProperties:
     """
         A class that supports lazy loading and caching of image properties like mean, median, std, min, max and clippedMin (=np.min(0, self.min))
         Returns scalars (except for the img property, where it returns the image used to initializate this object.
     """
-    def __init__(self, img):
+    def __init__(self, img: np.ndarray|None):
         self._img = img
         self._mean = None
         self._std = None
@@ -29,7 +27,7 @@ class ImageProperties:
 
 
     @property
-    def mean(self) -> float:
+    def mean(self) -> np.floating|None:
         if self._img is None:
             return None
         if self._mean is None:
@@ -37,7 +35,7 @@ class ImageProperties:
         return self._mean
     
     @property
-    def median(self) -> float:
+    def median(self) -> np.floating|None:
         if self._img is None:
             return None
         if self._median is None:
@@ -45,15 +43,15 @@ class ImageProperties:
         return self._median
     
     @property
-    def std(self) -> float:
+    def std(self) -> np.floating|None:
         if self._img is None:
             return None
         if self._std is None:
-            self._std = np.std(self._img, mean=self.mean)
+            self._std = np.std(self._img)
         return self._std
     
     @property
-    def min(self) -> float:
+    def min(self) -> np.floating|None:
         if self._img is None:
             return None
         if self._min is None:
@@ -61,7 +59,7 @@ class ImageProperties:
         return self._min
     
     @property
-    def max(self) -> float:
+    def max(self) -> np.floating|None:
         if self._img is None:
             return None
         if self._max is None:
@@ -69,13 +67,13 @@ class ImageProperties:
         return self._max
 
     @property
-    def minClipped(self) -> float:
+    def minClipped(self) -> np.floating|None:
         if self.min is None:
             return None
-        return np.max([0, self.min])
+        return np.max(np.array([0, self.min]))
     
     @property
-    def img(self) -> np.ndarray:
+    def img(self) -> np.ndarray|None:
         return self._img
     
     def __del__(self):
@@ -91,143 +89,124 @@ class AxisImage:
         Providing axis=(1,2) will calculate the same for each image frame.
     """
 
-    def __init__(self, img: np.ndarray, axis:tuple):
+    def __init__(self, img: np.ndarray|None, axis:tuple, name: str|None = None):
         self._img = img
         self._axis = axis
-        self._Mean : ImageProperties = None
-        self._MeanNormed : ImageProperties = None
-        self._Std : ImageProperties = None
-        self._StdNormed : ImageProperties = None
-        self._Median : ImageProperties = None
-        self._MedianNormed : ImageProperties = None
-        self._Min : ImageProperties = None
-        self._Max : ImageProperties = None
+        self._name = name
+        self._mean = ImageProperties(None)
+        self._mean_normed = ImageProperties(None)
+        self._std = ImageProperties(None)
+        self._std_normed = ImageProperties(None)
+        self._median = ImageProperties(None)
+        self._min = ImageProperties(None)
+        self._max = ImageProperties(None)
 
     @property
-    def Mean(self) -> np.ndarray:
+    def Mean(self) -> np.ndarray|None:
         """ Mean image over the specified axis """
-        if self.MeanProps is None: return None
-        return self._Mean.img
+        return self._mean.img
 
     @property
-    def MeanNormed(self) -> np.ndarray:
+    def MeanNormed(self) -> np.ndarray|None:
         """ Normalized Mean image (max value is garanter to be 255 or 0) over the specified axis """
-        if self.MedianNormedProps is None: return None
-        return self._MeanNormed.img
+        return self._mean_normed.img
     
     @property
-    def Median(self) -> np.ndarray:
+    def Median(self) -> np.ndarray|None:
         """ Median image over the specified axis """
-        if self.MedianProps is None: return None
-        return self._Median.img
+        return self._median.img
     
     @property
-    def MedianNormed(self) -> np.ndarray:
-        """ Normalized Median image (max value is garanter to be 255 or 0) over the specified axis """
-        if self.MedianNormedProps is None: return None
-        return self._MedianNormed.img
-    
-    @property
-    def Std(self) -> np.ndarray:
+    def Std(self) -> np.ndarray|None:
         """ Std image over the specified axis """
-        if self.StdProps is None: return None
-        return self._Std.img
+        return self._std.img
     
     @property
-    def StdNormed(self) -> np.ndarray:
+    def StdNormed(self) -> np.ndarray|None:
         """ Normalized Std image (max value is garanter to be 255 or 0) over the specified axis """
-        if self.StdNormedProps is None: return None
-        return self._StdNormed.img
+        return self._std_normed.img
     
     @property
-    def Min(self) -> np.ndarray:
+    def Min(self) -> np.ndarray|None:
         """ Minimum image over the specified axis """
-        if self.MinProps is None: return None
-        return self._Min.img
+        return self._min.img
     
     @property
-    def Max(self) -> np.ndarray:
+    def Max(self) -> np.ndarray|None:
         """ Maximum image over the specified axis """
-        if self.MaxProps is None: return None
-        return self._Max.img
+        return self._max.img
 
     @property
-    def MeanProps(self) -> ImageProperties | None:
-        if self._img is None:
-            return None
-        if self._Mean is None:
-            logging.debug("AxisImage: Calculating MeanProps")
-            self._Mean = ImageProperties(np.mean(self._img, axis=self._axis, dtype="float32").astype("float64")) # Use float32 for calculations (!) to lower peak memory usage
-        return self._Mean
-    
-    @property
-    def MeanNormedProps(self) -> ImageProperties | None:
-        if self._img is None:
-            return None
-        if self._MeanNormed is None:
-            if self.MeanProps.max == 0:
-                self._MeanNormed = self._Mean
+    def MeanProps(self) -> ImageProperties:
+        if self._mean is None:
+            if self._img is None:
+                self._mean = ImageProperties(None)
             else:
-                self._MeanNormed = ImageProperties((self.Mean*255/self.MeanProps.max).astype(self._img.dtype))
-        return self._MeanNormed
+                logger.debug(f"Calculating mean view for AxisImage '{self._name if self._name is not None else ''}' on axis '{self._axis}'")
+                self._mean = ImageProperties(np.mean(self._img, axis=self._axis, dtype="float32").astype("float64")) # Use float32 for calculations (!) to lower peak memory usage
+        return self._mean
     
     @property
-    def MedianProps(self) -> ImageProperties | None:
-        if self._img is None:
-            return None
-        if self._Median is None:
-            logging.debug("AxisImage: Calculating MedianProps")
-            self._Median = ImageProperties(np.median(self._img, axis=self._axis, dtype="float32").astype("float64")) # Use float32 for calculations (!) to lower peak memory usage
-        return self._Median
-    
-    @property
-    def MedianNormedProps(self) -> ImageProperties | None:
-        if self._img is None:
-            return None
-        if self._MedianNormed is None:
-            if self.MedianProps.max == 0:
-                self._MedianNormed = self._Median
-            else: 
-                self._MedianNormed = ImageProperties((self.Median*255/self.MedianProps.max).astype(self._img.dtype))
-        return self._MedianNormed
-    
-    @property
-    def StdProps(self) -> ImageProperties | None:
-        if self._img is None:
-            return None
-        if self._Std is None:
-            logging.debug("AxisImage: Calculating StdProps")
-            self._Std = ImageProperties(np.std(self._img, axis=self._axis, dtype="float32").astype("float64")) # Use float32 for calculations (!) to lower peak memory usage
-        return self._Std
-    
-    @property
-    def StdNormedProps(self) -> ImageProperties | None:
-        if self._img is None:
-            return None
-        if self._StdNormed is None:
-            if self.StdProps.max == 0:
-                self._StdNormed = self._Std
+    def MeanNormedProps(self) -> ImageProperties:
+        if self._mean_normed is None:
+            if self._img is None:
+                self._mean_normed = ImageProperties(None)
+            elif self.MeanProps.max == 0 or self.Mean is None:
+                self._mean_normed = self._mean
             else:
-                self._StdNormed = ImageProperties((self.Std*255/self.StdProps.max).astype(self._img.dtype))
-        return self._StdNormed
+                self._mean_normed = ImageProperties((self.Mean*255/self.MeanProps.max).astype(self._img.dtype))
+        return self._mean_normed
     
     @property
-    def MinProps(self) -> ImageProperties | None:
-        if self._img is None:
-            return None
-        if self._Min is None:
-            logging.debug("AxisImage: Calculating MinProps")
-            self._Min = ImageProperties(np.min(self._img, axis=self._axis))
-        return self._Min
+    def MedianProps(self) -> ImageProperties:
+        if self._median is None:
+            if self._img is None:
+                self._median = ImageProperties(None)
+            else:
+                logger.debug(f"Calculating median view for AxisImage '{self._name if self._name is not None else ''}' on axis '{self._axis}'")
+                self._median = ImageProperties(np.median(self._img, axis=self._axis))
+        return self._median
     
     @property
-    def MaxProps(self) -> ImageProperties | None:
-        if self._img is None:
-            return None
-        if self._Max is None:
-            logging.debug("AxisImage: Calculating MaxProps")
-            self._Max = ImageProperties(np.max(self._img, axis=self._axis))
-        return self._Max
+    def StdProps(self) -> ImageProperties:
+        if self._std is None:
+            if self._img is None:
+                self._std = ImageProperties(None)
+            else:
+                logger.debug(f"Calculating std view for AxisImage '{self._name if self._name is not None else ''}' on axis '{self._axis}'")
+                self._std = ImageProperties(np.std(self._img, axis=self._axis, dtype="float32").astype("float64")) # Use float32 for calculations (!) to lower peak memory usage
+        return self._std
+    
+    @property
+    def StdNormedProps(self) -> ImageProperties:
+        if self._std_normed is None:
+            if self._img is None:
+                self._std_normed = ImageProperties(None)
+            elif self.StdProps.max == 0 or self.Std is None:
+                self._std_normed = self._mean
+            else:
+                self._std_normed = ImageProperties((self.Std*255/self.StdProps.max).astype(self._img.dtype))
+        return self._std_normed
+    
+    @property
+    def MinProps(self) -> ImageProperties:
+        if self._min is None:
+            if self._img is None:
+                self._min = ImageProperties(None)
+            else:
+                logger.debug(f"Calculating min view for AxisImage '{self._name if self._name is not None else ''}' on axis '{self._axis}'")
+                self._min = ImageProperties(np.min(self._img, axis=self._axis))
+        return self._min
+    
+    @property
+    def MaxProps(self) -> ImageProperties:
+        if self._max is None:
+            if self._img is None:
+                self._max = ImageProperties(None)
+            else:
+                logger.debug(f"Calculating max view for AxisImage '{self._name if self._name is not None else ''}' on axis '{self._axis}'")
+                self._max = ImageProperties(np.max(self._img, axis=self._axis))
+        return self._max
     
     def __del__(self):
         del self._img
@@ -256,61 +235,51 @@ class ImageObject(Serializable):
     # Dict used for serialization; key is property name, value is tuple of serialization name and conversion function for the given data to give at least a minimal property from 
     _serialize_dict = {"_name":("name", str), "_path":("path", Path), "_imgMode":("imgMode", int), "_pimsmetadata": ("pimsmetadata", collections.OrderedDict)}
     
-    def __init__(self, lazyLoading = True):
-        self._task_open_image = Task(lambda:_, "ImageObject", run_async=True, keep_alive=False)
-        self.Clear()
+    def __init__(self, diff_conv_cache_size: int = 3):
+        self._task_open_image = Task(lambda task, **kwargs: None, "ImageObject", run_async=True, keep_alive=False)
+        self.diff_conv_cache_size = diff_conv_cache_size
+        self.clear()
 
-    def Clear(self):
+    def clear(self):
+        """ Resets the ImageObject and clears all stored images and metadata """
         self._name: str|None = None
-        self._img: np.ndarray = None
-        self._imgDenoised: np.ndarray = None
-        self._imgMode: int = 0 # 0: Use given image, 1: use denoised image
-        self._imgProps: ImageProperties = None
-        self._imgS: np.ndarray = None # Image with signed dtype
-        self._imgSpatial: AxisImage = None
-        self._imgTemporal: AxisImage = None
-        self._pimsmetadata: dict|None = None
-        self._nd2metadata: dict|None = None
-        self._path: Path|None = None # Path of the image file, if given
+        self._path: Path|None = None
+        self._metdata: dict|None = None
 
-        self._imgDiff_mode = 0 #0: regular imgDiff, 1: convoluted imgDiff
-        self._imgDiff: np.ndarray = None
-        self._imgDiffProps: ImageProperties = None
-        self._imgDiffConvFunc : Callable = ImageObject.Conv_GaussianBlur
-        self._imgDiffConvArgs : dict|None = {"sigma": 2}
-        self._imgDiffConv: dict[str, np.ndarray] = {}
-        self._imgDiffConvProps: ImageProperties = {}
-        self._imgDiffSpatial: AxisImage= None
-        self._imgDiffTemporal: AxisImage = None
-        self._imgDiffCSpatial: dict[str, AxisImage] = {}
-        self._imgDiffCTemporal: dict[str, AxisImage] = {}
+        self._img: np.ndarray|None = None
+        self._img_props: ImageProperties|None = None
+        self._img_views: dict[ImageView, AxisImage] = {}
+        self._img_conv_func: ConvolutionFunction|None = None
+        self._img_conv_args: dict|None = None
 
-        self._customImages = {}
-        self._customImagesProps = {}
+        self._img_diff: np.ndarray|None = None
+        self._img_diff_props:dict[str, ImageProperties] = {}
+        self._img_diff_views: dict[str, dict[ImageView, AxisImage]] = {"default" : {}}
+        self._img_diff_conf_func: ConvolutionFunction|None = None
+        self._img_diff_conf_args: dict|None = None
 
     def serialize(self, **kwargs) -> dict:
-        """ 
-            Serializes the ImageObject into a dictionary and do not include image data (only the path is included). Note that only properties, which could not be calculated from other ones, are included
-
-            Please note: If the ImageObject has no path, the image data itself will not be serialized
-        """
-        r = {}
-        for prop_name, (serialize_name, dtype_func) in ImageObject._serialize_dict.items():
-            if (a := self.__getattribute__(prop_name)) is not None:
-                r[serialize_name] = a
+        r: dict[str, Any] = {
+            "name": self._name
+        }
+        if self._path is not None:
+            r["path"] = self._path
+        else:
+            raise SerializeError("Can not serialize an ImageObject without a path")
         return r
-
-
     
-    def deserialize(self, serialize_dict: dict, **kwargs):
-        """ Load data from a serialization dict """
-        self.Clear()
-        for prop_name, (serialize_name, dtype_func) in ImageObject._serialize_dict.items():
-            if serialize_name in serialize_dict.keys():
-                self.__setattr__(prop_name, dtype_func(serialize_dict))
+    @classmethod
+    def deserialize(cls, serialize_dict: dict, **kwargs) -> Self:
+        imgObj = cls()
+        if "path" not in serialize_dict.keys():
+            raise DeserializeError("Can not deserialize an ImageObject without a path") 
+        task = imgObj.OpenFile(serialize_dict["path"], precompute=True)
+        task.join()
+        return imgObj
 
     @property
     def name(self) -> str:
+        """ Get or set the name of the ImageObject """
         if self._name is None:
             return ""
         return self._name
@@ -322,253 +291,165 @@ class ImageObject(Serializable):
 
     @property
     def path(self) -> Path|None:
-        """ The path of the image file, if given """
+        """ Returns the path of the current ImageObject or None if not originating from a file """
         return self._path
+    
+    # Img and ImageDiff properties
 
     @property
     def img(self) -> np.ndarray | None:
         """
-            Returns the provided image in form of an np.ndarray or None if not loaded
+            Get or set the image. Note that setting to a new value will remove the old diff image
+
+            :raises UnsupportedImageError: The image is not a valid image stack
         """
-        if self._imgMode == 1:
-            if self._imgDenoised is None:
-                if self.imgDiff_Conv is None:
-                    return None
-                self._imgDenoised = self.imgView(ImageView.SPATIAL).Median + np.cumsum(self.imgDiff_Conv, axis=(1,2)) 
-            return self._imgDenoised
-        return self._img
+        return self.imgProps.img
     
     @img.setter
-    def img(self, image: np.ndarray) -> bool:
-        self.Clear()
-        if not ImageObject._IsValidImagestack(image): return False
+    def img(self, image: np.ndarray):
+        if not ImageObject._is_valid_image_stack(image): raise UnsupportedImageError()
+        self.clear()
         self._img = image
-        return True
-
-    @property
-    def imgProps(self) -> ImageProperties | None:
-        if self._img is None:
-            return None
-        if self._imgProps is None:
-            self._imgProps = ImageProperties(self._img)
-        return self._imgProps
-    
-    def img_FrameProps(self, frame:int) -> ImageProperties | None:
-        # Edge case, do not use caching
-        if self._img is None or frame < 0 or frame >= self._img.shape[0]:
-            return None
-        return ImageProperties(self._img[frame])
-    
-    @property
-    def imgS(self) -> np.ndarray | None:
-        """
-            Returns the provided image or None, but converted to an signed datatype (needed for example for calculating diffImg)
-        """
-        if self._img is None:
-            return None
-        if self._imgS is None:
-            match (self._img.dtype):
-                case "uint8":
-                    self._imgS = self._img.view("int8")
-                case "uint16":
-                    self._imgS = self._img.view("int16")
-                case "uint32":
-                    self._imgS = self._img.view("int32")
-                case "uint64":
-                    self._imgS = self._img.view("int64")
-                case _:
-                    self._imgS = self._img
-        return self._imgS
-
-    def imgView(self, mode) -> AxisImage | None:
-        if self._img is None:
-            return None
-        match mode:
-            case ImageView.SPATIAL:
-                if self._imgSpatial is None:
-                    self._imgSpatial = AxisImage(self._img, ImageView.SPATIAL)
-                return self._imgSpatial
-            case ImageView.TEMPORAL:
-                if self._imgTemporal is None:
-                    self._imgTemporal = AxisImage(self._img, ImageView.TEMPORAL)
-                return self._imgTemporal
-            case _:
-                raise ValueError("The axis must be either SPATIAL or TEMPORAL")
-    
-    @property
-    def imgDiff_Mode(self) -> Literal["Normal", "Convoluted"]:
-        if self._imgDiff_mode == 1:
-            return "Convoluted"
-        return "Normal" 
-
-    @imgDiff_Mode.setter
-    def imgDiff_Mode(self, mode: Literal["Normal", "Convoluted"]):
-        if mode == "Normal":
-            self._imgDiff_mode = 0
-        elif mode == "Convoluted":
-            self._imgDiff_mode = 1
-        else:
-            raise ValueError("The mode parameter must be 'Normal' or 'Convoluted'")
-
-    @property
-    def imgDiff_Normal(self) -> np.ndarray | None:
-        if self._imgDiff is None:
-            if self._img is None:
-                return None
-            self._imgDiff = np.diff(self.imgS, axis=0)
-        return self._imgDiff
-    
-    @property
-    def imgDiff_Conv(self) -> np.ndarray | None:
-        if self.imgDiff_Normal is None or self._imgDiffConvFunc is None:
-            return None
-        _n = self._imgDiffConvFunc.__name__+str(self._imgDiffConvArgs)
-        if _n not in self._imgDiffConv.keys():
-            self._imgDiffConv[_n] = self._imgDiffConvFunc(imgObj=self, **self._imgDiffConvArgs)
-        return self._imgDiffConv[_n]
-    
-    @property
-    def imgDiff_NormalProps(self) -> ImageProperties | None:
-        if self.imgDiff_Normal is None:
-            return None
-        if self._imgDiffProps is None:
-            self._imgDiffProps = ImageProperties(self.imgDiff_Normal)
-        return self._imgDiffProps
-
-    @property
-    def imgDiff_ConvProps(self) -> ImageProperties | None:
-        if self.imgDiff_Conv is None or self._imgDiffConvFunc is None:
-            return None
-        _n = self._imgDiffConvFunc.__name__+str(self._imgDiffConvArgs)
-        if _n not in self._imgDiffConvProps.keys():
-            self._imgDiffConvProps[_n] = ImageProperties(self.imgDiff_Conv)
-        return self._imgDiffConvProps[_n]
-    
-    def imgDiff_NormalView(self, mode) -> AxisImage | None:
-        if self.imgDiff is None:
-            return None
-        match mode:
-            case ImageView.SPATIAL:
-                if self._imgDiffSpatial is None:
-                    self._imgDiffSpatial = AxisImage(self._imgDiff, ImageView.SPATIAL)
-                return self._imgDiffSpatial
-            case ImageView.TEMPORAL:
-                if self._imgDiffTemporal is None:
-                    self._imgDiffTemporal = AxisImage(self._imgDiff, ImageView.TEMPORAL)
-                return self._imgDiffTemporal
-            case _:
-                raise ValueError("The axis must be either SPATIAL or TEMPORAL")
-            
-    def imgDiff_ConvView(self, mode) -> AxisImage | None:
-        if self.imgDiff_Conv is None:
-            return None
-        _n = self._imgDiffConvFunc.__name__+str(self._imgDiffConvArgs)
-        match mode:
-            case ImageView.SPATIAL:
-                if _n not in self._imgDiffCSpatial.keys():
-                    self._imgDiffCSpatial[_n] = AxisImage(self.imgDiff_Conv, ImageView.SPATIAL)
-                return self._imgDiffCSpatial[_n]
-            case ImageView.TEMPORAL:
-                if _n not in self._imgDiffCTemporal.keys():
-                    self._imgDiffCTemporal[_n] = AxisImage(self.imgDiff_Conv, ImageView.TEMPORAL)
-                return self._imgDiffCTemporal[_n]
-            case _:
-                raise ValueError("The axis must be either SPATIAL or TEMPORAL")
     
     @property
     def imgDiff(self) -> np.ndarray | None:
-        if self.imgDiff_Mode == "Convoluted":
-            return self.imgDiff_Conv
-        return self.imgDiff_Normal
+        """ 
+            Get or set the diff image. Note that setting to a new value will remove the old image
+
+            :raises UnsupportedImageError: The image is not a valid image stack
+        """
+        return self.imgDiffProps.img
 
     @imgDiff.setter
-    def imgDiff(self, image: np.ndarray) -> bool:
-        if not ImageObject._IsValidImagestack(image): return False
-        self.Clear()
-        self._imgDiff = image
-        self._imgDiff_mode = "Normal"
-        return True
-    
-    def imgDiffView(self, mode) -> AxisImage | None:
-        if self.imgDiff_Mode == "Convoluted":
-            return self.imgDiff_ConvView(mode)
-        return self.imgDiff_NormalView(mode)
+    def imgDiff(self, image: np.ndarray):
+        if not ImageObject._is_valid_image_stack(image): raise UnsupportedImageError()
+        self.clear()
+        self._img_diff = image
 
     @property
-    def imgDiffProps(self) -> ImageProperties | None:
-        if self.imgDiff_Mode == "Convoluted":
-            return self.imgDiff_ConvProps
-        return self.imgDiff_NormalProps
-    
-    def imgDiff_FrameProps(self, frame:int) -> ImageProperties | None:
-        # Edge case, do not use caching
-        if self.imgDiff is None or frame < 0 or frame >= self.imgDiff.shape[0]:
-            return None
-        return ImageProperties(self.imgDiff[frame])
-    
-    @property
-    def pims_metadata(self) -> dict | None:
-        return self._pimsmetadata
-    
-    @property
-    def nd2_metadata(self) -> dict|None:
-        return self._nd2metadata
-    
-    
-    def GetCustomImage(self, name: str):
-        if name in self._customImages.keys():
-            return self._customImages[name]
-        else:
-            return None
-        
-    def GetCustomImagesProps(self, name: str):
-        if name in self._customImagesProps.keys():
-            return self._customImagesProps[name]
-        else:
-            return None
-        
-    def SetCustomImage(self, name: str, img: np.ndarray):
-        self._customImages[name] = img
-        self._customImagesProps = ImageProperties(self._customImages[name])
-    
-
-    def ClearCache(self):
-        """Clears all currently not actively used internal variables (currently only the convoluted imgDiff)"""
-        for internalvar, property in [(self._imgDiffConv, self.imgDiff_Conv),
-                                       (self._imgDiffConvProps, self.imgDiff_ConvProps),
-                                       (self._imgDiffCSpatial, self.imgDiff_ConvView(ImageView.SPATIAL)),
-                                       (self._imgDiffCTemporal, self.imgDiff_ConvView(ImageView.TEMPORAL))]:
-            for k in list(internalvar.keys()).copy():
-                if internalvar[k] is not property:
-                    del internalvar[k]
-
-    def _IsValidImagestack(image):
-        if not isinstance(image, np.ndarray):
-            return False
-        if len(image.shape) != 3:
-            return False
-        return True
-    
-    def SetConvolutionFunction(self, func: Callable, func_args: dict|None = None):
-        self._imgDiffConvFunc = func
-        self._imgDiffConvArgs = func_args if func_args is not None else {}
-    
-    def Conv_GaussianBlur(imgObj: Self, sigma: float) -> np.ndarray | None:
-        if imgObj.imgDiff_Normal is None:
-            return None
-        return gaussian_filter(imgObj.imgDiff_Normal, sigma=sigma, axes=(1,2))
-    
-    def Conv_MeanMaxDiff(self) -> np.ndarray | None:
+    def imgS(self) -> np.ndarray | None:
+        """
+            Returns a numpy view with a signed datatype (e.g. for calculating the diffImage). 
+        """
         if self._img is None:
             return None
-        return (self.imgS - self.imgView(ImageView.SPATIAL).Mean).astype(self.imgS.dtype)
+        match (self._img.dtype):
+            case "uint8":
+                return self._img.view("int8")
+            case "uint16":
+                return self._img.view("int16")
+            case "uint32":
+                return self._img.view("int32")
+            case "uint64":
+                return self._img.view("int64")
+            case _:
+                return self._img
+
+    # ImageProperties
+    
+    @property
+    def imgProps(self) -> ImageProperties:
+        """ Returns the image properties (e.g. median, mean or maximum) """
+        if self._img is None:
+            return ImageProperties(None)
+        if self._img_props is None:
+            if self._img_conv_func is not None:
+                self._img_props = ImageProperties(self._img_conv_func(self._img, *self._img_conv_args))
+            else:
+                self._img_props = ImageProperties(self._img)
+        return self._img_props
     
 
-    def PrecomputeImage(self, calc_convoluted: bool = False, task_continue: bool = False, run_async:bool = True) -> Task:
+    @property
+    def imgDiffProps(self) -> ImageProperties:
+        """ Returns the diff image properties (e.g. median, mean or maximum) """
+        # Generate img_diff first
+        if self._img_diff is None:
+            if self.imgS is None:
+                return ImageProperties(None)
+            self._img_diff = np.diff(self.imgS, axis=0)
+
+        if self._diff_conv_func_identifier not in self._img_diff_props.keys():
+            if self._img_diff_conf_func is None:
+                self._img_diff_props["default"] = ImageProperties(self._img_diff)
+            else:
+                self._img_diff_props[self._diff_conv_func_identifier] = ImageProperties(self._img_diff_conf_func(self._img_diff, *self._img_diff_conf_args))
+        self._gc_cache()
+        return self._img_diff_props[self._diff_conv_func_identifier]
+    
+    def img_FrameProps(self, frame:int) -> ImageProperties:
+        """ Returns the image properties for a given frame """
+        # Edge case, do not use caching
+        if self.img is None or frame < 0 or frame >= self.img.shape[0]:
+            return ImageProperties(None)
+        return ImageProperties(self.img[frame])
+    
+    def imgDiff_FrameProps(self, frame:int) -> ImageProperties:
+        """ Returns the image diff properties for a given frame """
+        # Edge case, do not use caching
+        if self.imgDiff is None or frame < 0 or frame >= self.imgDiff.shape[0]:
+            return ImageProperties(None)
+        return ImageProperties(self.imgDiff[frame])
+    
+    # Image View
+
+    def imgView(self, mode: "ImageView") -> AxisImage:
+        """ Returns a view of the current image given an ImageView mode """
+        if mode not in self._img_views.keys():
+            self._img_views[mode] = AxisImage(self.img, axis=mode.value)
+        return self._img_views[mode]
+    
+    def imgDiffView(self, mode) -> AxisImage:
+        """ Returns a view of the current diff image given an ImageView mode """
+        if mode not in self._img_diff_views[self._diff_conv_func_identifier].keys():
+            self._img_diff_views[self._diff_conv_func_identifier][mode] = AxisImage(self.imgDiff, axis=mode.value)
+        return self._img_diff_views[self._diff_conv_func_identifier][mode]
+    
+    
+    # Convolution functions
+
+    def set_conf_func(self, func: "ConvolutionFunction|None" = None, **kwargs) -> None:
+        self._img_conv_func = func
+        self._img_conv_args = kwargs
+        self._img_props = None
+        self._img_views = {}
+
+    def set_diff_conf_func(self, func: "ConvolutionFunction|None" = None, **kwargs) -> None:
+        self._img_diff_conf_func = func
+        self._img_diff_conf_args = kwargs
+
+    @property
+    def _conv_func_identifier(self) -> str:
+        if self._img_conv_func is None:
+            return "default"
+        return self._img_conv_func.__name__ + repr(self._img_conv_args) # type: ignore
+    
+    @property
+    def _diff_conv_func_identifier(self) -> str:
+        if self._img_diff_conf_func is None:
+            return "default"
+        return self._img_diff_conf_func.__name__ + repr(self._img_diff_conf_args) # type: ignore
+    
+    def _gc_cache(self) -> None:
+        """ Garbage collect the convolution caches """
+        while len(self._img_diff_props) > self.diff_conv_cache_size:
+            del self._img_diff_props[list(self._img_diff_props.keys())[0]]
+        while len(self._img_diff_views) > self.diff_conv_cache_size:
+            del self._img_diff_views[list(self._img_diff_views.keys())[0]]   
+
+    def clear_cache(self) -> None:
+        """Clears all currently not actively used internal variables (currently only the convoluted imgDiff) """
+        k, v = self._img_diff_props.popitem()
+        self._img_diff_props = {k: v}
+        k, v = self._img_diff_views.popitem()
+        self._img_diff_views = {k: v}
+
+    # Image loading
+    
+    def PrecomputeImage(self, task_continue: bool = False, run_async:bool = True) -> Task:
         """ 
             Precalculate the image views to prevent stuttering during runtime.
 
-            :param bool calc_convoluted: Controls if the convoluted function should also be precomputed
             :param bool task_continue: This function supports the continuation of an existing task (for example from opening an image file)
             :param bool async_mode: Controls if the precomputation runs in a different thread. Has no effect when task_continue is set
             :returns Task: The task object of this task
@@ -586,18 +467,15 @@ class ImageObject(Serializable):
             gc.collect()
             task.set_step_progress(1+_progIni, "preparing imgDiff")
             self.imgDiff
-            if calc_convoluted:
-                task.set_step_progress(2+_progIni, "preparing imgDiff convolution")
-                self.imgDiff_Conv
             gc.collect()
-            task.set_step_progress(3+_progIni, "preparing ImgDiffView (Spatial Max)")
+            task.set_step_progress(2+_progIni, "preparing ImgDiffView (Spatial Max)")
             self.imgDiffView(ImageView.SPATIAL).Max
-            task.set_step_progress(3+_progIni, "preparing ImgDiffView (Spatial Std)")
+            task.set_step_progress(2+_progIni, "preparing ImgDiffView (Spatial Std)")
             self.imgDiffView(ImageView.SPATIAL).StdNormed
             gc.collect()
-            task.set_step_progress(3+_progIni, "preparing ImgDiffView (Temporal Max)")
+            task.set_step_progress(2+_progIni, "preparing ImgDiffView (Temporal Max)")
             self.imgDiffView(ImageView.TEMPORAL).Max
-            task.set_step_progress(3+_progIni, "preparing ImgDiffView (Temporal Std)")
+            task.set_step_progress(2+_progIni, "preparing ImgDiffView (Temporal Std)")
             self.imgDiffView(ImageView.TEMPORAL).Std
             gc.collect()
 
@@ -605,27 +483,25 @@ class ImageObject(Serializable):
             _Precompute(self._task_open_image)
         else:
             self._task_open_image.reset(function=_Precompute, name="preparing ImageObject", run_async=run_async)
-            self._task_open_image.set_step_mode(4)
+            self._task_open_image.set_step_mode(3)
             self._task_open_image.start()
         return self._task_open_image
         
-    def SetImagePrecompute(self, img:np.ndarray, name:str = None, calc_convoluted: bool = False, run_async:bool = True) -> Task:
+    def SetImagePrecompute(self, img:np.ndarray, name:str|None = None, run_async:bool = True) -> Task:
         """ 
             Set a new image with a given name and run PrecomputeImage() on it.
 
             :param np.ndarray img: The image
             :param str name: Name of the image
-            :param bool calc_convoluted: Controls if the convoluted function should also be precomputed
-            :param bool task_continue: This function supports the continuation of an existing task (for example from opening an image file)
             :param bool async_mode: Controls if the precomputation runs in a different thread
             :returns Task: The task object of this task
             :raises AlreadyLoading: There is already a task working on this ImageObject
         """
-        if not ImageObject._IsValidImagestack(img):
+        if not ImageObject._is_valid_image_stack(img):
             raise UnsupportedImageError()
         self.img = img
         self.name = name
-        return self.PrecomputeImage(calc_convoluted=calc_convoluted, run_async=run_async)
+        return self.PrecomputeImage(run_async=run_async)
 
 
     def OpenFile(self, path: Path|str, precompute:bool = False, calc_convoluted:bool = False, run_async:bool = True) -> Task:
@@ -634,7 +510,6 @@ class ImageObject(Serializable):
 
             :param Path|str path: The path to the image file
             :param bool precompute: Controls if the loaded image is also precomputed
-            :param bool calc_convoluted: Has only an affect when precompute is set. Passed to PrecomputeImage() function
             :param bool run_async: Controls if the precomputation runs in a different thread
             :returns Task: The task object of this task
             :raises AlreadyLoading: There is already a task working on this ImageObject
@@ -651,22 +526,22 @@ class ImageObject(Serializable):
         if not path.exists() or not path.is_file():
             raise FileNotFoundError()
         
-        self.Clear()
+        self.clear()
 
         def _Load(task: Task):
             task.set_step_progress(0, "reading File")
             if path.suffix.lower() in [".tif", ".tiff"]:
-                logger.debug(f"Opening {path.name} with tifffile")
+                logger.debug(f"Opening '{path.name}' with tifffile")
                 with tifffile.TiffFile(path) as tif:
                     self._img = tif.asarray()
-                    self._tiffmetadata = tif.ome_metadata
+                    self._metdata = tif.metaseries_metadata
             elif nd2.is_supported_file(path):
-                logger.debug(f"Opening {path.name} with nd2")
+                logger.debug(f"Opening '{path.name}' with nd2")
                 with nd2.ND2File(path) as ndfile:
-                    self._img = ndfile.asarray()
-                    self._nd2metadata = ndfile.unstructured_metadata()
+                    self.img = ndfile.asarray()
+                    self._metdata = ndfile.unstructured_metadata()
             else:
-                logger.debug(f"Opening {path.name} with PIMS")
+                logger.debug(f"Opening '{path.name}' with PIMS")
                 try:
                     _pimsImg = pims.open(str(path))
                 except FileNotFoundError:
@@ -678,32 +553,39 @@ class ImageObject(Serializable):
                 task.set_step_progress(1, "converting")
                 imgNP = np.zeros(shape=_pimsImg.shape, dtype=_pimsImg.dtype)
                 imgNP = [_pimsImg[i] for i in range(_pimsImg.shape[0])]
-                self.img = imgNP
+                self.img = np.array(imgNP)
                 if getattr(_pimsImg, "get_metadata_raw", None) != None: 
-                    self._pimsmetadata = collections.OrderedDict(sorted(_pimsImg.get_metadata_raw().items()))
+                    self._metdata = collections.OrderedDict(sorted(_pimsImg.get_metadata_raw().items()))
             self._path = path
             self.name = path.stem
             
-
             if precompute:
-                self.PrecomputeImage(calc_convoluted=calc_convoluted, task_continue=True, run_async=run_async)
+                self.PrecomputeImage(task_continue=True, run_async=run_async)
 
         self._task_open_image.reset(function=_Load, name="open image file", run_async=run_async)
         self._task_open_image.set_step_mode(2 + 4*precompute)
         self._task_open_image.start()
         return self._task_open_image
     
-class ImageView:
-    """ 
-        Presets for reducing the 3 dimensional ImageObject in dimensions
+    # Static functions
+
+    @staticmethod
+    def _is_valid_image_stack(image: Any) -> bool:
+        if not isinstance(image, np.ndarray):
+            return False
+        if len(image.shape) != 3:
+            return False
+        return True
     
-        :var tuple SPATIAL: Removes the temporal component and will create an 2D image
-        :var tuple TEMPORAL: Removes the spatial component and will create an 1D time series
+class ImageView(Enum):
+    """ 
+        Collapse a 3D image (t, y, x) into a smaller dimension
     """
 
-    SPATIAL = (0)
+    SPATIAL = (0,)
+    """ SPATIAL: Removes the temporal component and creates a 2D image """
     TEMPORAL = (1,2)
-
+    """ TEMPORAL: Removes the spatial component and creates an 1D time series """
 
 class ImageObjectError(Exception):
     """ ImageObject Error"""
@@ -716,7 +598,7 @@ class AlreadyLoadingError(ImageObjectError):
 class UnsupportedImageError(ImageObjectError):
     """ The image is unsupported """
     
-    def __init__(self, file_name: str, exception: Exception|None = None, *args):
+    def __init__(self, file_name: str|None = None, exception: Exception|None = None, *args):
         super().__init__(*args)
         self.exception = exception
         self.file_name = file_name
@@ -727,3 +609,8 @@ class ImageShapeError(ImageObjectError):
     def __init__(self, shape: np.ndarray|None = None, *args):
         super().__init__(*args)
         self.shape = shape
+
+class ConvolutionFunction(Protocol):
+
+    def __call__(self, img: np.ndarray, **kwargs) -> np.ndarray:
+        ...
