@@ -235,8 +235,9 @@ class ImageObject(Serializable):
     # Dict used for serialization; key is property name, value is tuple of serialization name and conversion function for the given data to give at least a minimal property from 
     _serialize_dict = {"_name":("name", str), "_path":("path", Path), "_imgMode":("imgMode", int), "_pimsmetadata": ("pimsmetadata", collections.OrderedDict)}
     
-    def __init__(self, diff_conv_cache_size: int = 3):
+    def __init__(self, conv_cache_size: int = 1, diff_conv_cache_size: int = 3):
         self._task_open_image = Task(lambda task, **kwargs: None, "ImageObject", run_async=True, keep_alive=False)
+        self.conv_cache_size = conv_cache_size
         self.diff_conv_cache_size = diff_conv_cache_size
         self.clear()
 
@@ -247,16 +248,16 @@ class ImageObject(Serializable):
         self._metdata: dict|None = None
 
         self._img: np.ndarray|None = None
-        self._img_props: ImageProperties|None = None
-        self._img_views: dict[ImageView, AxisImage] = {}
-        self._img_conv_func: ConvolutionFunction|None = None
+        self._img_props: dict[str, ImageProperties] = {}
+        self._img_views: dict[str, dict[ImageView, AxisImage]] = {"default" : {}}
+        self._img_conv_func: Callable[..., np.ndarray]|None = None
         self._img_conv_args: dict|None = None
 
         self._img_diff: np.ndarray|None = None
-        self._img_diff_props:dict[str, ImageProperties] = {}
+        self._img_diff_props: dict[str, ImageProperties] = {}
         self._img_diff_views: dict[str, dict[ImageView, AxisImage]] = {"default" : {}}
-        self._img_diff_conf_func: ConvolutionFunction|None = None
-        self._img_diff_conf_args: dict|None = None
+        self._img_diff_conv_func: Callable[..., np.ndarray]|None = None
+        self._img_diff_conv_args: dict|None = None
 
     def serialize(self, **kwargs) -> dict:
         r: dict[str, Any] = {
@@ -352,12 +353,13 @@ class ImageObject(Serializable):
         """ Returns the image properties (e.g. median, mean or maximum) """
         if self._img is None:
             return ImageProperties(None)
-        if self._img_props is None:
-            if self._img_conv_func is not None:
-                self._img_props = ImageProperties(self._img_conv_func(self._img, *self._img_conv_args))
+        if self._conv_func_identifier not in self._img_props.keys():
+            if self._img_conv_func is not None and self._img_conv_args is not None:
+                self._img_props[self._conv_func_identifier] = ImageProperties(self._img_conv_func(self, *self._img_conv_args))
             else:
-                self._img_props = ImageProperties(self._img)
-        return self._img_props
+                self._img_props["default"] = ImageProperties(self._img)
+        self._gc_cache()
+        return self._img_props[self._conv_func_identifier]
     
 
     @property
@@ -370,10 +372,10 @@ class ImageObject(Serializable):
             self._img_diff = np.diff(self.imgS, axis=0)
 
         if self._diff_conv_func_identifier not in self._img_diff_props.keys():
-            if self._img_diff_conf_func is None:
-                self._img_diff_props["default"] = ImageProperties(self._img_diff)
+            if self._img_diff_conv_func is not None and self._img_diff_conv_args is not None:
+                self._img_diff_props[self._diff_conv_func_identifier] = ImageProperties(self._img_diff_conv_func(self, *self._img_diff_conv_args))
             else:
-                self._img_diff_props[self._diff_conv_func_identifier] = ImageProperties(self._img_diff_conf_func(self._img_diff, *self._img_diff_conf_args))
+                self._img_diff_props["default"] = ImageProperties(self._img_diff)
         self._gc_cache()
         return self._img_diff_props[self._diff_conv_func_identifier]
     
@@ -395,9 +397,9 @@ class ImageObject(Serializable):
 
     def imgView(self, mode: "ImageView") -> AxisImage:
         """ Returns a view of the current image given an ImageView mode """
-        if mode not in self._img_views.keys():
-            self._img_views[mode] = AxisImage(self.img, axis=mode.value)
-        return self._img_views[mode]
+        if mode not in self._img_views[self._conv_func_identifier].keys():
+            self._img_views[self._conv_func_identifier][mode] = AxisImage(self.img, axis=mode.value)
+        return self._img_views[self._conv_func_identifier][mode]
     
     def imgDiffView(self, mode) -> AxisImage:
         """ Returns a view of the current diff image given an ImageView mode """
@@ -408,15 +410,13 @@ class ImageObject(Serializable):
     
     # Convolution functions
 
-    def set_conf_func(self, func: "ConvolutionFunction|None" = None, **kwargs) -> None:
+    def set_conf_func(self, func: Callable[..., np.ndarray]|None = None, func_args: dict[str, Any]|None = None) -> None:
         self._img_conv_func = func
-        self._img_conv_args = kwargs
-        self._img_props = None
-        self._img_views = {}
+        self._img_conv_args = func_args
 
-    def set_diff_conf_func(self, func: "ConvolutionFunction|None" = None, **kwargs) -> None:
-        self._img_diff_conf_func = func
-        self._img_diff_conf_args = kwargs
+    def set_diff_conf_func(self, func: Callable[..., np.ndarray]|None = None, func_args: dict[str, Any]|None = None) -> None:
+        self._img_diff_conv_func = func
+        self._img_diff_conv_args = func_args
 
     @property
     def _conv_func_identifier(self) -> str:
@@ -426,19 +426,29 @@ class ImageObject(Serializable):
     
     @property
     def _diff_conv_func_identifier(self) -> str:
-        if self._img_diff_conf_func is None:
+        if self._img_diff_conv_func is None:
             return "default"
-        return self._img_diff_conf_func.__name__ + repr(self._img_diff_conf_args) # type: ignore
+        return self._img_diff_conv_func.__name__ + repr(self._img_diff_conv_args) # type: ignore
     
     def _gc_cache(self) -> None:
         """ Garbage collect the convolution caches """
+        while len(self._img_props) > self.conv_cache_size:
+            del self._img_props[list(self._img_props.keys())[0]]
+        while len(self._img_views) > self.conv_cache_size:
+            del self._img_views[list(self._img_views.keys())[0]]   
+
         while len(self._img_diff_props) > self.diff_conv_cache_size:
             del self._img_diff_props[list(self._img_diff_props.keys())[0]]
         while len(self._img_diff_views) > self.diff_conv_cache_size:
             del self._img_diff_views[list(self._img_diff_views.keys())[0]]   
 
     def clear_cache(self) -> None:
-        """Clears all currently not actively used internal variables (currently only the convoluted imgDiff) """
+        """Clears caches of unsused convolutions """
+        k, v = self._img_props.popitem()
+        self._img_props = {k: v}
+        k, v = self._img_views.popitem()
+        self._img_views = {k: v}
+
         k, v = self._img_diff_props.popitem()
         self._img_diff_props = {k: v}
         k, v = self._img_diff_views.popitem()
@@ -609,8 +619,3 @@ class ImageShapeError(ImageObjectError):
     def __init__(self, shape: np.ndarray|None = None, *args):
         super().__init__(*args)
         self.shape = shape
-
-class ConvolutionFunction(Protocol):
-
-    def __call__(self, img: np.ndarray, **kwargs) -> np.ndarray:
-        ...
