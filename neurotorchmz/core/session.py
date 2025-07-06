@@ -4,6 +4,7 @@ from ..core import settings, resources, logs
 from ..core.logs import logger
 from ..core.serialize import Serializable
 from ..utils.image import *
+from ..utils.convolution_functions import denoising
 from ..utils.signal_detection import SignalObject
 from ..utils.synapse_detection import *
 
@@ -73,7 +74,7 @@ class Session(Serializable):
     def set_active_image_object(self, imgObj: ImageObject|None):
         """ Replace the active ImageObject or remove it by setting it to zero. Creates a new SignalObject """
         if self._image_object is not None:
-            self._image_object.Clear() # It's important to clear the object as the AxisImage, ImageProperties, ... create circular references not garbage collected
+            self._image_object.clear() # It's important to clear the object as the AxisImage, ImageProperties, ... create circular references not garbage collected
         self._image_object = imgObj
         if imgObj is None:
             self._signal_object = None

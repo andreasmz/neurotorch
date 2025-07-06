@@ -62,21 +62,21 @@ class Neurotorch_GUI:
         self.menuDenoise.add_command(label="Disable denoising", command=lambda: self.menuImage_denoise_click(None, None))
         self.menuDenoise.add_command(label="Clear cache", command=self.menuImage_clear_cache_click)
         self.menuDenoise.add_separator()
-        self.menuDenoise.add_command(label=f"Gaussian kernel (σ=0.5)", command=lambda: self.menuImage_denoise_click('Gaussian', {"sigma": 0.5}))
-        self.menuDenoise.add_command(label=f"Gaussian kernel (σ=0.8)", command=lambda: self.menuImage_denoise_click('Gaussian', {"sigma": 0.8}))
-        self.menuDenoise.add_command(label=f"Gaussian kernel (σ=1)", command=lambda: self.menuImage_denoise_click('Gaussian', {"sigma": 1}))
-        self.menuDenoise.add_command(label=f"Gaussian kernel (σ=1.5)", command=lambda: self.menuImage_denoise_click('Gaussian', {"sigma": 1.5}))
-        self.menuDenoise.add_command(label=f"Gaussian kernel (σ=2, recommended)", command=lambda: self.menuImage_denoise_click('Gaussian', {"sigma": 2}))
-        self.menuDenoise.add_command(label=f"Gaussian kernel (σ=2.5)", command=lambda: self.menuImage_denoise_click('Gaussian', {"sigma": 2.5}))
-        self.menuDenoise.add_command(label=f"Gaussian kernel (σ=3)", command=lambda: self.menuImage_denoise_click('Gaussian', {"sigma": 3}))
-        self.menuDenoise.add_command(label=f"Gaussian kernel (σ=5)", command=lambda: self.menuImage_denoise_click('Gaussian', {"sigma": 5}))
+        self.menuDenoise.add_command(label=f"Gaussian kernel (σ=0.5)", command=lambda: self.menuImage_denoise_click(denoising.gaussian_blur, {"sigma": 0.5}))
+        self.menuDenoise.add_command(label=f"Gaussian kernel (σ=0.8)", command=lambda: self.menuImage_denoise_click(denoising.gaussian_blur, {"sigma": 0.8}))
+        self.menuDenoise.add_command(label=f"Gaussian kernel (σ=1)", command=lambda: self.menuImage_denoise_click(denoising.gaussian_blur, {"sigma": 1}))
+        self.menuDenoise.add_command(label=f"Gaussian kernel (σ=1.5)", command=lambda: self.menuImage_denoise_click(denoising.gaussian_blur, {"sigma": 1.5}))
+        self.menuDenoise.add_command(label=f"Gaussian kernel (σ=2, recommended)", command=lambda: self.menuImage_denoise_click(denoising.gaussian_blur, {"sigma": 2}))
+        self.menuDenoise.add_command(label=f"Gaussian kernel (σ=2.5)", command=lambda: self.menuImage_denoise_click(denoising.gaussian_blur, {"sigma": 2.5}))
+        self.menuDenoise.add_command(label=f"Gaussian kernel (σ=3)", command=lambda: self.menuImage_denoise_click(denoising.gaussian_blur, {"sigma": 3}))
+        self.menuDenoise.add_command(label=f"Gaussian kernel (σ=5)", command=lambda: self.menuImage_denoise_click(denoising.gaussian_blur, {"sigma": 5}))
 
         self.menuFilter = tk.Menu(self.menuImage,tearoff=0)
         self.menuImage.add_cascade(label="Apply filter", menu=self.menuFilter)
         self.menuFilter.add_command(label="Disable filter", command=lambda: self.menuImage_denoise_click(None, None))
         self.menuFilter.add_command(label="Clear cache", command=self.menuImage_clear_cache_click)
         self.menuFilter.add_separator()
-        self.menuFilter.add_command(label="Cummulative imgDiff", command=lambda: self.menuImage_denoise_click('MeanMaxDiff', None))
+        self.menuFilter.add_command(label="Cummulative imgDiff", command=lambda: self.menuImage_denoise_click(denoising.mean_diff, None))
         ToolTip(self.menuFile, msg=resources.get_string("menubar/filters/meanMaxDiff"), follow=True, delay=0.5)
 
         if edition == Edition.NEUROTORCH_DEBUG:
@@ -207,35 +207,29 @@ class Neurotorch_GUI:
     def menuFile_close_click(self):
         self.session.set_active_image_object(None)
         
-    def menuImage_denoise_click(self, mode: None|Literal["Gaussian", "MeanMaxDiff"], args: dict|None):
+    def menuImage_denoise_click(self, func: Callable[..., np.ndarray]|None, func_args: dict|None):
         imgObj = self.session.active_image_object
         if imgObj is None or imgObj.imgDiff is None:
             self.root.bell()
             return
-        if mode is None:
-            imgObj.imgDiff_Mode = "Normal"
-        elif mode == "Gaussian":
-            imgObj.imgDiff_Mode = "Convoluted"
-            imgObj.SetConvolutionFunction(ImageObject.Conv_GaussianBlur, func_args=args)
-        elif mode == "MeanMaxDiff":
-            imgObj.imgDiff_Mode = "Convoluted" 
-            imgObj.SetConvolutionFunction(ImageObject.Conv_MeanMaxDiff, func_args=args)   
-        else:
-            raise ValueError(f"Mode parameter has an unkown value '{mode}'")
+        imgObj.set_diff_conv_func(func, func_args)
         imgObj.PrecomputeImage().add_callback(lambda: self.invoke_tab_update_event(ImageChangedEvent()))
 
     def menuImage_clear_cache_click(self):
         if self.session.active_image_object is None:
             self.root.bell()
             return    
-        self.session.active_image_object.ClearCache()
+        self.session.active_image_object.clear_cache()
         logger.debug("Cleared ImageObject cache")
 
     def menuImage_denoise_image_click(self, enable: bool):
         if self.session.active_image_object is None:
             self.root.bell()
             return
-        self.session.active_image_object._imgMode = 1 if enable else 0
+        if self.session.active_image_object._img_conv_func is None:
+            self.session.active_image_object.set_conv_func(denoising.cumsum_denoise, func_args=None)
+        else:
+            self.session.active_image_object.set_conv_func(None, None)
         self.session.active_image_object.PrecomputeImage().add_callback(lambda: self.invoke_tab_update_event(ImageChangedEvent()))
 
     def menuNeurotorch_about_click(self):

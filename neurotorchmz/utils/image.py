@@ -410,11 +410,11 @@ class ImageObject(Serializable):
     
     # Convolution functions
 
-    def set_conf_func(self, func: Callable[..., np.ndarray]|None = None, func_args: dict[str, Any]|None = None) -> None:
+    def set_conv_func(self, func: Callable[..., np.ndarray]|None = None, func_args: dict[str, Any]|None = None) -> None:
         self._img_conv_func = func
         self._img_conv_args = func_args
 
-    def set_diff_conf_func(self, func: Callable[..., np.ndarray]|None = None, func_args: dict[str, Any]|None = None) -> None:
+    def set_diff_conv_func(self, func: Callable[..., np.ndarray]|None = None, func_args: dict[str, Any]|None = None) -> None:
         self._img_diff_conv_func = func
         self._img_diff_conv_args = func_args
 
