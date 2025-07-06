@@ -7,7 +7,6 @@ from tkinter import ttk, messagebox, filedialog
 from tktooltip import ToolTip
 import pickle
 from typing import Literal
-import logging
 import matplotlib
 from pathlib import Path
 import platform

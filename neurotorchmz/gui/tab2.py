@@ -3,16 +3,12 @@ from ..utils.signal_detection import SigDetect_DiffMax, SigDetect_DiffStd, ISign
 from .components.general import GridSetting
 
 import tkinter as tk
-from tkinter import ttk, messagebox
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.backends._backend_tk import NavigationToolbar2Tk
 import matplotlib.widgets as PltWidget
-from matplotlib.cm import ScalarMappable
-from matplotlib.colors import Normalize
 import numpy as np
-import logging
-
-logger = logging.getLogger("NeurotorchMZ")
 
 class TabSignal_AlgorithmChangedEvent(TabUpdateEvent):
     pass
@@ -76,7 +72,7 @@ class TabSignal(Tab):
 
         self.frameSignalPlot = tk.Frame(self.frameSignal)
         self.frameSignalPlot.grid(row=10, column=0, columnspan=4, sticky="news")
-        self.figureSignal = plt.Figure(figsize=(3.7,3.7), dpi=100)
+        self.figureSignal = Figure(figsize=(3.7,3.7), dpi=100)
         self.axSignal = self.figureSignal.add_subplot()  
         self.canvasSignal = FigureCanvasTkAgg(self.figureSignal, self.frameSignalPlot)
         self.canvtoolbarSignal = NavigationToolbar2Tk(self.canvasSignal,self.frameSignalPlot)
@@ -84,12 +80,12 @@ class TabSignal(Tab):
         self.canvasSignal.get_tk_widget().pack(expand=True, fill="both")
         self.canvasSignal.draw()
 
-        self.figure1 = plt.Figure(figsize=(6,6), dpi=100)
+        self.figure1 = Figure(figsize=(6,6), dpi=100)
         self.ax1 = self.figure1.add_subplot()  
         self.ax1.set_axis_off()
-        self.ax1_slider1 = self.figure1.add_axes([0.35, 0, 0.3, 0.03])
-        self.ax1_axbtnDown = self.figure1.add_axes([0.25, 0.05, 0.05, 0.05])
-        self.ax1_axbtnUp = self.figure1.add_axes([0.75, 0.05, 0.05, 0.05])
+        self.ax1_slider1 = self.figure1.add_axes((0.35, 0.0, 0.3, 0.03))
+        self.ax1_axbtnDown = self.figure1.add_axes((0.25, 0.05, 0.05, 0.05))
+        self.ax1_axbtnUp = self.figure1.add_axes((0.75, 0.05, 0.05, 0.05))
         self.ax1_slider1.set_axis_off()
         self.ax1_axbtnUp.set_axis_off()
         self.ax1_axbtnDown.set_axis_off()
@@ -112,8 +108,8 @@ class TabSignal(Tab):
         self.invalidate_image()
         self.invalidate_signal()
 
-        tk.Grid.columnconfigure(self.frameMain, 1, weight=1)
-        tk.Grid.rowconfigure(self.frameMain, 2, weight=1)
+        self.frameMain.columnconfigure(1, weight=1)
+        self.frameMain.rowconfigure(2, weight=1)
 
     def update_tab(self, event: TabUpdateEvent):
         """ Handle the update loop call """
@@ -140,6 +136,8 @@ class TabSignal(Tab):
             self.detect_signal()
 
         elif isinstance(event, TabSignal_RefindPeaksEvent):
+            if self.session.active_image_signal is None:
+                return
             self.session.active_image_signal.DetectPeaks(self.setting_peakProminence.Get()/100)
             self.window.invoke_tab_update_event(SignalChangedEvent())
 
@@ -150,7 +148,7 @@ class TabSignal(Tab):
         """ Invalidate the image and therefore adjust the slider range"""
         imgObj = self.session.active_image_object
         # Note: This function shows the range if imgDiff is present but not img itself. This must be catched in invalidate_image_plot
-        if imgObj is None or imgObj.imgDiff is None: 
+        if imgObj is None or imgObj.img is None or imgObj.imgDiff is None: 
             self.frameSlider.valmin = 0
             self.frameSlider.valmax = 0.1
             self.frameSlider.valstep = 1
@@ -190,7 +188,7 @@ class TabSignal(Tab):
         for axImg in self.ax1.get_images(): 
             axImg.remove()
 
-        if imgObj is None or imgObj.imgDiff is None or (show_original and imgObj.img is None):
+        if imgObj is None or imgObj.img is None or imgObj.imgDiff is None or (show_original and imgObj.img is None):
             self.frameSlider.valtext.set_text("")
             self.canvas1.draw()
             return

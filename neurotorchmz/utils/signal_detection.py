@@ -67,7 +67,7 @@ class SignalObject:
         self.peakWidth_R = widthRight
         self.ClearCache()
 
-    def DetectPeaks(self, prominenceFactor:int):
+    def DetectPeaks(self, prominenceFactor:float):
         if self._signal is None:
             return
         self._peaks, _ = find_peaks(self._signal, prominence=prominenceFactor*(np.max(self._signal)-np.min(self._signal))) 

@@ -1,6 +1,12 @@
 from typing import Self
 import pickle
 
+class DeserializeError(Exception):
+    pass
+
+class SerializeError(Exception):
+    pass
+
 class Serializable:
     """
         Abstract base class for objects that are serializable
@@ -19,7 +25,8 @@ class Serializable:
         """ Serialize the current class object into a dict """
         raise NotImplementedError()
 
-    def deserialize(self, serialize_dict: dict, **kwargs) -> Self:
+    @classmethod
+    def deserialize(cls, serialize_dict: dict, **kwargs) -> Self:
         """ Deserialize the given dict into a class object """
         raise NotImplementedError()
     
