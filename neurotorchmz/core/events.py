@@ -3,6 +3,7 @@ from ..core import session
 
 from typing import Callable, Self
 import inspect
+import tkinter as tk
 
 class Event:
     """ 
@@ -43,3 +44,17 @@ class ImageObjectChangedEvent(Event):
 
     def __init__(self, session: session.Session) -> None:
         self.session = session
+
+class WindowLoadedEvent(Event):
+    """ Triggers after the GUI has loaded """
+
+    def __init__(self, session: session.Session) -> None:
+        self.session = session
+
+    @property
+    def menu_settings(self) -> tk.Menu:
+        assert self.session.window is not None
+        return self.session.window.menu_settings
+    
+    @property
+    def menu_plugins(self) -> tk.Menu

@@ -6,7 +6,6 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from tktooltip import ToolTip
 import pickle
-from typing import Literal
 import matplotlib
 from pathlib import Path
 import platform
@@ -18,8 +17,6 @@ matplotlib.use('TkAgg')
 from .components.general import Statusbar
 from ..core.session import *
 from ..core.session import __version__
-from ..core.task_system import Task
-from ..utils.plugin_manager import Plugin, PluginManager
 
 class TabUpdateEvent:
     pass
@@ -91,6 +88,9 @@ class Neurotorch_GUI:
 
         self.menuPlugins = tk.Menu(self.menubar,tearoff=0)
         self.menubar.add_cascade(label="Plugins",menu=self.menuPlugins)
+
+        self.menu_settings = tk.Menu(self.menubar, tearoff=0)
+        self.menubar.add_cascade(label="Settings")
         
         self.menuNeurotorch = tk.Menu(self.menubar,tearoff=0)
         self.menubar.add_cascade(label="Neurotorch",menu=self.menuNeurotorch)
@@ -113,7 +113,7 @@ class Neurotorch_GUI:
         for t in self.tabs.values(): t.init()
         self.tabMain.select(self.tabs[TabImage].tab)
 
-        self.plugin_manager = PluginManager(self.session)
+        events.WindowLoadedEvent(session=self.session)
 
         self.root.protocol("WM_DELETE_WINDOW", self._on_closing)
         self.tabMain.pack(expand=1, fill="both")
