@@ -39,13 +39,15 @@ def init_file_handler(path: Path) -> None:
 
 def log_exceptions_hook(exc_type: type[BaseException], exc_value: BaseException, exc_traceback: types.TracebackType | None = None) -> None:
     global logger
-    logger.exception(f"An {repr(exc_type)} happened: {exc_value}", exc_info=(exc_type, exc_value, exc_traceback))
+    logger.exception(f"{exc_type.__name__}:", exc_info=(exc_type, exc_value, exc_traceback))
     sys.__excepthook__(exc_type, exc_value, exc_traceback)
 
-def thread_exceptions_hook(exc_type: type[BaseException], exc_value: BaseException, exc_traceback: types.TracebackType | None = None, thread: threading.Thread | None = None) -> None:
+def thread_exceptions_hook(except_hook_args: threading.ExceptHookArgs):
     global logger
-    logger.exception(f"An {repr(exc_type)} happened in thread {type(thread)}: {exc_value}", exc_info=(exc_type, exc_value, exc_traceback))
-    sys.__excepthook__(exc_type, exc_value, exc_traceback)
+    exc_type, exc_value, exc_traceback, thread = except_hook_args.exc_type, except_hook_args.exc_value, except_hook_args.exc_traceback, except_hook_args.thread
+    logger.exception(f"{exc_type.__name__} in thread '{thread.name if thread is not None else ''}':", 
+                     exc_info=(exc_type, exc_value if exc_value is not None else BaseException(), exc_traceback))
+    sys.__excepthook__(exc_type, exc_value if exc_value is not None else BaseException(), exc_traceback)
 
 def start_debugging():
     """ Starts the debugging of not started yet """
