@@ -20,8 +20,15 @@ class Event:
         
         cls.__init__ = _init_wrapper
 
+        cls.HOOKS: list[Callable[[Self], None]] = []
+
     @classmethod
-    def hook(cls, func: Callable[[Self], None]) -> None:
+    def hook(cls, func: Callable[[Self], None]) -> Callable[[Self], None]:
+        cls.register(func)
+        return func  
+        
+    @classmethod
+    def register(cls, func: Callable[[Self], None]) -> None:
         cls.HOOKS.append(func)
 
     def __call__(self) -> Any:
@@ -29,12 +36,11 @@ class Event:
             try:
                 hook(self)
             except Exception:
-                plugin_module = inspect.getmodule(inspect.stack()[1])
-                session.logger.warning(f"Failed to propagate {self.__class__.__name__} to {plugin_module.__name__ if plugin_module is not None else ''}")
+                session.logger.warning(f"Failed to propagate {self.__class__.__name__} to {hook.__module__}:", exc_info=True)
 
         
 class SessionCreateEvent(Event):
-    """ Triggers after a session is created (not launched yet) s"""
+    """ Triggers after a session is created (not launched yet) """
 
     def __init__(self, session: session.Session) -> None:
         self.session = session

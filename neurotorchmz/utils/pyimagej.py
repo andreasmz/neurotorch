@@ -29,11 +29,13 @@ class ImageJHandler:
         # Image J Objects
         self.RM = None # Roi Manager
 
-    def MenubarImageJH(self, menubar: tk.Menu):
-        """ Creates a menu with ImageJ commands in the supplied menubar by the GUI """
-        self.menubar = menubar
-        self.menuImageJ = tk.Menu(self.menubar,tearoff=0)
-        self.menubar.add_cascade(label="ImageJ",menu=self.menuImageJ)
+        events.WindowLoadedEvent.register(self.on_window_loaded)
+
+    def on_window_loaded(self, e: events.WindowLoadedEvent) -> None:
+        assert e.session.window is not None
+        menubar = e.session.window.menubar
+        self.menuImageJ = tk.Menu(menubar,tearoff=0)
+        menubar.insert_cascade(cast(int, menubar.index("Image")) + 1, label="ImageJ", menu=self.menuImageJ)
         self.menuImageJ.add_command(label="Start ImageJ", state="normal", command=self.StartImageJ)
         self.menuImageJ.add_separator()
         self.menuImageJ.add_command(label="ImageJ --> Neurotorch", state="disabled", command=self.LoadImage)

@@ -25,6 +25,14 @@ def load_plugins_from_dir(path: Path, prefix: str) -> None:
             module_spec.loader.exec_module(module_type)
         except Exception:
             logger.error(f"Failed to import plugin {module_info.name}:", exc_info=True)
-        else:
-            plugins.append(module_type)
-            logger.debug(f"Loaded plugin {module_info.name}")
+            continue
+        try:
+            assert hasattr(module_type, "__plugin_name__"), "The plugin is missing the __plugin_name__ string"
+            assert hasattr(module_type, "__plugin_desc__"), "The plugin is missing the __plugin_desc__ string"
+            assert hasattr(module_type, "__version__"), "The plugin is missing the __version__ string"
+            assert hasattr(module_type, "__author__"), "The plugin is missing the __author__ string"
+        except AssertionError as ex:
+            logger.error(f"Failed to import plugin {module_info.name}: {str(ex)}")
+            continue
+        plugins.append(module_type)
+        logger.debug(f"Loaded plugin {module_info.name}")

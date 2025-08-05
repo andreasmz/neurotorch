@@ -84,11 +84,14 @@ class Neurotorch_GUI:
 
         if (edition != Edition.NEUROTORCH_LIGHT):
             self.session.import_ijh()
-            self.session.ijH.MenubarImageJH(self.menubar) # type: ignore
 
         self.menu_plugins = tk.Menu(self.menubar,tearoff=0)
         self.menubar.add_cascade(label="Plugins",menu=self.menu_plugins)
-
+        for p in plugin_manager.plugins:
+            name = str(p.__plugin_name__)
+            m = tk.Menu(self.menu_plugins, tearoff=0)
+            self.menu_plugins.add_cascade(label=name, menu=m)
+        
         self.menu_settings = tk.Menu(self.menubar, tearoff=0)
         self.menubar.add_cascade(label="Settings")
         
@@ -112,7 +115,6 @@ class Neurotorch_GUI:
         #self.tabs[TabAnalysis] = TabAnalysis(self.session, self.root, self.tabMain)
         for t in self.tabs.values(): t.init()
         self.tabMain.select(self.tabs[TabImage].tab)
-
         events.WindowLoadedEvent(session=self.session)
 
         self.root.protocol("WM_DELETE_WINDOW", self._on_closing)
