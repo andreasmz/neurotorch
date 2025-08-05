@@ -1,6 +1,6 @@
 """ Module holding code to launch and manage a Neurotorch program """
 from .. import __version__, __author__
-from ..core import settings, resources, logs # pyright: ignore[reportUnusedImport]
+from ..core import settings, resources, logs, plugin_manager # pyright: ignore[reportUnusedImport]
 from ..core.logs import logger
 from ..core.serialize import Serializable
 from ..core.task_system import Task
@@ -12,9 +12,6 @@ from ..utils.synapse_detection import *
 from enum import Enum
 import threading
 from pathlib import Path
-import pkgutil
-import importlib.util
-import sys
 
 class Edition(Enum):
     """ The edition of Neurotorch which should be launched """
@@ -158,27 +155,10 @@ class SessionAPI:
             return task
         return imgObj
 
-def load_plugins_from_dir(path: Path, prefix: str) -> None:
-    """ Load all valid plugins from the given path """
-    if not path.is_dir() or not path.exists():
-        raise FileExistsError(f"Invalid path {path} to import plugins from")
-    for module_info in pkgutil.iter_modules(path=[path], prefix=prefix+"."):
-        module_spec = module_info.module_finder.find_spec(module_info.name, str(module_info.module_finder.path)) # type: ignore
-        if module_spec is None or module_spec.loader is None:
-            raise RuntimeError(f"Can't import plugin {module_info.name}")
-        module_type = importlib.util.module_from_spec(module_spec)
-        try:
-            sys.modules[module_info.name] = module_type
-            module_spec.loader.exec_module(module_type)
-        except Exception:
-            logger.error(f"Failed to import plugin {module_info.name}:", exc_info=True)
-        else:
-            logger.debug(f"Loaded plugin {module_info.name}")
-
 def _import_plugin_manager(): # pyright: ignore[reportUnusedFunction]
     """ Internal functions to import the event module and plugins. Wrapper is called when launching a session to prevent circular imports """
     global events
     from ..core import events # pyright: ignore[reportUnusedImport]
 
-    load_plugins_from_dir(path=Path(str(__file__)).parent.parent / "plugins", prefix="neurotorchmz.plugins")
-    load_plugins_from_dir(path=settings.user_plugin_path, prefix="neurotorchmz.user.plugins")
+    plugin_manager.load_plugins_from_dir(path=Path(str(__file__)).parent.parent / "plugins", prefix="neurotorchmz.plugins")
+    plugin_manager.load_plugins_from_dir(path=settings.user_plugin_path, prefix="neurotorchmz.user.plugins")

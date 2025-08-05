@@ -59,4 +59,4 @@ class WindowLoadedEvent(Event):
     @property
     def menu_plugins(self) -> tk.Menu:
         assert self.session.window is not None
-        return self.session.window.menu_
+        return self.session.window.menu_plugins
