@@ -93,13 +93,13 @@ class AxisImage:
         self._img = img
         self._axis = axis
         self._name = name
-        self._mean = ImageProperties(None)
-        self._mean_normed = ImageProperties(None)
-        self._std = ImageProperties(None)
-        self._std_normed = ImageProperties(None)
-        self._median = ImageProperties(None)
-        self._min = ImageProperties(None)
-        self._max = ImageProperties(None)
+        self._mean = None
+        self._mean_normed = None
+        self._std = None
+        self._std_normed = None
+        self._median = None
+        self._min = None
+        self._max = None
 
     @property
     def Mean(self) -> np.ndarray|None:
@@ -149,10 +149,8 @@ class AxisImage:
     @property
     def MeanNormedProps(self) -> ImageProperties:
         if self._mean_normed is None:
-            if self._img is None:
+            if self._img is None or self.Mean is None:
                 self._mean_normed = ImageProperties(None)
-            elif self.MeanProps.max == 0 or self.Mean is None:
-                self._mean_normed = self._mean
             else:
                 self._mean_normed = ImageProperties((self.Mean*255/self.MeanProps.max).astype(self._img.dtype))
         return self._mean_normed
@@ -180,10 +178,8 @@ class AxisImage:
     @property
     def StdNormedProps(self) -> ImageProperties:
         if self._std_normed is None:
-            if self._img is None:
+            if self._img is None or self.Std is None:
                 self._std_normed = ImageProperties(None)
-            elif self.StdProps.max == 0 or self.Std is None:
-                self._std_normed = self._mean
             else:
                 self._std_normed = ImageProperties((self.Std*255/self.StdProps.max).astype(self._img.dtype))
         return self._std_normed
