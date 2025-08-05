@@ -10,7 +10,8 @@ import atexit
 logger = logging.getLogger("NeurotorchMZ")
 """ The root logger for NeurotorchMZ. The level defaults to DEBUG to allow derived Handlers (e.g. StreamHandler, RotatingFileHandler) to set custom (higher) levels """
 
-debugging = False
+debugging: bool = False
+""" If set to true, logs of level DEBUG are printed to the console"""
 
 _fmt = logging.Formatter('[%(asctime)s %(levelname)s]: %(message)s')
 _fmtFile = logging.Formatter('[%(asctime)s|%(levelname)s|%(module)s]: %(message)s')
@@ -28,7 +29,7 @@ logger.addHandler(stream_logging_handler)
 _exception_logger = logging.getLogger("NeurotorchMZ_Errors")   
 _exception_logger.setLevel(logging.DEBUG)
 
-def _ini_file_handler(path: Path) -> None:
+def init_file_handler(path: Path) -> None:
     """ Should be called from the settings handler when the AppData Path is set to initialize the file handler for logging """
     global file_logging_handler, _fmtFile, logger
     file_logging_handler = RotatingFileHandler(path, mode="a", maxBytes=(1024**2), backupCount=10)
@@ -41,10 +42,9 @@ def log_exceptions_hook(exc_type: type[BaseException], exc_value: BaseException,
     logger.exception(f"An {repr(exc_type)} happened: {exc_value}", exc_info=(exc_type, exc_value, exc_traceback))
     sys.__excepthook__(exc_type, exc_value, exc_traceback)
 
-def thread_exceptions_hook(exc_type: type[BaseException], exc_value: BaseException, exc_traceback: types.TracebackType | None = None, thread = None) -> None:
+def thread_exceptions_hook(exc_type: type[BaseException], exc_value: BaseException, exc_traceback: types.TracebackType | None = None, thread: threading.Thread | None = None) -> None:
     global logger
-    logger.debug(type(thread))
-    logger.exception(f"An {repr(exc_type)} happened in thread: {exc_value}", exc_info=(exc_type, exc_value, exc_traceback))
+    logger.exception(f"An {repr(exc_type)} happened in thread {type(thread)}: {exc_value}", exc_info=(exc_type, exc_value, exc_traceback))
     sys.__excepthook__(exc_type, exc_value, exc_traceback)
 
 def start_debugging():

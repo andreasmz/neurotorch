@@ -1,10 +1,10 @@
 """ Module holding code to launch and manage a Neurotorch program """
 from .. import __version__, __author__
-from ..core import settings, resources, logs
+from ..core import settings, resources, logs # pyright: ignore[reportUnusedImport]
 from ..core.logs import logger
 from ..core.serialize import Serializable
 from ..utils.image import *
-from ..utils.convolution_functions import denoising
+from ..utils.convolution_functions import denoising # pyright: ignore[reportUnusedImport]
 from ..utils.signal_detection import SignalObject
 from ..utils.synapse_detection import *
 

@@ -20,7 +20,7 @@ app_data_path.mkdir(parents=True, exist_ok=True)
 tmp_path.mkdir(exist_ok=True, parents=False)
 user_plugin_path.mkdir(exist_ok=True, parents=False)
 
-logs._ini_file_handler(log_path)
+logs.init_file_handler(log_path)
 
 # Clear temp files
 for f in tmp_path.iterdir():
