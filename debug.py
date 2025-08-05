@@ -1,3 +1,3 @@
 import neurotorchmz
 from neurotorchmz import Edition
-neurotorchmz.Start(Edition.NEUROTORCH_DEBUG)
+neurotorchmz.start(Edition.NEUROTORCH_DEBUG)

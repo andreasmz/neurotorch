@@ -1,2 +1,2 @@
 import neurotorchmz
-neurotorchmz.Start()
+neurotorchmz.start()
