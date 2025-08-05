@@ -5,6 +5,7 @@ import threading
 import types
 from pathlib import Path
 from logging.handlers import RotatingFileHandler
+import atexit
 
 logger = logging.getLogger("NeurotorchMZ")
 """ The root logger for NeurotorchMZ. The level defaults to DEBUG to allow derived Handlers (e.g. StreamHandler, RotatingFileHandler) to set custom (higher) levels """
@@ -57,3 +58,5 @@ def start_debugging():
 
 sys.excepthook = log_exceptions_hook
 threading.excepthook = thread_exceptions_hook
+
+atexit.register(lambda: logger.info("Stopping Neurotorch"))

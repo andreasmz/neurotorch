@@ -1,8 +1,6 @@
 """ Provides a utility library to load resources and strings """
 import json
 from PIL import Image
-from pathlib import Path
-import atexit
 
 from . import settings
 from .logs import logger

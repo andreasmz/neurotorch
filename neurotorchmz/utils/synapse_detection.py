@@ -42,19 +42,13 @@ class ISynapseROI:
         """ The associate frame for this ROI or None if the object just defines a shape """
         self.signal_strength: float|None = None
         """ Optional parameter to determine the current signal strength of the ROI """
-    
-    # Serialization functions
-
-    def serialize(self) -> dict:
-        """ Serialize the object """
-
 
     def set_frame(self, frame: int|None) -> Self:
         """ Set the frame of the synapse or removes it by providing None """
         self.frame = frame
         return self
     
-    def set_location(self, location:tuple[int|float, int|float] = None, y:int|float = None, x:int|float = None) -> Self:
+    def set_location(self, location:tuple[int|float, int|float]|None = None, y:int|float|None = None, x:int|float|None = None) -> Self:
         """ 
             Set the location of the synapse by either providing a tuple or Y and X explicitly
             
@@ -84,7 +78,7 @@ class ISynapseROI:
             return ""
         return f"{self.location[1]}, {self.location[0]}"
     
-    def get_coordinates(self, shape:tuple|None) -> tuple[np.array, np.array]:
+    def get_coordinates(self, shape:tuple) -> tuple[np.ndarray|list, np.ndarray|list]:
         """ 
             Return coordinates of points inside the ROI and inside the given shape. They are returned as a tuple
             with the first parameter beeing the y coordinates and the second the x coordinates.
@@ -109,7 +103,8 @@ class ISynapseROI:
     
     # Static functions 
 
-    def get_distance(roi1: Self, roi2: Self) -> float:
+    @staticmethod
+    def get_distance(roi1: "ISynapseROI", roi2: "ISynapseROI") -> float:
         """ Returns the distance between the locations of the ROIs or np.inf if at least one has no location """
         if roi1.location is None or roi2.location is None: 
             return np.inf
@@ -131,7 +126,9 @@ class CircularSynapseROI(ISynapseROI):
         self.radius = radius
         return self
     
-    def get_coordinates(self, shape:tuple|None) -> tuple[np.array, np.array]:
+    def get_coordinates(self, shape:tuple) -> tuple[np.ndarray|list, np.ndarray|list]:
+        if self.radius is None:
+            return ([], [])
         return disk(center=self.location, radius=self.radius+0.5,shape=shape)
     
     def __str__(self):
@@ -143,9 +140,9 @@ class PolygonalSynapseROI(ISynapseROI):
     CLASS_DESC = "Polyonal ROI"
     def __init__(self):
         super().__init__()
-        self.polygon: list[tuple[int, int]] = None
+        self.polygon: list[tuple[int, int]]|None = None
         """ List of polygon points in the format [(Y, X), (Y, X), ..] """
-        self.coords = None
+        self.coords: list[tuple[int, int]]|None = None
         """ List of points inside the polygon in the format [(Y, X), (Y, X), ..] """
 
     def set_polygon(self, polygon: list[tuple[int, int]], coords: list[tuple[int, int]], region_props: RegionProperties):
@@ -167,7 +164,9 @@ class PolygonalSynapseROI(ISynapseROI):
         self.set_location(y=int(region_props.centroid_weighted[0]), x=int(region_props.centroid_weighted[1]))
         return self
     
-    def get_coordinates(self, shape:tuple|None) -> tuple[np.array, np.array]:
+    def get_coordinates(self, shape:tuple) -> tuple[np.ndarray|list, np.ndarray|list]:
+        if self.coords is None:
+            return ([], [])
         yy = np.array([ int(y) for y in self.coords[:, 0] if y >= 0 and y < shape[0]])
         xx = np.array([ int(x) for x in self.coords[:, 1] if x >= 0 and x < shape[1]])
         return (yy, xx)

@@ -1,17 +1,9 @@
+""" Module to detect signals in an ImageObject """
 from .image import ImageObject, ImageView
 
 import numpy as np
 from scipy.signal import find_peaks
-
-class SlicedImageObject(ImageObject):
-    """ A subclass of ImageObject for displaying a sliced image """
-
-    # The only modification necessary is to disable the the automatic imgDiff calculation.
-
-    @property
-    def imgDiff_Normal(self) -> np.ndarray | None:
-        # Removed the imgDiff calculation
-        return self._imgDiff
+from typing import cast
 
 class SignalObject:
     """ 
@@ -25,21 +17,21 @@ class SignalObject:
     """
 
     def __init__(self, imgObj: ImageObject|None):
-        self._imgObj = imgObj
+        self._imgObj: ImageObject|None = imgObj
         self.peakWidth_L = 1
         self.peakWidth_R = 6
         self.Clear()
 
     def Clear(self):
-        self._signal = None
-        self._peaks = None
+        self._signal: np.ndarray|None = None
+        self._peaks: list[int]|None = None
         self.ClearCache()        
 
     def ClearCache(self):
         self._imgObj_Sliced = None # Set to False if slice would be empty
 
     @property
-    def signal(self) -> np.ndarray:
+    def signal(self) -> np.ndarray|None:
         return self._signal
     
     @signal.setter
@@ -70,8 +62,7 @@ class SignalObject:
     def DetectPeaks(self, prominenceFactor:float):
         if self._signal is None:
             return
-        self._peaks, _ = find_peaks(self._signal, prominence=prominenceFactor*(np.max(self._signal)-np.min(self._signal))) 
-        self._peaks = [int(p) for p in self._peaks]
+        self._peaks = [int(p) for p in find_peaks(self._signal, prominence=prominenceFactor*(np.max(self._signal)-np.min(self._signal)))[0]]
         self._peaks.sort()
         self.ClearCache()
 
@@ -114,20 +105,20 @@ class ISignalDetectionAlgorithm:
         """
             This method is typically called when the GUI loads a new image
         """
-        pass
+        raise NotImplementedError()
 
-    def GetSignal(self, imgObj: ImageObject) -> np.array:
+    def GetSignal(self, imgObj: ImageObject) -> np.ndarray|None:
         """
             This method should return an 1D array interpretated as signal of the image
         """
-        return None
+        raise NotImplementedError()
     
 class SigDetect_DiffMax(ISignalDetectionAlgorithm):
 
-    def GetSignal(self, imgObj: ImageObject) -> np.array:
+    def GetSignal(self, imgObj: ImageObject) -> np.ndarray|None:
         return imgObj.imgDiffView(ImageView.TEMPORAL).Max
     
 class SigDetect_DiffStd(ISignalDetectionAlgorithm):
 
-    def GetSignal(self, imgObj: ImageObject) -> np.array:
+    def GetSignal(self, imgObj: ImageObject) -> np.ndarray|None:
         return imgObj.imgDiffView(ImageView.TEMPORAL).Std

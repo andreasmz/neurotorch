@@ -55,10 +55,10 @@ class ImageJHandler:
             from scyjava import jimport
             import imagej
         except ModuleNotFoundError as ex:
-            log_exception_debug(ex, "ModuleImport Error trying to import ImageJ")
+            logger.error("ModuleImport Error trying to import ImageJ", ex, exc_info=True)
             messagebox.showerror("Neurotorch", "It seems that pyimagej is not installed")
             return
-        if (path_imagej := Settings.GetSettings("ImageJ_Path")) is None or not (path_imagej := Path(Settings.GetSettings("ImageJ_Path"))).exists() or not path_imagej.is_dir():
+        if (path_imagej := settings.get_setting("ImageJ_Path")) is None or not (path_imagej := Path(path_imagej)).exists() or not path_imagej.is_dir():
             logger.warning(f"Failed to locate ImageJ at {path_imagej}")
             messagebox.showerror("Neurotorch", "Can't locate your local Fiji/ImageJ installation. Please set the path to your installation via the menubar and try again")
             return
@@ -71,6 +71,8 @@ class ImageJHandler:
         def _StartImageJ_Thread(task: Task, path_imagej: Path):
             try:
                 self.ij = imagej.init(path_imagej, mode='interactive')
+                if not self.ij:
+                    return
                 self.OvalRoi = jimport('ij.gui.OvalRoi')
                 self.PolygonRoi = jimport('ij.gui.PolygonRoi')
                 self.Roi = jimport('ij.gui.Roi')
@@ -78,7 +80,7 @@ class ImageJHandler:
                 self.ij.ui().showUI()
             except TypeError as ex:
                 task.error = True
-                log_exception_debug(ex, "TypeError trying to start Fiji/ImageJ")
+                logger.debug(ex, "TypeError trying to start Fiji/ImageJ")
                 messagebox.showerror("Neurotorch", f"Failed to start Fiji/ImageJ. Did you previously loaded an ND2 file (or any other Bioformat)? Then this my have crashed the Java instance. Try to restart Neurotorch and start Fiji/ImageJ BEFORE opening an ND2 file")
                 return
             self._ImageJReady()
@@ -239,7 +241,7 @@ class ImageJHandler:
         _path = Path(_path)
         if _path.suffix == ".exe":
             _path = _path.parent
-        Settings.SetSetting("ImageJ_Path", str(_path))
+        settings.set_setting("ImageJ_Path", str(_path))
 
     def _ImageJReady(self):
         """ Internal function. Called, when ImageJ is successfully loaded """

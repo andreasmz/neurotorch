@@ -4,7 +4,7 @@ from typing import Literal
 from tktooltip import ToolTip
 import psutil
 
-from ...core.settings import logger, log_exception_debug
+from ...core.settings import logger
 from ...core.task_system import Task, TaskState
 
 class Statusbar:
