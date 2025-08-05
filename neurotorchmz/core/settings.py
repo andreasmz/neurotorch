@@ -22,15 +22,6 @@ user_plugin_path.mkdir(exist_ok=True, parents=False)
 
 logs.init_file_handler(log_path)
 
-# Clear temp files
-for f in tmp_path.iterdir():
-    if f.is_file():
-        f.unlink()
-        logger.debug(f"Cleared file {f.name} from the tmp folder")
-    elif f.is_dir():
-        f.rmdir()
-        logger.debug(f"Cleared folder {f.name} from the tmp folder")
-
 config = configparser.ConfigParser()
 
 def _read_config():
@@ -49,15 +40,15 @@ def clear_temp_files():
         if f.is_file():
             try:
                 f.unlink()
-            except Exception as ex:
-                logger.warning(f"Failed to remove temporary file {f.name} ({repr(ex)})")
+            except Exception:
+                logger.warning(f"Failed to remove temporary file {f.name}:", exc_info=True)
             else:
                 logger.debug(f"Cleared file {f.name} from the tmp folder")
         elif f.is_dir():
             try:
                 f.rmdir()
-            except Exception as ex:
-                logger.warning(f"Failed to remove temporary folder {f.name} ({repr(ex)})")
+            except Exception:
+                logger.warning(f"Failed to remove temporary folder {f.name}:", exc_info=True)
             else:
                 logger.debug(f"Cleared folder {f.name} from the tmp folder")
 
@@ -72,6 +63,7 @@ def get_setting(key: str) -> str|None:
 def set_setting(key: str, value: str, save: bool = False):
     """ Set a setting. If save=True, the file is saved to disk """
     config.set("SETTINGS", key, value)
+    logger.debug(f"Changed setting '{key}' to '{value}'")
     if save:
         save_config()
 
@@ -81,8 +73,8 @@ def save_config():
         with open(app_data_path / "settings.ini", 'w') as configfile:
             config.write(configfile)
         logger.debug("Saved the config")
-    except Exception as ex:
-        logger.warning(f"Failed to save the config. The error message was: \n---\n%s\n---" % str(ex))
+    except Exception:
+        logger.warning(f"Failed to save the config:", exc_info=True)
 
 atexit.register(save_config)
 atexit.register(clear_temp_files)

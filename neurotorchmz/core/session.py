@@ -89,6 +89,7 @@ class Session(Serializable):
             self._roifinder_detection_result.clear()
             self._snalysis_detection_result.clear()
         self.notify_image_object_change()
+        events.ImageObjectChangedEvent(session=self)
     
     @property
     def active_image_signal(self) -> SignalObject|None:
@@ -174,6 +175,7 @@ def load_plugins_from_dir(path: Path, prefix: str) -> None:
             logger.debug(f"Loaded plugin {module_info.name}")
 
 def _import_plugin_manager(): # pyright: ignore[reportUnusedFunction]
+    """ Internal functions to import the event module and plugins. Wrapper is called when launching a session to prevent circular imports """
     global events
     from ..core import events # pyright: ignore[reportUnusedImport]
 

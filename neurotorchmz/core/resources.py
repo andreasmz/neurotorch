@@ -25,5 +25,6 @@ def get_image(filename: str) -> Image.Image:
     """ Open a image. Raises FileNotFoundError if the file can't be opened """
     path = settings.resource_path / filename
     if not path.exists() or not path.is_file():
+        logger.warning(f"Faild to locate image '{filename}'")
         raise FileNotFoundError(f"Can't find the resource file {filename}")
     return Image.open(path)
