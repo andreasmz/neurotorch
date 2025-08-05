@@ -34,24 +34,24 @@ class ImageJHandler:
     def on_window_loaded(self, e: events.WindowLoadedEvent) -> None:
         assert e.session.window is not None
         menubar = e.session.window.menubar
-        self.menuImageJ = tk.Menu(menubar,tearoff=0)
-        menubar.insert_cascade(cast(int, menubar.index("Image")) + 1, label="ImageJ", menu=self.menuImageJ)
-        self.menuImageJ.add_command(label="Start ImageJ", state="normal", command=self.StartImageJ)
-        self.menuImageJ.add_separator()
-        self.menuImageJ.add_command(label="ImageJ --> Neurotorch", state="disabled", command=self.LoadImage)
-        self.menuExportImg = tk.Menu(self.menuImageJ,tearoff=0)
-        self.menuImageJ.add_cascade(label="Img --> ImageJ", menu=self.menuExportImg, state="disabled")
-        self.menuExportImg.add_command(label="As Wrapper (faster loading, less memory)", command=lambda: self.ExportToImageJ_Img(asCopy=False))
-        self.menuExportImg.add_command(label="As Copy (faster on live measurements)", command=lambda: self.ExportToImageJ_Img(asCopy=True))
-        self.menuExportImgDiff = tk.Menu(self.menuImageJ,tearoff=0)
-        self.menuImageJ.add_cascade(label="ImgDiff --> ImageJ", menu=self.menuExportImgDiff, state="disabled")
-        self.menuExportImgDiff.add_command(label="As Wrapper (faster loading, less memory)", command=lambda: self.ExportToImageJ_ImgDiff(asCopy=False))
-        self.menuExportImgDiff.add_command(label="As Copy (faster on live measurements)", command=lambda: self.ExportToImageJ_ImgDiff(asCopy=True))
+        menu_settings = e.session.window.menu_settings
+        self.menu_imageJ = tk.Menu(menubar,tearoff=0)
+        menubar.insert_cascade(cast(int, menubar.index("Image")) + 1, label="ImageJ", menu=self.menu_imageJ)
+        self.menu_imageJ.add_command(label="Start ImageJ", state="normal", command=self.start_imageJ)
+        self.menu_imageJ.add_separator()
+        self.menu_imageJ.add_command(label="ImageJ --> Neurotorch", state="disabled", command=self._load_image)
+        self.menu_export_img = tk.Menu(self.menu_imageJ,tearoff=0)
+        self.menu_imageJ.add_cascade(label="Img --> ImageJ", menu=self.menu_export_img, state="disabled")
+        self.menu_export_img.add_command(label="As Wrapper (faster loading, less memory)", command=lambda: self._export_img_to_imageJ(asCopy=False))
+        self.menu_export_img.add_command(label="As Copy (faster on live measurements)", command=lambda: self._export_img_to_imageJ(asCopy=True))
+        self.menu_export_img_diff = tk.Menu(self.menu_imageJ,tearoff=0)
+        self.menu_imageJ.add_cascade(label="ImgDiff --> ImageJ", menu=self.menu_export_img_diff, state="disabled")
+        self.menu_export_img_diff.add_command(label="As Wrapper (faster loading, less memory)", command=lambda: self._export_img_diff_to_imageJ(asCopy=False))
+        self.menu_export_img_diff.add_command(label="As Copy (faster on live measurements)", command=lambda: self._export_img_diff_to_imageJ(asCopy=True))
 
-        self.menuImageJ.add_separator()
-        self.menuImageJ.add_command(label="Locate Installation", state="normal", command=self.MenuLocateInstallation_Click)
+        menu_settings.add_command(label="ImageJ: locate installation", state="normal", command=self.menu_locate_installation_click)
 
-    def StartImageJ(self):
+    def start_imageJ(self):
         """ Starts ImageJ """
         try:
             from scyjava import jimport
@@ -70,7 +70,7 @@ class ImageJHandler:
             messagebox.showerror("Neurotorch", "ImageJ has already been started")
             return
 
-        def _StartImageJ_Thread(task: Task, path_imagej: Path):
+        def _start_imageJ_Thread(task: Task, path_imagej: Path):
             try:
                 self.ij = imagej.init(path_imagej, mode='interactive')
                 if not self.ij:
@@ -85,21 +85,21 @@ class ImageJHandler:
                 logger.debug(ex, "TypeError trying to start Fiji/ImageJ")
                 messagebox.showerror("Neurotorch", f"Failed to start Fiji/ImageJ. Did you previously loaded an ND2 file (or any other Bioformat)? Then this my have crashed the Java instance. Try to restart Neurotorch and start Fiji/ImageJ BEFORE opening an ND2 file")
                 return
-            self._ImageJReady()
+            self._imageJ_ready()
             logger.debug(f"Imported ImageJ and its dependencies")
 
-        self.menuImageJ.entryconfig("Start ImageJ", state="disabled")
-        self.task = Task(_StartImageJ_Thread, "starting Fiji/ImageJ").set_indeterminate().set_error_callback(self._LoadingErrorCallback)
+        self.menu_imageJ.entryconfig("Start ImageJ", state="disabled")
+        self.task = Task(_start_imageJ_Thread, "starting Fiji/ImageJ").set_indeterminate().set_error_callback(self._loading_error_callback)
         self.task.start(path_imagej=path_imagej)
 
-    def _LoadingErrorCallback(self, ex: Exception):
-        self.menuImageJ.entryconfig("Start ImageJ", state="normal")
+    def _loading_error_callback(self, ex: Exception):
+        self.menu_imageJ.entryconfig("Start ImageJ", state="normal")
         self.task = None
         if isinstance(ex, Exception):
             log_exception_debug(ex, "Failed to start ImageJ")
             messagebox.showerror("Neurotorch", f"Failed to start Fiji/ImageJ. See the logs for more details")
 
-    def LoadImage(self) -> Task:
+    def _load_image(self) -> Task:
         """ Load an image from ImageJ into Neurotorch """
         if self.ij is None:
             messagebox.showerror("Neurotorch", "Please first start ImageJ")
@@ -120,7 +120,7 @@ class ImageJHandler:
         task.set_error_callback(self.session.window._open_image_error_callback)
         return task.start()
 
-    def ExportToImageJ_Img(self, asCopy = False):
+    def _export_img_to_imageJ(self, asCopy = False):
         """ Export the active image to ImageJ """
         if self.ij is None:
             messagebox.showerror("Neurotorch", "Please first start ImageJ")
@@ -138,7 +138,7 @@ class ImageJHandler:
         max = self.session.active_image_object.imgProps.max
         self.ij.py.run_macro(f"setMinAndMax({min}, {max});")
 
-    def ExportToImageJ_ImgDiff(self, asCopy = False):
+    def _export_img_diff_to_imageJ(self, asCopy = False):
         """ Export the active imageDiff to ImageJ"""
         if self.ij is None:
             messagebox.showerror("Neurotorch", "Please first start ImageJ")
@@ -156,12 +156,12 @@ class ImageJHandler:
         max = self.session.active_image_object.imgDiffProps.max
         self.ij.py.run_macro(f"setMinAndMax({min}, {max});")
 
-    def ImportROIS(self) -> tuple[list[ISynapseROI], list[str]]|None:
+    def _import_rois(self) -> tuple[list[ISynapseROI], list[str]]|None:
         """ Import ROIs from ImageJ """
         if self.ij is None:
             messagebox.showerror("Neurotorch", "Please first start ImageJ")
             return None
-        self.OpenRoiManager()
+        self.open_roi_manager()
         _warningFlags = []
         ij_rois = self.RM.getRoisAsArray() 
         rois = []
@@ -185,7 +185,7 @@ class ImageJHandler:
                 return None
         return (rois, names)
 
-    def ExportROIs(self, synapses: list[ISynapse]):
+    def export_ROIS(self, synapses: list[ISynapse]):
         """ Export ISynapses (and their ROIs) to ImageJ """
         if self.ij is None:
             messagebox.showerror("Neurotorch", "Please first start ImageJ")
@@ -194,7 +194,7 @@ class ImageJHandler:
             if self.root is not None:
                 self.root.bell()
             return
-        self.OpenRoiManager()
+        self.open_roi_manager()
 
         if len([s for s in synapses if len(s.rois) > 1]) != 0:
             if not messagebox.askyesnocancel("Neurotorch", "Your export selection contains synapses with more than one ROI which can not be exported. Do you want to continue anyway?"):
@@ -224,7 +224,7 @@ class ImageJHandler:
             else:
                 continue
 
-    def OpenRoiManager(self):
+    def open_roi_manager(self):
         """ Opens the ROI Manager """
         if self.ij is None:
             messagebox.showerror("Neurotorch", "Please first start ImageJ")
@@ -232,7 +232,7 @@ class ImageJHandler:
         self.ij.py.run_macro("roiManager('show all');")
         self.RM = self.ij.RoiManager.getRoiManager()
         
-    def MenuLocateInstallation_Click(self):
+    def menu_locate_installation_click(self):
         """ Opens a window to locate the installation. """
         if self.root is None:
             raise RuntimeError("Can't call this function when in headless mode")
@@ -245,8 +245,8 @@ class ImageJHandler:
             _path = _path.parent
         settings.set_setting("ImageJ_Path", str(_path))
 
-    def _ImageJReady(self):
+    def _imageJ_ready(self):
         """ Internal function. Called, when ImageJ is successfully loaded """
-        self.menuImageJ.entryconfig("ImageJ --> Neurotorch", state="normal")
-        self.menuImageJ.entryconfig("Img --> ImageJ", state="normal")
-        self.menuImageJ.entryconfig("ImgDiff --> ImageJ", state="normal")
+        self.menu_imageJ.entryconfig("ImageJ --> Neurotorch", state="normal")
+        self.menu_imageJ.entryconfig("Img --> ImageJ", state="normal")
+        self.menu_imageJ.entryconfig("ImgDiff --> ImageJ", state="normal")

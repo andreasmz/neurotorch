@@ -468,7 +468,7 @@ class SynapseTreeview(ttk.Treeview):
         if self.session.ijH is None or self.session.ijH.ij is None:
             messagebox.showerror("Neurotorch", "You must first start Fiji/ImageJ")
             return
-        res = self.session.ijH.ImportROIS()
+        res = self.session.ijH._import_rois()
         if res is None:
             self.root.bell()
             return
@@ -487,7 +487,7 @@ class SynapseTreeview(ttk.Treeview):
         if self.session.ijH is None or self.session.ijH.ij is None:
             messagebox.showerror("Neurotorch", "You must first start Fiji/ImageJ")
             return
-        self.session.ijH.ExportROIs(list(self.detection_result.synapses_dict.values()))
+        self.session.ijH.export_ROIS(list(self.detection_result.synapses_dict.values()))
 
     def ExportCSVMultiM(self, path:str|None = None, dropFrame=False) -> bool|None:
         synapses = self.detection_result.synapses_dict
