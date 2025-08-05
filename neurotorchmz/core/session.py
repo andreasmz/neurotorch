@@ -107,19 +107,22 @@ class Session(Serializable):
         return self._snalysis_detection_result
     
     @property
-    def root(self):
+    def root(self) -> "tk.Tk|None":
         """ Returns the current tkinter root. If in headless mode, return None """
+        global tk
+        import tkinter as tk
         if self.window is None:
             return None
         return self.window.root
     
     @property
-    def ijH(self):
+    def ijH(self) -> "ImageJHandler|None":
         """ Returns the ImageJHandler object or None if not yet imported """
         return self._ijH
 
     def import_ijh(self):
         """ Import the ImageJ helper (ijh)"""
+        global ImageJHandler
         from neurotorchmz.utils.pyimagej import ImageJHandler
         self._ijH = ImageJHandler(self)
 

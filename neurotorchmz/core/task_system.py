@@ -35,7 +35,7 @@ class Task:
     _id_count = itertools.count() # Count the created tasks for unique naming
     _tasks: list["Task"] = [] # List of running and recently finished tasks. Garbage collected when accessing this list
 
-    def __init__(self, function:_TaskFunction, name:str, run_async:bool=True, keep_alive:bool=False, background: bool = False):
+    def __init__(self, function:Callable[..., Any]|_TaskFunction, name:str, run_async:bool=True, keep_alive:bool=False, background: bool = False):
         """
             Creating a new task in either a new thread (sync == False) or in a synchronous manner
 
@@ -314,6 +314,7 @@ class Task:
                 self.tend = time.perf_counter()
                 self.error = ex
                 if self.error_callback is not None:
+                    logger.error(f"In the task {self.name} an error happened:", exc_info=True)
                     self.error_callback(ex)
                 else:
                     raise ex
@@ -321,6 +322,7 @@ class Task:
                 self.tend = time.perf_counter()
                 self.set_finished()
                 if self.error is not None and self.error_callback is not None:
+                    logger.error(f"In the task {self.name} an error happened:", exc_info=True)
                     self.error_callback(self.error)
                 elif len(self.callbacks) >= 1:
                     for c in self.callbacks:

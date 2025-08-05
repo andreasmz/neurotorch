@@ -1,3 +1,5 @@
+""" The pyImageJ module provides a connection layer between Fiji/ImageJ and Neurotorch """
+
 from ..core.session import *
 from ..core.task_system import Task
 from .synapse_detection import *
@@ -79,10 +81,9 @@ class ImageJHandler:
                 self.PolygonRoi = jimport('ij.gui.PolygonRoi')
                 self.Roi = jimport('ij.gui.Roi')
                 self.IJ_Plugin_Duplicator = jimport('ij.plugin.Duplicator')
-                self.ij.ui().showUI()
+                self.ij.ui().showUI() # type: ignore
             except TypeError as ex:
-                task.error = True
-                logger.debug(ex, "TypeError trying to start Fiji/ImageJ")
+                task.error = Exception("Failed to start Fiji/ImageJ")
                 messagebox.showerror("Neurotorch", f"Failed to start Fiji/ImageJ. Did you previously loaded an ND2 file (or any other Bioformat)? Then this my have crashed the Java instance. Try to restart Neurotorch and start Fiji/ImageJ BEFORE opening an ND2 file")
                 return
             self._imageJ_ready()
@@ -95,15 +96,13 @@ class ImageJHandler:
     def _loading_error_callback(self, ex: Exception):
         self.menu_imageJ.entryconfig("Start ImageJ", state="normal")
         self.task = None
-        if isinstance(ex, Exception):
-            log_exception_debug(ex, "Failed to start ImageJ")
-            messagebox.showerror("Neurotorch", f"Failed to start Fiji/ImageJ. See the logs for more details")
 
-    def _load_image(self) -> Task:
+    def _load_image(self) -> Task|None:
         """ Load an image from ImageJ into Neurotorch """
+        assert self.session.window is not None
         if self.ij is None:
             messagebox.showerror("Neurotorch", "Please first start ImageJ")
-            return
+            return None
         _img = self.ij.py.active_xarray()
         _imgIP = self.ij.py.active_imageplus()
         if _img is None or _imgIP is None:
@@ -132,7 +131,7 @@ class ImageJHandler:
         xImg = xarray.DataArray(self.session.active_image_object.img, name=f"{self.session.active_image_object.name}", dims=("pln", "row", "col"))
         javaImg = self.ij.py.to_imageplus(xImg)
         if asCopy:
-            javaImg = self.IJ_Plugin_Duplicator().run(javaImg)
+            javaImg = self.IJ_Plugin_Duplicator().run(javaImg) # type: ignore
         self.ij.ui().show(javaImg)    
         min = self.session.active_image_object.imgProps.minClipped
         max = self.session.active_image_object.imgProps.max
@@ -150,7 +149,7 @@ class ImageJHandler:
         xDiffImg = xarray.DataArray(np.clip(self.session.active_image_object.imgDiff, a_min=0, a_max=None).astype("uint16"), name=f"{self.session.active_image_object.name} (diff)", dims=("pln", "row", "col"))
         javaDiffImg = self.ij.py.to_imageplus(xDiffImg)
         if asCopy:
-            javaDiffImg = self.IJ_Plugin_Duplicator().run(javaDiffImg)
+            javaDiffImg = self.IJ_Plugin_Duplicator().run(javaDiffImg) # type: ignore
         self.ij.ui().show(javaDiffImg)
         min = self.session.active_image_object.imgDiffProps.minClipped
         max = self.session.active_image_object.imgDiffProps.max
@@ -163,12 +162,12 @@ class ImageJHandler:
             return None
         self.open_roi_manager()
         _warningFlags = []
-        ij_rois = self.RM.getRoisAsArray() 
+        ij_rois = self.RM.getRoisAsArray()  # type: ignore
         rois = []
         names = []
         for roi in ij_rois:
             name = str(roi.getName())
-            if not isinstance(roi, self.OvalRoi):
+            if not isinstance(roi, self.OvalRoi): # type: ignore
                 _warningFlags.append(f"{name}: Can't import non oval shapes and therefore skipped this ROIs")
                 continue
             if (roi.getFloatHeight() - roi.getFloatWidth()) > 1e-6:
@@ -202,7 +201,7 @@ class ImageJHandler:
         i_synapse = 1
         for synapse in synapses:
             name = synapse.name
-            if synapse.name is None:
+            if name is None:
                 name = f"Synapse {i_synapse}"
                 i_synapse += 1
             if not len(synapse.rois) == 1:
@@ -213,14 +212,14 @@ class ImageJHandler:
             
             if isinstance(roi, CircularSynapseROI):
                 if roi.radius is None: continue
-                roi = self.OvalRoi(roi.location[0]-roi.radius, roi.location[1]-roi.radius, 2*roi.radius+1, 2*roi.radius+1)
+                roi = self.OvalRoi(roi.location[0]-roi.radius, roi.location[1]-roi.radius, 2*roi.radius+1, 2*roi.radius+1) # type: ignore
                 roi.setName(name)
-                self.RM.addRoi(roi)
+                self.RM.addRoi(roi) # type: ignore
             elif isinstance(roi, PolygonalSynapseROI):
                 if roi.polygon is None: continue
-                roi = self.PolygonRoi(roi.polygon[:, 0]+0.5, roi.polygon[:, 1]+0.5, self.Roi.POLYGON)
+                roi = self.PolygonRoi(roi.polygon[:, 0]+0.5, roi.polygon[:, 1]+0.5, self.Roi.POLYGON) # type: ignore
                 roi.setName(name)
-                self.RM.addRoi(roi)
+                self.RM.addRoi(roi) # type: ignore
             else:
                 continue
 
