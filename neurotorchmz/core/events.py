@@ -10,8 +10,8 @@ class Event:
     def __init_subclass__(cls) -> None:
         cls_init = cls.__init__
 
-        def _init_wrapper(self: Self):
-            cls_init(self)
+        def _init_wrapper(self: Self, *args: Any, **kwds: Any):
+            cls_init(self, *args, **kwds)
             for hook in cls.HOOKS:
                 hook(self)
         

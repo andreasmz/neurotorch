@@ -5,8 +5,7 @@ due to synaptic activity.
 __version__ = "25.8.1"
 __author__ = "Andreas Brilka"
 
-from .core.session import Session, Edition, _import_plugin_manager # pyright: ignore[reportPrivateUsage]
-_import_plugin_manager()
+from .core.session import Session, Edition
 from .core import api as API # pyright: ignore[reportUnusedImport]
 
 def start(edition: Edition = Edition.NEUROTORCH, headless: bool = False, background: bool = False) -> Session:

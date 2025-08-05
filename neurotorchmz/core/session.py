@@ -40,6 +40,7 @@ class Session(Serializable):
         self.edition: Edition = edition
         if self.edition == Edition.NEUROTORCH_DEBUG:
             logs.start_debugging()
+        _import_plugin_manager()
 
         self.window = None 
         self._window_thread: threading.Thread|None = None
@@ -159,22 +160,22 @@ def load_plugins_from_dir(path: Path, prefix: str) -> None:
     """ Load all valid plugins from the given path """
     if not path.is_dir() or not path.exists():
         raise FileExistsError(f"Invalid path {path} to import plugins from")
-    for module_info in pkgutil.iter_modules(path=str(path), prefix=prefix):
-        module_spec = importlib.util.spec_from_file_location(module_info.name, path)
+    for module_info in pkgutil.iter_modules(path=[path], prefix=prefix+"."):
+        module_spec = module_info.module_finder.find_spec(module_info.name, str(module_info.module_finder.path)) # type: ignore
         if module_spec is None or module_spec.loader is None:
             raise RuntimeError(f"Can't import plugin {module_info.name}")
         module_type = importlib.util.module_from_spec(module_spec)
         try:
+            sys.modules[module_info.name] = module_type
             module_spec.loader.exec_module(module_type)
         except Exception:
-            logger.error(f"Failed to import plugin {module_info.name}", exc_info=True)
+            logger.error(f"Failed to import plugin {module_info.name}:", exc_info=True)
         else:
-            sys.modules[module_info.name] = module_type
             logger.debug(f"Loaded plugin {module_info.name}")
-
-load_plugins_from_dir(path=Path(str(__path__)).parent.parent / "plugins", prefix="neurotorchmz.plugins")
-load_plugins_from_dir(path=settings.user_plugin_path, prefix="neurotorchmz.user.plugins")
 
 def _import_plugin_manager(): # pyright: ignore[reportUnusedFunction]
     global events
     from ..core import events # pyright: ignore[reportUnusedImport]
+
+    load_plugins_from_dir(path=Path(str(__file__)).parent.parent / "plugins", prefix="neurotorchmz.plugins")
+    load_plugins_from_dir(path=settings.user_plugin_path, prefix="neurotorchmz.user.plugins")
