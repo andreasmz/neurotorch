@@ -46,63 +46,63 @@ class Neurotorch_GUI:
 
         self.menubar = tk.Menu(self.root)
         self.root.config(menu=self.menubar)
-        self.menuFile = tk.Menu(self.menubar,tearoff=0)
-        self.menubar.add_cascade(label="File",menu=self.menuFile)
-        self.menuFile.add_command(label="Open", command=self.menuFile_open_click)
-        self.menuFile.add_command(label="Open noisy image", command=lambda: self.menuFile_open_click(noisy=True))
-        self.menuFile.add_command(label="Close image", command=self.menuFile_close_click)
+        self.menu_file = tk.Menu(self.menubar,tearoff=0)
+        self.menubar.add_cascade(label="File",menu=self.menu_file)
+        self.menu_file.add_command(label="Open", command=self.menu_file_open_click)
+        self.menu_file.add_command(label="Open noisy image", command=lambda: self.menu_file_open_click(noisy=True))
+        self.menu_file.add_command(label="Close image", command=self.menu_file_close_click)
 
-        self.menuImage = tk.Menu(self.menubar,tearoff=0)
-        self.menubar.add_cascade(label="Image", menu=self.menuImage)
-        self.menuDenoise = tk.Menu(self.menuImage,tearoff=0)
-        self.menuImage.add_cascade(label="Denoise imgDiff", menu=self.menuDenoise)
-        self.menuDenoise.add_command(label="Disable denoising", command=lambda: self.menuImage_denoise_click(None, None))
-        self.menuDenoise.add_command(label="Clear cache", command=self.menuImage_clear_cache_click)
-        self.menuDenoise.add_separator()
-        self.menuDenoise.add_command(label=f"Gaussian kernel (σ=0.5)", command=lambda: self.menuImage_denoise_click(denoising.gaussian_blur, {"sigma": 0.5}))
-        self.menuDenoise.add_command(label=f"Gaussian kernel (σ=0.8)", command=lambda: self.menuImage_denoise_click(denoising.gaussian_blur, {"sigma": 0.8}))
-        self.menuDenoise.add_command(label=f"Gaussian kernel (σ=1)", command=lambda: self.menuImage_denoise_click(denoising.gaussian_blur, {"sigma": 1}))
-        self.menuDenoise.add_command(label=f"Gaussian kernel (σ=1.5)", command=lambda: self.menuImage_denoise_click(denoising.gaussian_blur, {"sigma": 1.5}))
-        self.menuDenoise.add_command(label=f"Gaussian kernel (σ=2, recommended)", command=lambda: self.menuImage_denoise_click(denoising.gaussian_blur, {"sigma": 2}))
-        self.menuDenoise.add_command(label=f"Gaussian kernel (σ=2.5)", command=lambda: self.menuImage_denoise_click(denoising.gaussian_blur, {"sigma": 2.5}))
-        self.menuDenoise.add_command(label=f"Gaussian kernel (σ=3)", command=lambda: self.menuImage_denoise_click(denoising.gaussian_blur, {"sigma": 3}))
-        self.menuDenoise.add_command(label=f"Gaussian kernel (σ=5)", command=lambda: self.menuImage_denoise_click(denoising.gaussian_blur, {"sigma": 5}))
+        self.menu_image = tk.Menu(self.menubar,tearoff=0)
+        self.menubar.add_cascade(label="Image", menu=self.menu_image)
+        self.menu_denoise = tk.Menu(self.menu_image,tearoff=0)
+        self.menu_image.add_cascade(label="Denoise imgDiff", menu=self.menu_denoise)
+        self.menu_denoise.add_command(label="Disable denoising", command=lambda: self.menu_image_denoise_click(None, None))
+        self.menu_denoise.add_command(label="Clear cache", command=self.menu_image_clear_cache_click)
+        self.menu_denoise.add_separator()
+        self.menu_denoise.add_command(label=f"Gaussian kernel (σ=0.5)", command=lambda: self.menu_image_denoise_click(denoising.gaussian_blur, {"sigma": 0.5}))
+        self.menu_denoise.add_command(label=f"Gaussian kernel (σ=0.8)", command=lambda: self.menu_image_denoise_click(denoising.gaussian_blur, {"sigma": 0.8}))
+        self.menu_denoise.add_command(label=f"Gaussian kernel (σ=1)", command=lambda: self.menu_image_denoise_click(denoising.gaussian_blur, {"sigma": 1}))
+        self.menu_denoise.add_command(label=f"Gaussian kernel (σ=1.5)", command=lambda: self.menu_image_denoise_click(denoising.gaussian_blur, {"sigma": 1.5}))
+        self.menu_denoise.add_command(label=f"Gaussian kernel (σ=2, recommended)", command=lambda: self.menu_image_denoise_click(denoising.gaussian_blur, {"sigma": 2}))
+        self.menu_denoise.add_command(label=f"Gaussian kernel (σ=2.5)", command=lambda: self.menu_image_denoise_click(denoising.gaussian_blur, {"sigma": 2.5}))
+        self.menu_denoise.add_command(label=f"Gaussian kernel (σ=3)", command=lambda: self.menu_image_denoise_click(denoising.gaussian_blur, {"sigma": 3}))
+        self.menu_denoise.add_command(label=f"Gaussian kernel (σ=5)", command=lambda: self.menu_image_denoise_click(denoising.gaussian_blur, {"sigma": 5}))
 
-        self.menuFilter = tk.Menu(self.menuImage,tearoff=0)
-        self.menuImage.add_cascade(label="Apply filter", menu=self.menuFilter)
-        self.menuFilter.add_command(label="Disable filter", command=lambda: self.menuImage_denoise_click(None, None))
-        self.menuFilter.add_command(label="Clear cache", command=self.menuImage_clear_cache_click)
-        self.menuFilter.add_separator()
-        self.menuFilter.add_command(label="Cummulative imgDiff", command=lambda: self.menuImage_denoise_click(denoising.mean_diff, None))
-        ToolTip(self.menuFile, msg=resources.get_string("menubar/filters/meanMaxDiff"), follow=True, delay=0.5)
+        self.menu_filter = tk.Menu(self.menu_image,tearoff=0)
+        self.menu_image.add_cascade(label="Apply filter", menu=self.menu_filter)
+        self.menu_filter.add_command(label="Disable filter", command=lambda: self.menu_image_denoise_click(None, None))
+        self.menu_filter.add_command(label="Clear cache", command=self.menu_image_clear_cache_click)
+        self.menu_filter.add_separator()
+        self.menu_filter.add_command(label="Cummulative imgDiff", command=lambda: self.menu_image_denoise_click(denoising.mean_diff, None))
+        ToolTip(self.menu_file, msg=resources.get_string("menubar/filters/meanMaxDiff"), follow=True, delay=0.5)
 
         if edition == Edition.NEUROTORCH_DEBUG:
-            self.menuDenoiseImg = tk.Menu(self.menuImage,tearoff=0)
-            self.menuImage.add_cascade(label="Denoise Image", menu=self.menuDenoiseImg)
-            self.menuDenoiseImg.add_command(label="On", command=lambda:self.menuImage_denoise_image_click(True))
-            self.menuDenoiseImg.add_command(label="Off", command=lambda:self.menuImage_denoise_image_click(False))
+            self.menu_denoise_img = tk.Menu(self.menu_image,tearoff=0)
+            self.menu_image.add_cascade(label="Denoise Image", menu=self.menu_denoise_img)
+            self.menu_denoise_img.add_command(label="On", command=lambda:self.menu_image_denoise_image_click(True))
+            self.menu_denoise_img.add_command(label="Off", command=lambda:self.menu_image_denoise_image_click(False))
 
         if (edition != Edition.NEUROTORCH_LIGHT):
             self.session.import_ijh()
             self.session.ijH.MenubarImageJH(self.menubar) # type: ignore
 
-        self.menuPlugins = tk.Menu(self.menubar,tearoff=0)
-        self.menubar.add_cascade(label="Plugins",menu=self.menuPlugins)
+        self.menu_plugins = tk.Menu(self.menubar,tearoff=0)
+        self.menubar.add_cascade(label="Plugins",menu=self.menu_plugins)
 
         self.menu_settings = tk.Menu(self.menubar, tearoff=0)
         self.menubar.add_cascade(label="Settings")
         
-        self.menuNeurotorch = tk.Menu(self.menubar,tearoff=0)
-        self.menubar.add_cascade(label="Neurotorch",menu=self.menuNeurotorch)
-        self.menuNeurotorch.add_command(label="About", command=self.menuNeurotorch_about_click)
-        self.menuNeurotorch.add_command(label="Open logs", command=self.menuNeurotorch_logs_click)
+        self.menu_neurotorch = tk.Menu(self.menubar,tearoff=0)
+        self.menubar.add_cascade(label="Neurotorch",menu=self.menu_neurotorch)
+        self.menu_neurotorch.add_command(label="About", command=self.menu_neurotorch_about_click)
+        self.menu_neurotorch.add_command(label="Open logs", command=self.menu_neurotorch_logs_click)
 
-        self.menuDebug = tk.Menu(self.menubar,tearoff=0)
+        self.menu_debug = tk.Menu(self.menubar,tearoff=0)
         if edition == Edition.NEUROTORCH_DEBUG:
-            self.menubar.add_cascade(label="Debug", menu=self.menuDebug)
-        self.menuDebug.add_command(label="Activate debugging to console", command=self.menuDebug_enable_debugging_click)    
-        self.menuDebug.add_command(label="Save diffImg peak frames", command=self.menuDebug_save_peaks_click)
-        self.menuDebug.add_command(label="Load diffImg peak frames", command=self.menuDebug_load_peaks_click)
+            self.menubar.add_cascade(label="Debug", menu=self.menu_debug)
+        self.menu_debug.add_command(label="Activate debugging to console", command=self.menu_debug_enable_debugging_click)    
+        self.menu_debug.add_command(label="Save diffImg peak frames", command=self.menu_debug_save_peaks_click)
+        self.menu_debug.add_command(label="Load diffImg peak frames", command=self.menu_debug_load_peaks_click)
 
         self.tabMain = ttk.Notebook(self.root)
         self.tabs[TabWelcome] = TabWelcome(self.session, self.root, self.tabMain)
@@ -193,7 +193,7 @@ class Neurotorch_GUI:
     
     # Menu Buttons Click
 
-    def menuFile_open_click(self, noisy:bool=False):
+    def menu_file_open_click(self, noisy:bool=False):
         image_path = filedialog.askopenfilename(parent=self.root, title="Open a Image File", 
                 filetypes=(("All files", "*.*"), ("TIF File", "*.tif *.tiff"), ("ND2 Files (NIS Elements)", "*.nd2")) )
         if image_path is None or image_path == "":
@@ -204,10 +204,10 @@ class Neurotorch_GUI:
         task.add_callback(self.session.notify_image_object_change)
         task.set_error_callback(self._open_image_error_callback)
     
-    def menuFile_close_click(self):
+    def menu_file_close_click(self):
         self.session.set_active_image_object(None)
         
-    def menuImage_denoise_click(self, func: Callable[..., np.ndarray]|None, func_args: dict|None):
+    def menu_image_denoise_click(self, func: Callable[..., np.ndarray]|None, func_args: dict|None):
         imgObj = self.session.active_image_object
         if imgObj is None or imgObj.imgDiff is None:
             self.root.bell()
@@ -215,14 +215,14 @@ class Neurotorch_GUI:
         imgObj.set_diff_conv_func(func, func_args)
         imgObj.PrecomputeImage().add_callback(lambda: self.invoke_tab_update_event(ImageChangedEvent()))
 
-    def menuImage_clear_cache_click(self):
+    def menu_image_clear_cache_click(self):
         if self.session.active_image_object is None:
             self.root.bell()
             return    
         self.session.active_image_object.clear_cache()
         logger.debug("Cleared ImageObject cache")
 
-    def menuImage_denoise_image_click(self, enable: bool):
+    def menu_image_denoise_image_click(self, enable: bool):
         if self.session.active_image_object is None:
             self.root.bell()
             return
@@ -232,10 +232,10 @@ class Neurotorch_GUI:
             self.session.active_image_object.set_conv_func(None, None)
         self.session.active_image_object.PrecomputeImage().add_callback(lambda: self.invoke_tab_update_event(ImageChangedEvent()))
 
-    def menuNeurotorch_about_click(self):
+    def menu_neurotorch_about_click(self):
         messagebox.showinfo("Neurotorch", f"© Andreas Brilka 2025\nYou are running Neurotorch {__version__}")
 
-    def menuNeurotorch_logs_click(self):
+    def menu_neurotorch_logs_click(self):
         if platform.system() == 'Darwin':       # macOS
             subprocess.call(('open', settings.log_path))
         elif platform.system() == 'Windows':    # Windows
@@ -243,7 +243,7 @@ class Neurotorch_GUI:
         else:                                   # linux variants
             subprocess.call(('xdg-open', settings.log_path))
 
-    def menuDebug_load_peaks_click(self):
+    def menu_debug_load_peaks_click(self):
         path = settings.app_data_path / "img_peaks.dump"
         if not path.exists() or not path.is_file():
             self.root.bell()
@@ -258,7 +258,7 @@ class Neurotorch_GUI:
             task.set_error_callback(self._open_image_error_callback)
             task.start(img=_img, name=_name, run_async=False)
 
-    def menuDebug_save_peaks_click(self):
+    def menu_debug_save_peaks_click(self):
         imgObj = self.session.active_image_object
         signalObj = self.session.active_image_signal
         if imgObj is None or imgObj.img is None or signalObj is None or signalObj.peaks is None or len(signalObj.peaks) == 0:
@@ -281,7 +281,7 @@ class Neurotorch_GUI:
         with open(savePath, 'wb') as f:
             pickle.dump(imgObj.img[_peaksExtended, :, :], f, protocol=pickle.HIGHEST_PROTOCOL)
 
-    def menuDebug_enable_debugging_click(self):
+    def menu_debug_enable_debugging_click(self):
         logs.start_debugging()
 
 
