@@ -104,37 +104,37 @@ class AxisImage:
     @property
     def Mean(self) -> np.ndarray|None:
         """ Mean image over the specified axis """
-        return self._mean.img
+        return self.MeanProps.img
 
     @property
     def MeanNormed(self) -> np.ndarray|None:
         """ Normalized Mean image (max value is garanter to be 255 or 0) over the specified axis """
-        return self._mean_normed.img
+        return self.MeanNormedProps.img
     
     @property
     def Median(self) -> np.ndarray|None:
         """ Median image over the specified axis """
-        return self._median.img
+        return self.MedianProps.img
     
     @property
     def Std(self) -> np.ndarray|None:
         """ Std image over the specified axis """
-        return self._std.img
+        return self.StdProps.img
     
     @property
     def StdNormed(self) -> np.ndarray|None:
         """ Normalized Std image (max value is garanter to be 255 or 0) over the specified axis """
-        return self._std_normed.img
+        return self.StdNormedProps.img
     
     @property
     def Min(self) -> np.ndarray|None:
         """ Minimum image over the specified axis """
-        return self._min.img
+        return self.MinProps.img
     
     @property
     def Max(self) -> np.ndarray|None:
         """ Maximum image over the specified axis """
-        return self._max.img
+        return self.MaxProps.img
 
     @property
     def MeanProps(self) -> ImageProperties:
@@ -294,6 +294,10 @@ class ImageObject(Serializable):
     def path(self) -> Path|None:
         """ Returns the path of the current ImageObject or None if not originating from a file """
         return self._path
+    
+    @property
+    def metadata(self) -> dict[str, Any]|None:
+        return self._metdata
     
     # Img and ImageDiff properties
 
