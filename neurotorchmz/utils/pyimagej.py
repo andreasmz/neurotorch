@@ -34,6 +34,7 @@ class ImageJHandler:
         events.WindowLoadedEvent.register(self.on_window_loaded)
 
     def on_window_loaded(self, e: events.WindowLoadedEvent) -> None:
+        """ Bound to WindowLoadedEvent; modifies the GUI e.g. by adding the menus"""
         assert e.session.window is not None
         menubar = e.session.window.menubar
         menu_settings = e.session.window.menu_settings
@@ -41,15 +42,15 @@ class ImageJHandler:
         menubar.insert_cascade(cast(int, menubar.index("Image")) + 1, label="ImageJ", menu=self.menu_imageJ)
         self.menu_imageJ.add_command(label="Start ImageJ", state="normal", command=self.start_imageJ)
         self.menu_imageJ.add_separator()
-        self.menu_imageJ.add_command(label="ImageJ --> Neurotorch", state="disabled", command=self._load_image)
+        self.menu_imageJ.add_command(label="ImageJ --> Neurotorch", state="disabled", command=self.load_image)
         self.menu_export_img = tk.Menu(self.menu_imageJ,tearoff=0)
         self.menu_imageJ.add_cascade(label="Img --> ImageJ", menu=self.menu_export_img, state="disabled")
-        self.menu_export_img.add_command(label="As Wrapper (faster loading, less memory)", command=lambda: self._export_img_to_imageJ(asCopy=False))
-        self.menu_export_img.add_command(label="As Copy (faster on live measurements)", command=lambda: self._export_img_to_imageJ(asCopy=True))
+        self.menu_export_img.add_command(label="As wrapper (faster loading, less memory)", command=lambda: self.export_img_to_imageJ(asCopy=False))
+        self.menu_export_img.add_command(label="As copy (faster on live measurements)", command=lambda: self.export_img_to_imageJ(asCopy=True))
         self.menu_export_img_diff = tk.Menu(self.menu_imageJ,tearoff=0)
         self.menu_imageJ.add_cascade(label="ImgDiff --> ImageJ", menu=self.menu_export_img_diff, state="disabled")
-        self.menu_export_img_diff.add_command(label="As Wrapper (faster loading, less memory)", command=lambda: self._export_img_diff_to_imageJ(asCopy=False))
-        self.menu_export_img_diff.add_command(label="As Copy (faster on live measurements)", command=lambda: self._export_img_diff_to_imageJ(asCopy=True))
+        self.menu_export_img_diff.add_command(label="As wrapper (faster loading, less memory)", command=lambda: self.export_img_diff_to_imageJ(asCopy=False))
+        self.menu_export_img_diff.add_command(label="As copy (faster on live measurements)", command=lambda: self.export_img_diff_to_imageJ(asCopy=True))
 
         menu_settings.add_command(label="ImageJ: locate installation", state="normal", command=self.menu_locate_installation_click)
 
@@ -94,14 +95,18 @@ class ImageJHandler:
         self.task.start(path_imagej=path_imagej)
 
     def _loading_error_callback(self, ex: Exception):
+        """ Internal callback on an error when loading ImageJ to reset the start Button"""
         self.menu_imageJ.entryconfig("Start ImageJ", state="normal")
         self.task = None
 
-    def _load_image(self) -> Task|None:
+    def load_image(self) -> Task|None:
         """ Load an image from ImageJ into Neurotorch """
         assert self.session.window is not None
         if self.ij is None:
-            messagebox.showerror("Neurotorch", "Please first start ImageJ")
+            if self.session.window is not None:
+                messagebox.showerror("Neurotorch", "Please first start ImageJ")
+            else:
+                logger.warning(f"Attempted to import from Fiji/ImageJ before it was initialized. Run start_imageJ() first")
             return None
         _img = self.ij.py.active_xarray()
         _imgIP = self.ij.py.active_imageplus()
@@ -110,50 +115,55 @@ class ImageJHandler:
                 self.root.bell()
             return
         _name = "ImageJ Img"
-        if hasattr(_imgIP, 'getShortTitle'):
-            _name = str(_imgIP.getShortTitle())
+        if hasattr(_imgIP, 'getTitle'):
+            _name = str(_imgIP.getTitle())
         _img = np.array(_img)
         imgObj = ImageObject()
         task = imgObj.SetImagePrecompute(img=_img, name=_name, run_async=True)
         task.add_callback(lambda: self.session.set_active_image_object(imgObj))
         task.set_error_callback(self.session.window._open_image_error_callback)
+        logger.info(f"Imported '{_name}' from Fiji/ImageJ")
         return task.start()
 
-    def _export_img_to_imageJ(self, asCopy = False):
+    def export_img_to_imageJ(self, asCopy = False):
         """ Export the active image to ImageJ """
         if self.ij is None:
             messagebox.showerror("Neurotorch", "Please first start ImageJ")
             return
-        if self.session.active_image_object is None or self.session.active_image_object.img is None:
+        imgObj = self.session.active_image_object
+        if imgObj is None or imgObj.img is None:
             if self.root is not None:
                 self.root.bell()
             return
-        xImg = xarray.DataArray(self.session.active_image_object.img, name=f"{self.session.active_image_object.name}", dims=("pln", "row", "col"))
+        xImg = xarray.DataArray(imgObj.img, name=f"{imgObj.name}", dims=("pln", "row", "col"))
         javaImg = self.ij.py.to_imageplus(xImg)
         if asCopy:
             javaImg = self.IJ_Plugin_Duplicator().run(javaImg) # type: ignore
         self.ij.ui().show(javaImg)    
-        min = self.session.active_image_object.imgProps.minClipped
-        max = self.session.active_image_object.imgProps.max
+        min = imgObj.imgProps.minClipped
+        max = imgObj.imgProps.max
         self.ij.py.run_macro(f"setMinAndMax({min}, {max});")
+        logger.info(f"Exported image '{imgObj.name}' to Fiji/ImageJ")
 
-    def _export_img_diff_to_imageJ(self, asCopy = False):
+    def export_img_diff_to_imageJ(self, asCopy = False):
         """ Export the active imageDiff to ImageJ"""
         if self.ij is None:
             messagebox.showerror("Neurotorch", "Please first start ImageJ")
             return
-        if self.session.active_image_object is None or self.session.active_image_object.imgDiff is None:
+        imgObj = self.session.active_image_object
+        if imgObj is None or imgObj.imgDiff is None:
             if self.root is not None:
                 self.root.bell()
             return
-        xDiffImg = xarray.DataArray(np.clip(self.session.active_image_object.imgDiff, a_min=0, a_max=None).astype("uint16"), name=f"{self.session.active_image_object.name} (diff)", dims=("pln", "row", "col"))
+        xDiffImg = xarray.DataArray(np.clip(imgObj.imgDiff, a_min=0, a_max=None).astype("uint16"), name=f"{imgObj.name} (diff)", dims=("pln", "row", "col"))
         javaDiffImg = self.ij.py.to_imageplus(xDiffImg)
         if asCopy:
             javaDiffImg = self.IJ_Plugin_Duplicator().run(javaDiffImg) # type: ignore
         self.ij.ui().show(javaDiffImg)
-        min = self.session.active_image_object.imgDiffProps.minClipped
-        max = self.session.active_image_object.imgDiffProps.max
+        min = imgObj.imgDiffProps.minClipped
+        max = imgObj.imgDiffProps.max
         self.ij.py.run_macro(f"setMinAndMax({min}, {max});")
+        logger.info(f"Exported image '{imgObj.name}' to Fiji/ImageJ")
 
     def _import_rois(self) -> tuple[list[ISynapseROI], list[str]]|None:
         """ Import ROIs from ImageJ """
@@ -199,6 +209,7 @@ class ImageJHandler:
             if not messagebox.askyesnocancel("Neurotorch", "Your export selection contains synapses with more than one ROI which can not be exported. Do you want to continue anyway?"):
                 return
         i_synapse = 1
+        roi_count = 0
         for synapse in synapses:
             name = synapse.name
             if name is None:
@@ -215,13 +226,16 @@ class ImageJHandler:
                 roi = self.OvalRoi(roi.location[0]-roi.radius, roi.location[1]-roi.radius, 2*roi.radius+1, 2*roi.radius+1) # type: ignore
                 roi.setName(name)
                 self.RM.addRoi(roi) # type: ignore
+                roi_count += 1
             elif isinstance(roi, PolygonalSynapseROI):
                 if roi.polygon is None: continue
                 roi = self.PolygonRoi(roi.polygon[:, 0]+0.5, roi.polygon[:, 1]+0.5, self.Roi.POLYGON) # type: ignore
                 roi.setName(name)
                 self.RM.addRoi(roi) # type: ignore
+                roi_count += 1
             else:
                 continue
+        logger.info(f"Exported {roi_count} ROIs to Fiji/ImageJ")
 
     def open_roi_manager(self):
         """ Opens the ROI Manager """
