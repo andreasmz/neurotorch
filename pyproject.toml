@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "Neurotorch is a tool designed to extract regions of synaptic activity in neurons tagges with iGluSnFR, but is in general capable to find any kind of local brightness increase due to synaptic activity"
 license = "MIT"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -20,14 +20,14 @@ classifiers = [
 keywords = ["neurotorch", "neurons", "glutamate", "synapses", "python", "iGluSnFR"]
 
 dependencies = [
-  "numpy>=2.1.2",
+  "numpy>=2.1.3",
   "pandas>=2.2.3",
   "scipy>=1.14.1",
-  "matplotlib>=3.9.2",
+  "matplotlib>=3.9.4",
   "scikit-image>=0.24.0",
-  "xarray>=2024.9.0",
+  "xarray>=2024.7",
   "pims>=0.7",
-  "nd2>=0.10.2",
+  "nd2>=0.8.1",
   "tifffile>=2025.3.13",
   "pyimagej>=1.5.0",
   "psutil>=6.1.1",
