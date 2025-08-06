@@ -398,13 +398,13 @@ class ImageObject(Serializable):
     def imgView(self, mode: "ImageView") -> AxisImage:
         """ Returns a view of the current image given an ImageView mode """
         if mode not in self._img_views[self._conv_func_identifier].keys():
-            self._img_views[self._conv_func_identifier][mode] = AxisImage(self.img, axis=mode.value)
+            self._img_views[self._conv_func_identifier][mode] = AxisImage(self.img, axis=mode.value, name=self.name)
         return self._img_views[self._conv_func_identifier][mode]
     
     def imgDiffView(self, mode) -> AxisImage:
         """ Returns a view of the current diff image given an ImageView mode """
         if mode not in self._img_diff_views[self._diff_conv_func_identifier].keys():
-            self._img_diff_views[self._diff_conv_func_identifier][mode] = AxisImage(self.imgDiff, axis=mode.value)
+            self._img_diff_views[self._diff_conv_func_identifier][mode] = AxisImage(self.imgDiff, axis=mode.value, name=self.name)
         return self._img_diff_views[self._diff_conv_func_identifier][mode]
     
     

@@ -113,15 +113,15 @@ class TabImage(Tab):
                     self.treeMetadata.insert('providedImageData', 'end', text="Maximum", values=([imgObj.imgProps.max]))
                     self.treeMetadata.insert('providedImageData', 'end', text="Minimum", values=([imgObj.imgProps.min]))
                     
-                if imgObj.nd2_metadata is not None:
-                    self.treeMetadata.insert('', 'end', iid="nd2_metadata", text="ND2 metadata", open=True)
-                    self._insert_dict_into_tree(parent_node="nd2_metadata", d=imgObj.nd2_metadata, max_level_open=2)
-                if imgObj.pims_metadata is not None:
-                    self.treeMetadata.insert('', 'end', iid="pims_metadata", text="Metadata", open=False)
-                    for k,v in imgObj.pims_metadata.items():
-                        if "#" in k:
-                            continue
-                        self.treeMetadata.insert('pims_metadata', 'end', text=k, values=([v]))
+                if imgObj.metadata is not None:
+                    self.treeMetadata.insert('', 'end', iid="metadata", text="ND2 metadata", open=True)
+                    self._insert_dict_into_tree(parent_node="metadata", d=imgObj.metadata, max_level_open=2)
+                # if imgObj.pims_metadata is not None:
+                #     self.treeMetadata.insert('', 'end', iid="pims_metadata", text="Metadata", open=False)
+                #     for k,v in imgObj.pims_metadata.items():
+                #         if "#" in k:
+                #             continue
+                #         self.treeMetadata.insert('pims_metadata', 'end', text=k, values=([v]))
 
         _selected = self.radioDisplayVar.get()
         if self.colorbar is not None:

@@ -106,6 +106,7 @@ class Neurotorch_GUI:
         self.menu_debug.add_command(label="Activate debugging to console", command=self.menu_debug_enable_debugging_click)    
         self.menu_debug.add_command(label="Save diffImg peak frames", command=self.menu_debug_save_peaks_click)
         self.menu_debug.add_command(label="Load diffImg peak frames", command=self.menu_debug_load_peaks_click)
+        self.menu_debug.add_command(label="Test", command=self.menu_debug_test)
 
         self.tabMain = ttk.Notebook(self.root)
         self.tabs[TabWelcome] = TabWelcome(self.session, self.root, self.tabMain)
@@ -285,6 +286,12 @@ class Neurotorch_GUI:
 
     def menu_debug_enable_debugging_click(self):
         logs.start_debugging()
+
+    def menu_debug_test(self):
+        def test(self):
+            print(1/0)
+        t = threading.Thread(target=test)
+        t.start()
 
 
 class Tab:
