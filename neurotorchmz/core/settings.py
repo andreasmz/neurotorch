@@ -34,15 +34,16 @@ class Config:
         cls.config_parser = configparser.ConfigParser()
         d = {}
         for section_name, section_obj in vars(cls).items():
-            if not isinstance(section_obj, Section):
+            if not isinstance(section_obj, type) or not issubclass(section_obj, Section):
                 continue
             section_obj.config = cls
             d[section_name] = {}
-            for option_name, option_obj in vars(section_obj.__class__).items():
+            for option_name, option_obj in vars(section_obj).items():
                 if not isinstance(option_obj, Option):
                     continue
                 d[section_name][option_name] = option_obj.default_value
         cls.config_parser.read_dict(d)
+        cls.load_config()
         atexit.register(cls.save_config)
     
     @classmethod
@@ -66,16 +67,16 @@ class Section:
 
     config: type[Config]
 
-    def __getattribute__(self, name: str) -> Any:
-        if isinstance(__dict__[name], Option):
-            return cast(Option, __dict__[name]).get()
-        return __dict__[name]
+    # def __getattribute__(self, name: str) -> Any:
+    #     if isinstance(__dict__[name], Option):
+    #         return cast(Option, __dict__[name]).get()
+    #     return __dict__[name]
     
-    def __setattr__(self, name: str, value: Any) -> None:
-        if isinstance(__dict__[name], Option):
-            cast(Option, __dict__[name]).set(value)
-        else:
-            __dict__[name] = name
+    # def __setattr__(self, name: str, value: Any) -> None:
+    #     if isinstance(__dict__[name], Option):
+    #         cast(Option, __dict__[name]).set(value)
+    #     else:
+    #         __dict__[name] = name
 
     def __init_subclass__(cls) -> None:
         for attr_name, attr_value in cls.__dict__.items():
@@ -101,9 +102,11 @@ class Option:
     def get(self):
         raise NotImplementedError()    
     
-    def set(self, val) -> None:
-        self.config_parser.set(self.section.__name__, self.name, val)
-        self.save()
+    def set(self, val: Any, save: bool = False) -> None:
+        self.config_parser.set(self.section.__name__, self.name, str(val))
+        logger.debug(f"Changed setting '{self.section.__name__}.{self.name}' from '{str(self.get())}' to '{str(val)}'")
+        if save:
+            self.save()
     
 class StringOption(Option):
     def get(self) -> str:
@@ -131,7 +134,10 @@ class UserSettings(Config):
     config_path = Path(app_data_path / "settings.ini")
     class IMAGEJ(Section):
         imagej_path = PathOption("")
+        validate_path_on_startup = BoolOption(True)
 
+
+# Temp files
 def clear_temp_files():
     """ Clears the temporary files and folders """
     for f in tmp_path.iterdir():

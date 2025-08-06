@@ -66,3 +66,7 @@ class WindowLoadedEvent(Event):
     def menu_plugins(self) -> tk.Menu:
         assert self.session.window is not None
         return self.session.window.menu_plugins
+    
+
+class WindowTKReadyEvent(WindowLoadedEvent):
+    """ Triggers after the GUI has loaded and tkinter is in main loop """

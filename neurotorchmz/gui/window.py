@@ -93,7 +93,7 @@ class Neurotorch_GUI:
             self.menu_plugins.add_cascade(label=name, menu=m)
         
         self.menu_settings = tk.Menu(self.menubar, tearoff=0)
-        self.menubar.add_cascade(label="Settings")
+        self.menubar.add_cascade(label="Settings", menu=self.menu_settings)
         
         self.menu_neurotorch = tk.Menu(self.menubar,tearoff=0)
         self.menubar.add_cascade(label="Neurotorch",menu=self.menu_neurotorch)
@@ -116,10 +116,11 @@ class Neurotorch_GUI:
         #self.tabs[TabAnalysis] = TabAnalysis(self.session, self.root, self.tabMain)
         for t in self.tabs.values(): t.init()
         self.tabMain.select(self.tabs[TabImage].tab)
-        events.WindowLoadedEvent(session=self.session)
-
         self.root.protocol("WM_DELETE_WINDOW", self._on_closing)
         self.tabMain.pack(expand=1, fill="both")
+
+        events.WindowLoadedEvent(session=self.session)
+        self.root.after(1000, lambda: events.WindowTKReadyEvent(session=self.session))
         self.root.mainloop()
 
     # Update handling

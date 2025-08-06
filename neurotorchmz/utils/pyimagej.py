@@ -32,6 +32,7 @@ class ImageJHandler:
         self.RM = None # Roi Manager
 
         events.WindowLoadedEvent.register(self.on_window_loaded)
+        events.WindowTKReadyEvent.register(self.on_tk_loaded)
 
     def on_window_loaded(self, e: events.WindowLoadedEvent) -> None:
         """ Bound to WindowLoadedEvent; modifies the GUI e.g. by adding the menus"""
@@ -40,7 +41,7 @@ class ImageJHandler:
         menu_settings = e.session.window.menu_settings
         self.menu_imageJ = tk.Menu(menubar,tearoff=0)
         menubar.insert_cascade(cast(int, menubar.index("Image")) + 1, label="ImageJ", menu=self.menu_imageJ)
-        self.menu_imageJ.add_command(label="Start ImageJ", state="normal", command=self.start_imageJ)
+        self.menu_imageJ.add_command(label="Start ImageJ", state="normal", command=self.menu_start_imageJ_click)
         self.menu_imageJ.add_separator()
         self.menu_imageJ.add_command(label="ImageJ --> Neurotorch", state="disabled", command=self.load_image)
         self.menu_export_img = tk.Menu(self.menu_imageJ,tearoff=0)
@@ -52,7 +53,19 @@ class ImageJHandler:
         self.menu_export_img_diff.add_command(label="As wrapper (faster loading, less memory)", command=lambda: self.export_img_diff_to_imageJ(asCopy=False))
         self.menu_export_img_diff.add_command(label="As copy (faster on live measurements)", command=lambda: self.export_img_diff_to_imageJ(asCopy=True))
 
-        menu_settings.add_command(label="ImageJ: locate installation", state="normal", command=self.menu_locate_installation_click)
+        self.menu_settings_imagej = tk.Menu(menu_settings, tearoff=0)
+        menu_settings.add_cascade(label="ImageJ/Fiji bridge", menu=self.menu_settings_imagej)
+        self.var_check_path = tk.BooleanVar(value=False)
+        self.menu_settings_imagej.add_checkbutton(label="Check if path is valid on startup", state="normal", command=self.menu_settings_toggle_path_check, variable=self.var_check_path)
+        self.menu_settings_imagej.add_command(label="Locate installation", state="normal", command=self.menu_locate_installation_click)
+
+    def load_from_config(self) -> None:
+        self.var_check_path.set(settings.UserSettings.IMAGEJ.validate_path_on_startup.get())
+
+    def on_tk_loaded(self, e: events.WindowTKReadyEvent) -> None:
+        self.load_from_config()
+        if settings.UserSettings.IMAGEJ.validate_path_on_startup.get():
+            self.ask_for_imagej_path()
 
     def start_imageJ(self):
         """ Starts ImageJ """
@@ -63,7 +76,7 @@ class ImageJHandler:
             logger.error("ModuleImport Error trying to import ImageJ", ex, exc_info=True)
             messagebox.showerror("Neurotorch", "It seems that pyimagej is not installed")
             return
-        if (path_imagej := settings.get_setting("ImageJ_Path")) is None or not (path_imagej := Path(path_imagej)).exists() or not path_imagej.is_dir():
+        if (path_imagej := settings.UserSettings.IMAGEJ.imagej_path.get()) is None or not (path_imagej := Path(path_imagej)).exists() or not path_imagej.is_dir():
             logger.warning(f"Failed to locate ImageJ at {path_imagej}")
             messagebox.showerror("Neurotorch", "Can't locate your local Fiji/ImageJ installation. Please set the path to your installation via the menubar and try again")
             return
@@ -244,19 +257,45 @@ class ImageJHandler:
             return
         self.ij.py.run_macro("roiManager('show all');")
         self.RM = self.ij.RoiManager.getRoiManager()
+
+    def menu_start_imageJ_click(self):
+        if self.root is None:
+            raise RuntimeError("Can't call this function when in headless mode")
+        if not self.validate_imagej_path():
+            self.ask_for_imagej_path()
+        if not self.validate_imagej_path():
+            return
+        self.start_imageJ()
+
+    def menu_settings_toggle_path_check(self):
+        settings.UserSettings.IMAGEJ.validate_path_on_startup.set(not settings.UserSettings.IMAGEJ.validate_path_on_startup.get(), save=True)
+        self.load_from_config()
         
     def menu_locate_installation_click(self):
         """ Opens a window to locate the installation. """
         if self.root is None:
             raise RuntimeError("Can't call this function when in headless mode")
-        _path = filedialog.askopenfilename(parent=self.root, title="Locate your local Fiji/ImageJ installation", 
-                filetypes=(("ImageJ-win64.exe (Windows)", "*.exe"), ("Fiji.app (MacOS)", "*.app")))
+        _path = filedialog.askdirectory(parent=self.root, title="Locate your Fiji/ImageJ installation by selecting the Fiji.app folder", mustexist=True)
         if _path is None or _path == "":
             return
         _path = Path(_path)
-        if _path.suffix == ".exe":
-            _path = _path.parent
-        settings.set_setting("ImageJ_Path", str(_path))
+        if not self.validate_imagej_path():
+            if messagebox.askretrycancel("Neurotorch: Select Fiji/ImageJ path", "The provided path seems to be invalid. Do you want to retry?"):
+                self.menu_locate_installation_click()
+            return
+        settings.UserSettings.IMAGEJ.imagej_path.set(_path, save=True)
+
+    def validate_imagej_path(self) -> bool:
+        path = settings.UserSettings.IMAGEJ.imagej_path.get()
+        return path.exists() and path.is_dir() and path.name == "Fiji.app"
+    
+    def ask_for_imagej_path(self) -> None:
+        if self.root is None:
+            raise RuntimeError("Can't call this function when in headless mode")
+        if not self.validate_imagej_path():
+            if messagebox.askyesno("Neurotorch: Fiji/ImageJ bridge", "To connect to Fiji/ImageJ, you must link Neurotorch to your local Fiji/ImagJ installation. Do you want to select " \
+            "the path now?\n\nNote: You can disable this question on start up in the settings menu", icon="question", default="yes"):
+                self.menu_locate_installation_click()
 
     def _imageJ_ready(self):
         """ Internal function. Called, when ImageJ is successfully loaded """
