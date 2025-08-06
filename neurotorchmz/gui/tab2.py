@@ -114,7 +114,7 @@ class TabSignal(Tab):
     def update_tab(self, event: TabUpdateEvent):
         """ Handle the update loop call """
         if isinstance(event, ImageChangedEvent):
-            for algo in self.signalDetectionAlgorithms: algo.Clear()
+            for algo in self.signalDetectionAlgorithms: algo.clear()
             self.invalidate_image()
             self.detect_signal()
             self.invalidate_signal() # Call twice on successfull detect, but minimal overhead
@@ -138,7 +138,7 @@ class TabSignal(Tab):
         elif isinstance(event, TabSignal_RefindPeaksEvent):
             if self.session.active_image_signal is None:
                 return
-            self.session.active_image_signal.DetectPeaks(self.setting_peakProminence.Get()/100)
+            self.session.active_image_signal.detect_peaks(self.setting_peakProminence.Get()/100)
             self.window.invoke_tab_update_event(SignalChangedEvent())
 
         elif isinstance(event, SignalChangedEvent):

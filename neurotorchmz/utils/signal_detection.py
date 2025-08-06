@@ -3,7 +3,7 @@ from .image import ImageObject, ImageView
 
 import numpy as np
 from scipy.signal import find_peaks
-from typing import cast
+from typing import Literal
 
 class SignalObject:
     """ 
@@ -16,19 +16,20 @@ class SignalObject:
     
     """
 
+    PEAK_WIDTH_LEFT = 1
+    PEAK_WIDTH_RIGHT = 6
+
     def __init__(self, imgObj: ImageObject|None):
         self._imgObj: ImageObject|None = imgObj
-        self.peakWidth_L = 1
-        self.peakWidth_R = 6
-        self.Clear()
+        self.clear()
 
-    def Clear(self):
+    def clear(self):
         self._signal: np.ndarray|None = None
         self._peaks: list[int]|None = None
-        self.ClearCache()        
+        self.clear_cache()        
 
-    def ClearCache(self):
-        self._imgObj_Sliced = None # Set to False if slice would be empty
+    def clear_cache(self):
+        self._imgObj_sliced: None|Literal[False]|ImageObject = None # Set to False if slice would be empty
 
     @property
     def signal(self) -> np.ndarray|None:
@@ -51,47 +52,42 @@ class SignalObject:
     def imgObj(self, val: ImageObject|None):
         if not isinstance(val, ImageObject) or not val is None:
             raise TypeError(f"Setting the ImageObject of the SignalObject requires None or a ImageObject, but you provided {type(val)}")
-        self.ClearCache()
+        self.clear_cache()
         self._imgObj = val
 
-    def SetPeakWidths(self, widthLeft: int, widthRight: int):
-        self.peakWidth_L = widthLeft
-        self.peakWidth_R = widthRight
-        self.ClearCache()
-
-    def DetectPeaks(self, prominenceFactor:float):
+    def detect_peaks(self, prominenceFactor:float):
         if self._signal is None:
             return
         self._peaks = [int(p) for p in find_peaks(self._signal, prominence=prominenceFactor*(np.max(self._signal)-np.min(self._signal)))[0]]
         self._peaks.sort()
-        self.ClearCache()
+        self.clear_cache()
 
     @property
-    def imgObj_Sliced(self) -> ImageObject | None:
+    def imgObj_sliced(self) -> ImageObject | Literal[False] | None:
         """
             Return a new SlicedImageObject (which is except for the name identical to an ImageObject), where diffImg has been set to the sliced version.
             Returns the sliced image object without signal or None if image or signal is not ready and False if image would be empty 
         """
         if self._imgObj is None or self._imgObj.imgDiff is None:
             return None
-        if self._imgObj_Sliced is None:
-            self._imgObj_Sliced = ImageObject()
+        if self._imgObj_sliced is None:
+            self._imgObj_sliced = ImageObject()
             if self._peaks is None:
                 return None
             if len(self._peaks) == 0:
-                self._imgObj_Sliced.imgDiff = self._imgObj.imgDiff
+                self._imgObj_sliced.imgDiff = self._imgObj.imgDiff
             else:
                 _slices = []
                 for i, p in enumerate([*self._peaks, self._imgObj.imgDiff.shape[0]]):
-                    pStart = (self._peaks[i-1]+1 + self.peakWidth_R) if i >= 1 else 0 
-                    pStop = p - self.peakWidth_L if i != len(self._peaks) else p
+                    pStart = (self._peaks[i-1]+1 + SignalObject.PEAK_WIDTH_RIGHT) if i >= 1 else 0 
+                    pStop = p - SignalObject.PEAK_WIDTH_LEFT if i != len(self._peaks) else p
                     if pStop <= pStart:
                         continue
                     _slices.append(slice(pStart, pStop))
                 if len(_slices) > 0:
                     _sliceObj = np.s_[_slices]
-                    self._imgObj_Sliced.imgDiff = np.concatenate([self._imgObj.imgDiff[_slice] for _slice in _sliceObj])
-        return self._imgObj_Sliced
+                    self._imgObj_sliced.imgDiff = np.concatenate([self._imgObj.imgDiff[_slice] for _slice in _sliceObj])
+        return self._imgObj_sliced
 
     def __del__(self):
         del self._imgObj
@@ -101,7 +97,7 @@ class ISignalDetectionAlgorithm:
     def __init__(self):
         pass
 
-    def Clear(self):
+    def clear(self):
         """
             This method is typically called when the GUI loads a new image
         """

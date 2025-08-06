@@ -83,7 +83,7 @@ class Neurotorch_GUI:
             self.menu_denoise_img.add_command(label="Off", command=lambda:self.menu_image_denoise_image_click(False))
 
         if (edition != Edition.NEUROTORCH_LIGHT):
-            self.session.import_ijh()
+            self.session.import_ijH()
 
         self.menu_plugins = tk.Menu(self.menubar,tearoff=0)
         self.menubar.add_cascade(label="Plugins",menu=self.menu_plugins)
@@ -111,7 +111,7 @@ class Neurotorch_GUI:
         self.tabMain = ttk.Notebook(self.root)
         self.tabs[TabWelcome] = TabWelcome(self.session, self.root, self.tabMain)
         self.tabs[TabImage] = TabImage(self.session, self.root, self.tabMain)
-        #self.tabs[TabSignal] = TabSignal(self.session, self.root, self.tabMain)
+        self.tabs[TabSignal] = TabSignal(self.session, self.root, self.tabMain)
         #self.tabs[TabROIFinder] = TabROIFinder(self.session, self.root, self.tabMain)
         #self.tabs[TabAnalysis] = TabAnalysis(self.session, self.root, self.tabMain)
         for t in self.tabs.values(): t.init()
@@ -339,7 +339,6 @@ class Tab:
 
 from ..gui.tabWelcome import TabWelcome
 from neurotorchmz.gui.tab1 import TabImage
-# from neurotorchmz.gui.tab2 import TabSignal
+from neurotorchmz.gui.tab2 import TabSignal
 # from neurotorchmz.gui.tab3 import TabROIFinder
 # from neurotorchmz.gui.tabAnalysis import TabAnalysis
-#from ..utils.plugin_manager import PluginManager

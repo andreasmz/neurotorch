@@ -120,7 +120,7 @@ class Session(Serializable):
         """ Returns the ImageJHandler object or None if not yet imported """
         return self._ijH
 
-    def import_ijh(self):
+    def import_ijH(self):
         """ Import the ImageJ helper (ijh)"""
         global ImageJHandler
         from neurotorchmz.utils.pyimagej import ImageJHandler

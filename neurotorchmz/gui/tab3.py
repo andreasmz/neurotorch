@@ -364,14 +364,14 @@ class TabROIFinder(Tab):
                 self._current_input_description_str = "Delta (std.)"
                 return imgObj.imgDiffView(ImageView.SPATIAL).StdNormedProps
             case "Delta (max.), signal removed":
-                if signal is None or signal.imgObj_Sliced is None:
+                if signal is None or signal.imgObj_sliced is None:
                     self._current_input_description_str = "SIGNAL MISSING"
                     return None
-                elif signal.imgObj_Sliced is False:
+                elif signal.imgObj_sliced is False:
                     self._current_input_description_str = "NO IMAGE"
                     return None
                 self._current_input_description_str = "Delta (max.), signal removed"
-                return signal.imgObj_Sliced.imgDiffView(ImageView.SPATIAL).MaxProps
+                return signal.imgObj_sliced.imgDiffView(ImageView.SPATIAL).MaxProps
             case _:
                 return None
         
