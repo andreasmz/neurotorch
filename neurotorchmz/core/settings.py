@@ -141,10 +141,6 @@ class UserSettings(Config):
     config_path = Path(app_data_path / "settings.ini")
     class IMAGEJ(Section):
         imagej_path = PathOption("")
-        validate_path_on_startup = BoolOption(True)
-        validate_imagej_path_on_startup = BoolOption(True)
-        open_jdk_path = PathOption("")
-        apache_maven_path = PathOption("")
 
 # Temp files
 def clear_temp_files():

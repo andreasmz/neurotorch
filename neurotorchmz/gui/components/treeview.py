@@ -468,7 +468,7 @@ class SynapseTreeview(ttk.Treeview):
         if self.session.ijH is None or self.session.ijH.ij is None:
             messagebox.showerror("Neurotorch", "You must first start Fiji/ImageJ")
             return
-        res = self.session.ijH._import_rois()
+        res = self.session.ijH.import_rois()
         if res is None:
             self.root.bell()
             return
