@@ -1,19 +1,20 @@
 """ Provides a module to load and update settings. Provides also the paths of resources and the temp folder for other modules """
-from typing_extensions import Self
+from ..core import logs
+from ..core.logs import logger
+
 import platformdirs
 import configparser
 from pathlib import Path
 import atexit
-from typing import Literal
-
-from . import logs
-from .logs import logger
-from typing import Any, cast
+from typing import Any
+import os
 
 # Initialize paths
-app_data_path = platformdirs.user_data_path(appname="NeurotorchMZ", appauthor=False, roaming=True, ensure_exists=True)
+app_data_path = platformdirs.user_data_path(appname="NeurotorchMZ", appauthor="andreasmz", roaming=True, ensure_exists=True)
+app_data_local_path = platformdirs.user_data_path(appname="NeurotorchMZ", appauthor="andreasmz", roaming=False, ensure_exists=True)
 log_path = app_data_path / "logs.txt"
-tmp_path: Path = app_data_path / "tmp"
+tmp_path = app_data_local_path / "tmp"
+environ_path = app_data_local_path / "environ"
 user_plugin_path = app_data_path / "plugins"
 preinstalled_plugin_path = Path(__file__).parent.parent / "plugins"
 resource_path = Path(__file__).parent.parent / "resources"
@@ -21,10 +22,24 @@ resource_path = Path(__file__).parent.parent / "resources"
 # Create the appdata folder if not exist
 app_data_path.mkdir(parents=True, exist_ok=True)
 tmp_path.mkdir(exist_ok=True, parents=False)
+environ_path.mkdir(exist_ok=True, parents=False)
 user_plugin_path.mkdir(exist_ok=True, parents=False)
 
+# Search for library folders inside the environ path and add them to the environ variable
+for p in environ_path.iterdir():
+    if not p.is_dir():
+        continue
+    if ("jdk" in p.name or "maven" in p.name) and (p / "bin").exists():
+        os.environ["PATH"] += os.pathsep + str(p / "bin")
+        logger.debug(f"Found '{p.name}' in the AppData folder and added '{p / 'bin'}' temporarily to PATH")
+
+# Link definitions
+documentation_url = "https://andreasmz.github.io/neurotorch/"
+
+# Logging
 logs.init_file_handler(log_path)
 
+# Config
 class Config:
 
     config_parser: configparser.ConfigParser
@@ -66,17 +81,6 @@ class Config:
 class Section:
 
     config: type[Config]
-
-    # def __getattribute__(self, name: str) -> Any:
-    #     if isinstance(__dict__[name], Option):
-    #         return cast(Option, __dict__[name]).get()
-    #     return __dict__[name]
-    
-    # def __setattr__(self, name: str, value: Any) -> None:
-    #     if isinstance(__dict__[name], Option):
-    #         cast(Option, __dict__[name]).set(value)
-    #     else:
-    #         __dict__[name] = name
 
     def __init_subclass__(cls) -> None:
         for attr_name, attr_value in cls.__dict__.items():
@@ -125,8 +129,11 @@ class BoolOption(Option):
         return self.config_parser.getboolean(self.section.__name__, self.name, fallback=self.default_value)
     
 class PathOption(Option):
-    def get(self) -> Path:
-        return Path(self.config_parser.get(self.section.__name__, self.name, fallback=self.default_value)).resolve()
+    def get(self) -> Path|None:
+        p = self.config_parser.get(self.section.__name__, self.name, fallback=self.default_value)
+        if p is not None and p != "":
+            return Path(p).resolve()
+        return None
 
 
 # Default settings
@@ -135,7 +142,9 @@ class UserSettings(Config):
     class IMAGEJ(Section):
         imagej_path = PathOption("")
         validate_path_on_startup = BoolOption(True)
-
+        validate_imagej_path_on_startup = BoolOption(True)
+        open_jdk_path = PathOption("")
+        apache_maven_path = PathOption("")
 
 # Temp files
 def clear_temp_files():

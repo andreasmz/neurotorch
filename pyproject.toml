@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "Neurotorch is a tool designed to extract regions of synaptic activity in neurons tagges with iGluSnFR, but is in general capable to find any kind of local brightness increase due to synaptic activity"
 license = "MIT"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 
 classifiers = [
     "Programming Language :: Python :: 3",

@@ -361,7 +361,7 @@ class Task:
             case _:
                 pass
         if self._step_count is None:
-            s += f"{': ' + self._progress_str if self._progress_str is not None else ''} {(str(int(round(self._progress*100,0))) + "%") if self._progress is not None else ''}"
+            s += f"{': ' + self._progress_str if self._progress_str is not None else ''} {(str(int(round(self._progress*100,0))) + '%') if self._progress is not None else ''}"
         elif self._step_count == 0: # indeterminated mode
             s += f"{': ' + self._progress_str if self._progress_str is not None else ''}"
         elif self._step is None:

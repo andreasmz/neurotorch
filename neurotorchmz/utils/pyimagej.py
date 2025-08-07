@@ -6,10 +6,11 @@ from .synapse_detection import *
 
 import tkinter as tk
 from tkinter import messagebox, filedialog
-import os
 import numpy as np
 import xarray
 from pathlib import Path
+import shutil
+import os
 
 class ImageJHandler:
     """
@@ -32,10 +33,9 @@ class ImageJHandler:
         self.RM = None # Roi Manager
 
         events.WindowLoadedEvent.register(self.on_window_loaded)
-        events.WindowTKReadyEvent.register(self.on_tk_loaded)
 
     def on_window_loaded(self, e: events.WindowLoadedEvent) -> None:
-        """ Bound to WindowLoadedEvent; modifies the GUI e.g. by adding the menus"""
+        """ Creates the GUI elements for this plugin. """
         assert e.session.window is not None
         menubar = e.session.window.menubar
         menu_settings = e.session.window.menu_settings
@@ -56,19 +56,44 @@ class ImageJHandler:
         self.menu_settings_imagej = tk.Menu(menu_settings, tearoff=0)
         menu_settings.add_cascade(label="ImageJ/Fiji bridge", menu=self.menu_settings_imagej)
         self.var_check_path = tk.BooleanVar(value=False)
-        self.menu_settings_imagej.add_checkbutton(label="Check if path is valid on startup", state="normal", command=self.menu_settings_toggle_path_check, variable=self.var_check_path)
+        self.var_check_imageJ_path = tk.BooleanVar(value=False)
+        self.menu_settings_imagej.add_checkbutton(label="Check PATH environment on startup", state="normal", command=self.menu_settings_toggle_path_check, variable=self.var_check_path)
+        self.menu_settings_imagej.add_checkbutton(label="Check Fiji/ImageJ installation on startup", state="normal", command=self.menu_settings_toggle_imagej_path_check, variable=self.var_check_imageJ_path)
         self.menu_settings_imagej.add_command(label="Locate installation", state="normal", command=self.menu_locate_installation_click)
+        self.load_from_config()
 
     def load_from_config(self) -> None:
+        """ Load the states from the """
         self.var_check_path.set(settings.UserSettings.IMAGEJ.validate_path_on_startup.get())
-
-    def on_tk_loaded(self, e: events.WindowTKReadyEvent) -> None:
-        self.load_from_config()
-        if settings.UserSettings.IMAGEJ.validate_path_on_startup.get():
-            self.ask_for_imagej_path()
+        self.var_check_imageJ_path.set(settings.UserSettings.IMAGEJ.validate_imagej_path_on_startup.get())
 
     def start_imageJ(self):
         """ Starts ImageJ """
+        if not self.validate_imagej_path() and self.root is not None:
+            self.ask_for_imagej_path()
+        if not self.validate_imagej_path():
+            logger.warning(f"Failed to start Fiji/ImageJ: The provided path seems to be invalid")
+            return
+                
+        java_installed = self.test_for_java()
+        maven_installed = self.test_for_maven()
+        missing_components = []
+        if not java_installed:
+            missing_components.append("open-jdk")
+        if not maven_installed:
+            missing_components.append("apache-maven")
+
+        if len(missing_components) > 0:
+            for mc in missing_components:
+                logger.warning(f"Failed to locate '{mc}'. Check if the binaries are included in PATH")
+            if self.root is not None:
+                messagebox.showwarning("Neurotorch: Fiji/ImageJ bridge", "To connect to Fiji/ImageJ, open-jdk and apache-maven are needed. "
+                                       + "But the following components are missing on your system:\n\n"
+                                       + '\n'.join(["\t- " + mc for mc in missing_components])
+                                       + "\n\nYou can install them for example from https://www.microsoft.com/openjdk and https://maven.apache.org/. "
+                                       + "For more details, refer to the documentation " + settings.documentation_url)
+            return
+        
         try:
             from scyjava import jimport
             import imagej
@@ -203,7 +228,8 @@ class ImageJHandler:
             rois.append(_cr)
             names.append(name)
         if len(_warningFlags) > 0:
-            if not messagebox.askyesnocancel("Neurotorch", f"Please note the following before import the ROIs:\n\n {'\n'.join(["  " + x for x in _warningFlags])}\n\nDo you want to proceed?"):
+            flag_str = '\n'.join(['  ' + x for x in _warningFlags])
+            if not messagebox.askyesnocancel("Neurotorch", f"Please note the following before import the ROIs:\n\n {flag_str}\n\nDo you want to proceed?"):
                 return None
         return (rois, names)
 
@@ -271,31 +297,73 @@ class ImageJHandler:
         settings.UserSettings.IMAGEJ.validate_path_on_startup.set(not settings.UserSettings.IMAGEJ.validate_path_on_startup.get(), save=True)
         self.load_from_config()
         
+    def menu_settings_toggle_imagej_path_check(self):
+        settings.UserSettings.IMAGEJ.validate_imagej_path_on_startup.set(not settings.UserSettings.IMAGEJ.validate_imagej_path_on_startup.get(), save=True)
+        self.load_from_config()
+
     def menu_locate_installation_click(self):
         """ Opens a window to locate the installation. """
         if self.root is None:
             raise RuntimeError("Can't call this function when in headless mode")
-        _path = filedialog.askdirectory(parent=self.root, title="Locate your Fiji/ImageJ installation by selecting the Fiji.app folder", mustexist=True)
+        _path = settings.UserSettings.IMAGEJ.imagej_path.get()
+        if _path is None or not _path.exists():
+            _path = settings.platformdirs.user_desktop_path()
+        elif _path.is_file():
+            _path = _path.parent
+        _path = filedialog.askdirectory(parent=self.root, title="Locate your Fiji/ImageJ installation by selecting the Fiji.app folder", 
+                                        mustexist=True, initialdir=_path)
         if _path is None or _path == "":
             return
         _path = Path(_path)
+        settings.UserSettings.IMAGEJ.imagej_path.set(_path, save=True)
         if not self.validate_imagej_path():
             if messagebox.askretrycancel("Neurotorch: Select Fiji/ImageJ path", "The provided path seems to be invalid. Do you want to retry?"):
                 self.menu_locate_installation_click()
-            return
-        settings.UserSettings.IMAGEJ.imagej_path.set(_path, save=True)
 
     def validate_imagej_path(self) -> bool:
         path = settings.UserSettings.IMAGEJ.imagej_path.get()
-        return path.exists() and path.is_dir() and path.name == "Fiji.app"
+        return path is not None and path.exists() and path.is_dir() and (path / "fiji").exists()
     
     def ask_for_imagej_path(self) -> None:
         if self.root is None:
             raise RuntimeError("Can't call this function when in headless mode")
         if not self.validate_imagej_path():
-            if messagebox.askyesno("Neurotorch: Fiji/ImageJ bridge", "To connect to Fiji/ImageJ, you must link Neurotorch to your local Fiji/ImagJ installation. Do you want to select " \
-            "the path now?\n\nNote: You can disable this question on start up in the settings menu", icon="question", default="yes"):
+            if messagebox.askyesno("Neurotorch: Fiji/ImageJ bridge", "To connect to Fiji/ImageJ, you must link Neurotorch to your local Fiji/ImagJ installation." 
+                                   + " Do you want to select the path now?", icon="question", default="yes"):
                 self.menu_locate_installation_click()
+
+    def test_for_java(self) -> bool:
+        java_path = shutil.which("java")
+        # if java_path is None:
+        #     java_path = settings.UserSettings.IMAGEJ.open_jdk_path.get()
+        #     if java_path is None or not java_path.exists() or not java_path.is_dir():
+        #         java_path = None
+        #     else:
+        #         logger.info(f"'{java_path.resolve()}' has been added to the PATH variable")
+        #         os.environ["PATH"] += os.pathsep + str(java_path)
+        #         java_path = shutil.which("java")
+        if java_path is None:
+            logger.info(f"Failed to locate the openjdk libraries. You can download them for example from microsoft under https://www.microsoft.com/openjdk. " 
+                        + "Make sure to add the installation folder to the PATH variable. You can check this by typing 'java --version' into your cmd")
+            return False
+        return True
+    
+    def test_for_maven(self) -> bool:
+        maven_path = shutil.which("mvn")
+        # if maven_path is None:
+        #     maven_path = settings.UserSettings.IMAGEJ.apache_maven_path.get()
+        #     if maven_path is None or not maven_path.exists() or not maven_path.is_dir():
+        #         maven_path = None
+        #     else:
+        #         logger.info(f"'{maven_path.resolve()}' has been added to the PATH variable")
+        #         os.environ["PATH"] += os.pathsep + str(maven_path)
+        #         maven_path = shutil.which("mvn")
+        if maven_path is None:
+            logger.info(f"Failed to locate the maven binaries. You can download them from https://maven.apache.org/. " 
+                        + "Make sure to add the installation folder to the PATH variable. You can check this by typing 'mvn --version' into your cmd")
+            return False
+        return True
+
 
     def _imageJ_ready(self):
         """ Internal function. Called, when ImageJ is successfully loaded """
