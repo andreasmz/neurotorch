@@ -417,7 +417,7 @@ class ImageObject(Serializable):
     # Signal
 
     @property
-    def signal(self) -> SignalObject:
+    def signal(self) -> "SignalObject":
         return self._signal_obj
     
     

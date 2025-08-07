@@ -111,9 +111,10 @@ class ImageJHandler:
                 self.Roi = jimport('ij.gui.Roi')
                 self.IJ_Plugin_Duplicator = jimport('ij.plugin.Duplicator')
                 self.ij.ui().showUI() # type: ignore
-            except TypeError as ex:
+            except Exception as ex:
+                logger.error("Failed to start Fiji/ImageJ:", exc_info=True)
                 task.error = Exception("Failed to start Fiji/ImageJ")
-                messagebox.showerror("Neurotorch", f"Failed to start Fiji/ImageJ. Did you previously loaded an ND2 file (or any other Bioformat)? Then this my have crashed the Java instance. Try to restart Neurotorch and start Fiji/ImageJ BEFORE opening an ND2 file")
+                messagebox.showerror("Neurotorch: Fiji/ImageJ bridge", f"Failed to start Fiji/ImageJ. See the logs / console output for more details")
                 return
             self._imageJ_ready()
             logger.debug(f"Imported ImageJ and its dependencies")

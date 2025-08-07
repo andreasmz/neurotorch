@@ -8,13 +8,14 @@ from pathlib import Path
 import atexit
 from typing import Any
 import os
+import shutil
 
 # Initialize paths
 app_data_path = platformdirs.user_data_path(appname="NeurotorchMZ", appauthor="andreasmz", roaming=True, ensure_exists=True)
 app_data_local_path = platformdirs.user_data_path(appname="NeurotorchMZ", appauthor="andreasmz", roaming=False, ensure_exists=True)
 log_path = app_data_path / "logs.txt"
 tmp_path = app_data_local_path / "tmp"
-environ_path = app_data_local_path / "environ"
+environ_path = app_data_local_path / "environment"
 user_plugin_path = app_data_path / "plugins"
 preinstalled_plugin_path = Path(__file__).parent.parent / "plugins"
 resource_path = Path(__file__).parent.parent / "resources"
@@ -25,19 +26,26 @@ tmp_path.mkdir(exist_ok=True, parents=False)
 environ_path.mkdir(exist_ok=True, parents=False)
 user_plugin_path.mkdir(exist_ok=True, parents=False)
 
+# Logging
+logs.init_file_handler(log_path)
+
 # Search for library folders inside the environ path and add them to the environ variable
 for p in environ_path.iterdir():
     if not p.is_dir():
         continue
-    if ("jdk" in p.name or "maven" in p.name) and (p / "bin").exists():
+    if ("jdk" in p.name) and (p / "bin").exists():
+        if shutil.which("javac") is None:
+            os.environ["JAVA_HOME"] = str(p)
+            os.environ["PATH"] += os.pathsep + str(p / "bin")
+            logger.debug(f"Found '{p.name}' in the AppData folder, created JAVA_HOME and added '{p / 'bin'}' temporarily to PATH")
+        else:
+            logger.debug(f"Found '{p.name}' in the AppData folder, but javac seems already to be installed.")
+    if ("maven" in p.name) and (p / "bin").exists():
         os.environ["PATH"] += os.pathsep + str(p / "bin")
         logger.debug(f"Found '{p.name}' in the AppData folder and added '{p / 'bin'}' temporarily to PATH")
 
 # Link definitions
 documentation_url = "https://andreasmz.github.io/neurotorch/"
-
-# Logging
-logs.init_file_handler(log_path)
 
 # Config
 class Config:
