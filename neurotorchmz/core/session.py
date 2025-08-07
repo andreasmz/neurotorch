@@ -45,7 +45,6 @@ class Session(Serializable):
 
         self._image_path: Path|None = None
         self._image_object: ImageObject| None = None
-        self._signal_object: SignalObject| None = None
         self._roifinder_detection_result: DetectionResult = DetectionResult()
         self._snalysis_detection_result: DetectionResult = DetectionResult()
         self.api = SessionAPI(self)

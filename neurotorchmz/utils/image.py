@@ -11,6 +11,11 @@ import tifffile
 import nd2
 from pathlib import Path
 import gc
+from typing import TYPE_CHECKING
+
+
+if TYPE_CHECKING:
+    from .signal_detection import SignalObject
 
 class ImageProperties:
     """
@@ -255,7 +260,7 @@ class ImageObject(Serializable):
         self._img_diff_conv_func: Callable[..., np.ndarray]|None = None
         self._img_diff_conv_args: dict|None = None
 
-        self._signal: 
+        self._signal_obj: SignalObject = SignalObject(self)
 
     def serialize(self, **kwargs) -> dict:
         r: dict[str, Any] = {
@@ -408,6 +413,12 @@ class ImageObject(Serializable):
         if mode not in self._img_diff_views[self._diff_conv_func_identifier].keys():
             self._img_diff_views[self._diff_conv_func_identifier][mode] = AxisImage(self.imgDiff, axis=mode.value, name=self.name)
         return self._img_diff_views[self._diff_conv_func_identifier][mode]
+    
+    # Signal
+
+    @property
+    def signal(self) -> SignalObject:
+        return self._signal_obj
     
     
     # Convolution functions
