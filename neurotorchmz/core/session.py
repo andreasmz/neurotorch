@@ -48,7 +48,6 @@ class Session(Serializable):
         self._signal_object: SignalObject| None = None
         self._roifinder_detection_result: DetectionResult = DetectionResult()
         self._snalysis_detection_result: DetectionResult = DetectionResult()
-        #self._ijH = None
         self.api = SessionAPI(self)
         events.SessionCreateEvent(session=self)
 
@@ -114,17 +113,6 @@ class Session(Serializable):
         if self.window is None:
             return None
         return self.window.root
-    
-    # @property
-    # def ijH(self) -> "ImageJHandler|None":
-    #     """ Returns the ImageJHandler object or None if not yet imported """
-    #     return self._ijH
-
-    # def import_ijH(self):
-    #     """ Import the ImageJ helper (ijh)"""
-    #     global ImageJHandler
-    #     from neurotorchmz.utils.pyimagej import ImageJHandler
-    #     self._ijH = ImageJHandler(self)
 
     def notify_image_object_change(self):
         """ When changing the ImageObject, call this function to notify the GUI about the change. Will invoke a ImageChanged TabUpdateEvent on all tabs in the window. """
