@@ -1,8 +1,11 @@
 """ The pyImageJ module provides a connection layer between Fiji/ImageJ and Neurotorch """
 
-from ..core.session import *
-from ..core.task_system import Task
-from .synapse_detection import *
+__version__ = "1.0.0"
+__author__ = "Andreas Brilka"
+__plugin_name__ = "Fiji/ImageJ bridge"
+__plugin_desc__ = """ Provides a bridge to a local Fiji/ImageJ installation via pyimagej. Requires open-jdk and apache-maven to be installed """
+
+from neurotorchmz.core.session import *
 
 import tkinter as tk
 from tkinter import messagebox, filedialog
@@ -10,7 +13,6 @@ import numpy as np
 import xarray
 from pathlib import Path
 import shutil
-import os
 
 class ImageJHandler:
     """
@@ -35,7 +37,7 @@ class ImageJHandler:
         events.WindowLoadedEvent.register(self.on_window_loaded)
 
     def on_window_loaded(self, e: events.WindowLoadedEvent) -> None:
-        """ Creates the GUI elements for this plugin. """
+        """ Creates the GUI elements for this plugin. Is only called from WindowLoadedEvent in GUI mode """
         assert e.session.window is not None
         menubar = e.session.window.menubar
         menu_settings = e.session.window.menu_settings
@@ -57,18 +59,10 @@ class ImageJHandler:
         menu_settings.add_cascade(label="ImageJ/Fiji bridge", menu=self.menu_settings_imagej)
         self.var_check_path = tk.BooleanVar(value=False)
         self.var_check_imageJ_path = tk.BooleanVar(value=False)
-        self.menu_settings_imagej.add_checkbutton(label="Check PATH environment on startup", state="normal", command=self.menu_settings_toggle_path_check, variable=self.var_check_path)
-        self.menu_settings_imagej.add_checkbutton(label="Check Fiji/ImageJ installation on startup", state="normal", command=self.menu_settings_toggle_imagej_path_check, variable=self.var_check_imageJ_path)
         self.menu_settings_imagej.add_command(label="Locate installation", state="normal", command=self.menu_locate_installation_click)
-        self.load_from_config()
-
-    def load_from_config(self) -> None:
-        """ Load the states from the """
-        self.var_check_path.set(settings.UserSettings.IMAGEJ.validate_path_on_startup.get())
-        self.var_check_imageJ_path.set(settings.UserSettings.IMAGEJ.validate_imagej_path_on_startup.get())
 
     def start_imageJ(self):
-        """ Starts ImageJ """
+        """ Starts pyImageJ and connects to the local installation. Before start, the installation is rudimentary checked"""
         if not self.validate_imagej_path() and self.root is not None:
             self.ask_for_imagej_path()
         if not self.validate_imagej_path():
@@ -98,17 +92,13 @@ class ImageJHandler:
             from scyjava import jimport
             import imagej
         except ModuleNotFoundError as ex:
-            logger.error("ModuleImport Error trying to import ImageJ", ex, exc_info=True)
-            messagebox.showerror("Neurotorch", "It seems that pyimagej is not installed")
-            return
-        if (path_imagej := settings.UserSettings.IMAGEJ.imagej_path.get()) is None or not (path_imagej := Path(path_imagej)).exists() or not path_imagej.is_dir():
-            logger.warning(f"Failed to locate ImageJ at {path_imagej}")
-            messagebox.showerror("Neurotorch", "Can't locate your local Fiji/ImageJ installation. Please set the path to your installation via the menubar and try again")
+            logger.error("Failed to start the Fiji/ImageJ bridge: pyimagej seems to be not installed", exc_info=True)
+            messagebox.showerror("Neurotorch: Fiji/ImageJ bridge", "It seems that pyimagej is not installed")
             return
         
         if self.task is not None:
-            logger.debug("ImageJ is already running")
-            messagebox.showerror("Neurotorch", "ImageJ has already been started")
+            logger.warning("Failed to start the Fiji/ImageJ bridge: An instance is already running")
+            messagebox.showinfo("Neurotorch: Fiji/ImageJ bridge", "Failed to start Fiji/ImageJ: An instance is already running")
             return
 
         def _start_imageJ_Thread(task: Task, path_imagej: Path):
@@ -130,7 +120,7 @@ class ImageJHandler:
 
         self.menu_imageJ.entryconfig("Start ImageJ", state="disabled")
         self.task = Task(_start_imageJ_Thread, "starting Fiji/ImageJ").set_indeterminate().set_error_callback(self._loading_error_callback)
-        self.task.start(path_imagej=path_imagej)
+        self.task.start(path_imagej=settings.UserSettings.IMAGEJ.imagej_path.get())
 
     def _loading_error_callback(self, ex: Exception):
         """ Internal callback on an error when loading ImageJ to reset the start Button"""
@@ -293,14 +283,6 @@ class ImageJHandler:
             return
         self.start_imageJ()
 
-    def menu_settings_toggle_path_check(self):
-        settings.UserSettings.IMAGEJ.validate_path_on_startup.set(not settings.UserSettings.IMAGEJ.validate_path_on_startup.get(), save=True)
-        self.load_from_config()
-        
-    def menu_settings_toggle_imagej_path_check(self):
-        settings.UserSettings.IMAGEJ.validate_imagej_path_on_startup.set(not settings.UserSettings.IMAGEJ.validate_imagej_path_on_startup.get(), save=True)
-        self.load_from_config()
-
     def menu_locate_installation_click(self):
         """ Opens a window to locate the installation. """
         if self.root is None:
@@ -370,3 +352,8 @@ class ImageJHandler:
         self.menu_imageJ.entryconfig("ImageJ --> Neurotorch", state="normal")
         self.menu_imageJ.entryconfig("Img --> ImageJ", state="normal")
         self.menu_imageJ.entryconfig("ImgDiff --> ImageJ", state="normal")
+
+@events.SessionCreateEvent.hook
+def on_session_created(e: events.SessionCreateEvent):
+    global ijH
+    ijH = ImageJHandler(e.session)
