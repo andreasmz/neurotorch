@@ -48,17 +48,21 @@ class Neurotorch_GUI:
         self.root.config(menu=self.menubar)
         self.menu_file = tk.Menu(self.menubar, tearoff=0)
         self.menu_edit = tk.Menu(self.menubar, tearoff=0)
-        self.menu_plugins = tk.Menu(self.menubar, tearoff=0)
+        self.menu_run = tk.Menu(self.menubar, tearoff=0)
         self.menu_settings = tk.Menu(self.menubar, tearoff=0)
-        self.menu_about = tk.Menu(self.menubar, tearoff=0)
+        self.menu_plugins = tk.Menu(self.menubar, tearoff=0)
         self.menu_debug = tk.Menu(self.menubar, tearoff=0)
+        self.menu_about = tk.Menu(self.menubar, tearoff=0)
         self.menubar.add_cascade(label="File",menu=self.menu_file)
         self.menubar.add_cascade(label="Edit",menu=self.menu_edit)
+        self.menubar.add_cascade(label="Run",menu=self.menu_run)
+        self.menubar.add_cascade(label="Settings",menu=self.menu_settings)
         self.menubar.add_cascade(label="Plugins",menu=self.menu_plugins)
         if self.edition == Edition.NEUROTORCH_DEBUG:
             self.menubar.add_cascade(label="Debug",menu=self.menu_debug)
-        self.menubar.add_cascade(label="Settings",menu=self.menu_about)
+        self.menubar.add_cascade(label="Neurotorch",menu=self.menu_about)
 
+        # File menu
         self.menu_file.add_command(label="Open file", command=self.menu_file_open_click)
         self.menu_file.add_command(label="Open noisy file", command=lambda: self.menu_file_open_click(noisy=True))
         self.menu_file.add_separator()
@@ -69,6 +73,7 @@ class Neurotorch_GUI:
         self.menu_file.add_separator()
         self.menu_file.add_command(label="Close file", command=self.menu_file_close_click)
 
+        # Edit menu
         self.menu_denoise = tk.Menu(self.menu_edit,tearoff=0)
         self.menu_edit.add_cascade(label="Denoise imgDiff", menu=self.menu_denoise)
         self.menu_denoise.add_command(label="Disable denoising", command=lambda: self.menu_image_denoise_click(None, None))
@@ -96,29 +101,28 @@ class Neurotorch_GUI:
             self.menu_denoise_img.add_command(label="On", command=lambda:self.menu_image_denoise_image_click(True))
             self.menu_denoise_img.add_command(label="Off", command=lambda:self.menu_image_denoise_image_click(False))
 
-        self.menu_plugins = tk.Menu(self.menubar,tearoff=0)
-        self.menubar.add_cascade(label="Plugins",menu=self.menu_plugins)
+        # Run menu
+
+        # Settings menu
+
+        # Plugins menu
         for p in plugin_manager.plugins:
             name = str(p.__plugin_name__)
-            m = tk.Menu(self.menu_plugins, tearoff=0)
-            self.menu_plugins.add_cascade(label=name, menu=m)
-        
-        self.menu_settings = tk.Menu(self.menubar, tearoff=0)
-        self.menubar.add_cascade(label="Settings", menu=self.menu_settings)
-        
-        self.menu_neurotorch = tk.Menu(self.menubar,tearoff=0)
-        self.menubar.add_cascade(label="Neurotorch",menu=self.menu_neurotorch)
-        self.menu_neurotorch.add_command(label="About", command=self.menu_neurotorch_about_click)
-        self.menu_neurotorch.add_command(label="Open logs", command=self.menu_neurotorch_logs_click)
+            plugin_menu = tk.Menu(self.menu_plugins, tearoff=0)
+            self.menu_plugins.add_cascade(label=name, menu=plugin_menu)
+            ToolTip(plugin_menu, msg=p.__plugin_desc__, follow=True, delay=0.5)
 
-        self.menu_debug = tk.Menu(self.menubar,tearoff=0)
-        if edition == Edition.NEUROTORCH_DEBUG:
-            self.menubar.add_cascade(label="Debug", menu=self.menu_debug)
+        # About menu
+        self.menu_about.add_command(label="About", command=self.menu_neurotorch_about_click)
+        self.menu_about.add_command(label="Open logs", command=self.menu_neurotorch_logs_click)
+
+        # Debug menu
         self.menu_debug.add_command(label="Activate debugging to console", command=self.menu_debug_enable_debugging_click)    
         self.menu_debug.add_command(label="Save diffImg peak frames", command=self.menu_debug_save_peaks_click)
         self.menu_debug.add_command(label="Load diffImg peak frames", command=self.menu_debug_load_peaks_click)
         self.menu_debug.add_command(label="Test", command=self.menu_debug_test)
 
+        # Register tabs
         self.tabMain = ttk.Notebook(self.root)
         self.tabs[TabWelcome] = TabWelcome(self.session, self.root, self.tabMain)
         self.tabs[TabImage] = TabImage(self.session, self.root, self.tabMain)
@@ -130,6 +134,7 @@ class Neurotorch_GUI:
         self.root.protocol("WM_DELETE_WINDOW", self._on_closing)
         self.tabMain.pack(expand=1, fill="both")
 
+        # Events and main loop
         events.WindowLoadedEvent(session=self.session)
         self.root.after(1000, lambda: events.WindowTKReadyEvent(session=self.session))
         self.root.mainloop()
