@@ -103,7 +103,7 @@ class ISignalDetectionAlgorithm:
         """
         raise NotImplementedError()
 
-    def GetSignal(self, imgObj: ImageObject) -> np.ndarray|None:
+    def get_signal(self, imgObj: ImageObject) -> np.ndarray|None:
         """
             This method should return an 1D array interpretated as signal of the image
         """
@@ -111,10 +111,10 @@ class ISignalDetectionAlgorithm:
     
 class SigDetect_DiffMax(ISignalDetectionAlgorithm):
 
-    def GetSignal(self, imgObj: ImageObject) -> np.ndarray|None:
+    def get_signal(self, imgObj: ImageObject) -> np.ndarray|None:
         return imgObj.imgDiffView(ImageView.TEMPORAL).Max
     
 class SigDetect_DiffStd(ISignalDetectionAlgorithm):
 
-    def GetSignal(self, imgObj: ImageObject) -> np.ndarray|None:
+    def get_signal(self, imgObj: ImageObject) -> np.ndarray|None:
         return imgObj.imgDiffView(ImageView.TEMPORAL).Std

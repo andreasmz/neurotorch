@@ -255,6 +255,8 @@ class ImageObject(Serializable):
         self._img_diff_conv_func: Callable[..., np.ndarray]|None = None
         self._img_diff_conv_args: dict|None = None
 
+        self._signal: 
+
     def serialize(self, **kwargs) -> dict:
         r: dict[str, Any] = {
             "name": self._name

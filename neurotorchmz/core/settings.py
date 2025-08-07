@@ -141,6 +141,10 @@ class UserSettings(Config):
     config_path = Path(app_data_path / "settings.ini")
     class IMAGEJ(Section):
         imagej_path = PathOption("")
+        
+    class SIGNAL_DETECTION(Section):
+        peak_width_left = IntOption(1)
+        peak_width_right = IntOption(6)
 
 # Temp files
 def clear_temp_files():
