@@ -6,7 +6,6 @@ from ..core.serialize import Serializable
 from ..core.task_system import Task
 from ..utils.image import *
 from ..utils.convolution_functions import denoising # pyright: ignore[reportUnusedImport]
-from ..utils.signal_detection import SignalObject
 from ..utils.synapse_detection import *
 
 from enum import Enum
