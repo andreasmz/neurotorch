@@ -413,7 +413,7 @@ class ImageObject(Serializable):
     # Signal
 
     @property
-    def signal(self) -> "SignalObject":
+    def signal_obj(self) -> "SignalObject":
         return self._signal_obj
     
     # Convolution functions

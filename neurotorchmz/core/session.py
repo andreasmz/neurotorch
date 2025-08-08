@@ -85,13 +85,6 @@ class Session(Serializable):
             self._snalysis_detection_result.clear()
         self.notify_image_object_change()
         events.ImageObjectChangedEvent(session=self)
-    
-    @property
-    def active_image_signal(self) -> SignalObject|None:
-        """ Retreive the signal of the currently active ImageObject. The concept of a signal is the generalization of extrinsic synaptic stimulation """
-        if self._image_object is None:
-            return None
-        return self._signal_object
 
     @property
     def roifinder_detection_result(self) -> DetectionResult:
