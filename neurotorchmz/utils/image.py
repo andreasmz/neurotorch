@@ -1,6 +1,7 @@
 from ..core.task_system import Task  
 from ..core.serialize import Serializable, DeserializeError, SerializeError
 from ..core.logs import logger
+from ..core.settings import UserSettings
 
 import collections
 from enum import Enum
@@ -712,6 +713,8 @@ class SignalObject:
                     _sliceObj = np.s_[_slices]
                     self._imgObj_sliced.imgDiff = np.concatenate([self._imgObj.imgDiff[_slice] for _slice in _sliceObj])
         return self._imgObj_sliced
-
-    def __del__(self):
-        del self._imgObj
+    
+    @classmethod
+    def load_settings(cls) -> None:
+        cls.PEAK_WIDTH_LEFT = Sett
+    

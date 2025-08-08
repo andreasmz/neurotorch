@@ -118,7 +118,7 @@ class TabSignal(Tab):
             self.invalidate_image()
             self.detect_signal()
             self.invalidate_signal() # Call twice on successfull detect, but minimal overhead
-            if self.session.active_image_signal is None:
+            if self.active_image_object is None or self.active_image_object.signal_obj.signal is None:
                 self.setting_peakWidthLeft.SetVisibility(False)
                 self.setting_peakWidthRight.SetVisibility(False)
             else:
@@ -273,9 +273,10 @@ class TabSignal(Tab):
         return True
     
     def _update_signal_widths(self):
-        if self.session.active_image_signal is None:
+        if self.active_image_object is None:
             return
-        self.session.active_image_signal.SetPeakWidths(self.setting_peakWidthLeft.Get(), self.setting_peakWidthRight.Get())
+        SignalObject.PEAK_WIDTH_LEFT = 
+        .SetPeakWidths(self.setting_peakWidthLeft.Get(), self.setting_peakWidthRight.Get())
 
     # GUI
 
