@@ -224,7 +224,7 @@ class Neurotorch_GUI:
             return
         imgObj = ImageObject()
         self.session.set_active_image_object(imgObj)
-        task = imgObj.OpenFile(Path(image_path), precompute=True, calc_convoluted=noisy, run_async=True)
+        task = imgObj.open_file(Path(image_path), precompute=True, calc_convoluted=noisy, run_async=True)
         task.add_callback(self.session.notify_image_object_change)
         task.set_error_callback(self._open_image_error_callback)
     
@@ -237,7 +237,7 @@ class Neurotorch_GUI:
             self.root.bell()
             return
         imgObj.set_diff_conv_func(func, func_args)
-        imgObj.PrecomputeImage().add_callback(lambda: self.invoke_tab_update_event(ImageChangedEvent()))
+        imgObj.precompute_image().add_callback(lambda: self.invoke_tab_update_event(ImageChangedEvent()))
 
     def menu_image_clear_cache_click(self):
         if self.session.active_image_object is None:
@@ -254,7 +254,7 @@ class Neurotorch_GUI:
             self.session.active_image_object.set_conv_func(denoising.cumsum_denoise, func_args=None)
         else:
             self.session.active_image_object.set_conv_func(None, None)
-        self.session.active_image_object.PrecomputeImage().add_callback(lambda: self.invoke_tab_update_event(ImageChangedEvent()))
+        self.session.active_image_object.precompute_image().add_callback(lambda: self.invoke_tab_update_event(ImageChangedEvent()))
 
     def menu_neurotorch_about_click(self):
         messagebox.showinfo("Neurotorch", f"© Andreas Brilka 2025\nYou are running Neurotorch {__version__}")
@@ -277,7 +277,7 @@ class Neurotorch_GUI:
             _img = pickle.load(f)
             _name = "img_peaks.dump"
             imgObj = ImageObject()
-            task = Task(lambda task, **kwargs: imgObj.SetImagePrecompute(**kwargs), name="Open image", run_async=True)
+            task = Task(lambda task, **kwargs: imgObj.set_image_precompute(**kwargs), name="Open image", run_async=True)
             task.add_callback(lambda: self.session.set_active_image_object(imgObj))
             task.set_error_callback(self._open_image_error_callback)
             task.start(img=_img, name=_name, run_async=False)

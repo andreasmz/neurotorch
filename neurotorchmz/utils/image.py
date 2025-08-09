@@ -277,7 +277,7 @@ class ImageObject(Serializable):
         imgObj = cls()
         if "path" not in serialize_dict.keys():
             raise DeserializeError("Can not deserialize an ImageObject without a path") 
-        task = imgObj.OpenFile(serialize_dict["path"], precompute=True)
+        task = imgObj.open_file(serialize_dict["path"], precompute=True)
         task.join()
         return imgObj
 
@@ -444,7 +444,7 @@ class ImageObject(Serializable):
 
     # Image loading
     
-    def PrecomputeImage(self, task_continue: bool = False, run_async:bool = True) -> Task:
+    def precompute_image(self, task_continue: bool = False, run_async:bool = True) -> Task:
         """ 
             Precalculate the image views to prevent stuttering during runtime.
 
@@ -456,7 +456,7 @@ class ImageObject(Serializable):
         if not task_continue and self._task_open_image.running:
             raise AlreadyLoadingError()
 
-        def _Precompute(task: Task):
+        def _precompute(task: Task):
             _progIni = task._step if task._step is not None else 0
             task.set_step_progress(_progIni, "preparing ImgView (Spatial Mean)")
             self.imgView(ImageView.SPATIAL).Mean
@@ -478,16 +478,16 @@ class ImageObject(Serializable):
             gc.collect()
 
         if task_continue:
-            _Precompute(self._task_open_image)
+            _precompute(self._task_open_image)
         else:
-            self._task_open_image.reset(function=_Precompute, name="preparing ImageObject", run_async=run_async)
+            self._task_open_image.reset(function=_precompute, name="preparing ImageObject", run_async=run_async)
             self._task_open_image.set_step_mode(3)
             self._task_open_image.start()
         return self._task_open_image
         
-    def SetImagePrecompute(self, img:np.ndarray, name:str|None = None, run_async:bool = True) -> Task:
+    def set_image_precompute(self, img:np.ndarray, name:str|None = None, run_async:bool = True) -> Task:
         """ 
-            Set a new image with a given name and run PrecomputeImage() on it.
+            Set a new image with a given name and run precompute_image() on it.
 
             :param np.ndarray img: The image
             :param str name: Name of the image
@@ -499,10 +499,10 @@ class ImageObject(Serializable):
             raise UnsupportedImageError()
         self.img = img
         self.name = name
-        return self.PrecomputeImage(run_async=run_async)
+        return self.precompute_image(run_async=run_async)
 
 
-    def OpenFile(self, path: Path|str, precompute:bool = False, calc_convoluted:bool = False, run_async:bool = True) -> Task:
+    def open_file(self, path: Path|str, precompute:bool = False, calc_convoluted:bool = False, run_async:bool = True) -> Task:
         """ 
             Open an image using a given path.
 
@@ -558,7 +558,7 @@ class ImageObject(Serializable):
             self.name = path.stem
             
             if precompute:
-                self.PrecomputeImage(task_continue=True, run_async=run_async)
+                self.precompute_image(task_continue=True, run_async=run_async)
 
         self._task_open_image.reset(function=_Load, name="open image file", run_async=run_async)
         self._task_open_image.set_step_mode(2 + 4*precompute)

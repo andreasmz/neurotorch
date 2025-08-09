@@ -164,7 +164,7 @@ class ImageJHandler:
             _name = str(_imgIP.getTitle())
         _img = np.array(_img)
         imgObj = ImageObject()
-        task = imgObj.SetImagePrecompute(img=_img, name=_name, run_async=True)
+        task = imgObj.set_image_precompute(img=_img, name=_name, run_async=True)
         task.add_callback(lambda: self.session.set_active_image_object(imgObj))
         task.set_error_callback(self.session.window._open_image_error_callback)
         logger.info(f"Imported '{_name}' from Fiji/ImageJ")
