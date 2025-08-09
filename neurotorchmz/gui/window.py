@@ -28,6 +28,9 @@ class ImageChangedEvent(TabUpdateEvent):
 class SignalChangedEvent(TabUpdateEvent):
     pass
 
+class PeaksChangedEvent(TabUpdateEvent):
+    pass
+
 class Neurotorch_GUI:
     def __init__(self, session: Session):
         self.session = session

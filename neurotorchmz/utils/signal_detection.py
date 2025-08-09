@@ -8,12 +8,6 @@ class ISignalDetectionAlgorithm:
     def __init__(self):
         pass
 
-    def clear(self):
-        """
-            This method is typically called when the GUI loads a new image
-        """
-        raise NotImplementedError()
-
     def get_signal(self, imgObj: ImageObject) -> np.ndarray|None:
         """
             This method should return an 1D array interpretated as signal of the image
@@ -42,10 +36,13 @@ class SignalObject:
 
     def clear(self):
         self._signal: np.ndarray|None = None
-        self._peaks: list[int]|None = None
         self._img_diff_without_signal: ImageProperties|None = None
         self._img_diff_signal_only: ImageProperties|None = None
         self._img_diff_without_signal_views: dict[ImageView, AxisImage] = {}
+        self.clear_peaks()
+
+    def clear_peaks(self) -> None:
+        self._peaks: list[int]|None = None
 
     @property
     def signal(self) -> np.ndarray|None:

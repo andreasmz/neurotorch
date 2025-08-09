@@ -19,8 +19,7 @@ class TabSignal_RefindPeaksEvent(TabUpdateEvent):
 class TabSignal(Tab):
     def __init__(self, session: Session, root:tk.Tk, notebook: ttk.Notebook):
         super().__init__(session, root, notebook, _tab_name="Tab Signal")
-        self.signalDetectionAlgorithms = [SigDetect_DiffMax(), SigDetect_DiffStd()]
-        self.currentSigDecAlgo : ISignalDetectionAlgorithm = self.signalDetectionAlgorithms[0]
+        SignalObject.ALGORITHM = SigDetect_DiffMax()
         self.ax1Image = None
         self.colorbar = None
         self.signal_artist = None # Holds the plot of the signal in the axSignal
@@ -59,7 +58,7 @@ class TabSignal(Tab):
         self.setting_peakProminence = GridSetting(self.frameOptions, row=13, text="Peak Prominence", unit="%", default=50, min_=1, max_=100, scaleMin=1, scaleMax=100, tooltip=resources.get_string("tab2/peakProminence"))
         self.setting_peakProminence.var.IntVar.trace_add("write", lambda _1,_2,_3: self.window.invoke_tab_about_update(self, TabSignal_RefindPeaksEvent()))
         self.setting_colorbarUpdate = GridSetting(self.frameOptions, row=14, type_="Checkbox", text="Colorbar Update", unit="", default=1, tooltip=resources.get_string("tab2/checkColorbar"))
-        tk.Button(self.frameOptions, text="Detect", command=self.detect_signal).grid(row=21, column=0)
+        #tk.Button(self.frameOptions, text="Detect", command=self.detect_signal).grid(row=21, column=0)
 
         self.frameSignal = ttk.LabelFrame(self.frameMain, text="Signal")
         self.frameSignal.grid(row=2, column=0, sticky="new")
@@ -67,8 +66,6 @@ class TabSignal(Tab):
         self.setting_peakWidthRight = GridSetting(self.frameSignal, row=6, text="Peak Width Right", default=SignalObject.PEAK_WIDTH_RIGHT, min_=0, max_=50, scaleMin=0, scaleMax=20, tooltip=resources.get_string("tab2/peakWidth"))
         self.setting_peakWidthLeft.var.IntVar.trace_add("write", lambda _1,_2,_3: SignalObject.set_settings(peak_width_left=self.setting_peakWidthLeft.Get()))
         self.setting_peakWidthRight.var.IntVar.trace_add("write", lambda _1,_2,_3: SignalObject.set_settings(peak_width_right=self.setting_peakWidthRight.Get()))
-        self.setting_peakWidthLeft.SetVisibility(False)
-        self.setting_peakWidthRight.SetVisibility(False)
 
         self.frameSignalPlot = tk.Frame(self.frameSignal)
         self.frameSignalPlot.grid(row=10, column=0, columnspan=4, sticky="news")
@@ -114,34 +111,28 @@ class TabSignal(Tab):
     def update_tab(self, event: TabUpdateEvent):
         """ Handle the update loop call """
         if isinstance(event, ImageChangedEvent):
-            for algo in self.signalDetectionAlgorithms: algo.clear()
             self.invalidate_image()
-            self.invalidate_signal() # Call twice on successfull detect, but minimal overhead
-            if self.active_image_object is None or self.active_image_object.signal_obj.signal is None:
-                self.setting_peakWidthLeft.SetVisibility(False)
-                self.setting_peakWidthRight.SetVisibility(False)
-            else:
-                self.setting_peakWidthLeft.SetVisibility(True)
-                self.setting_peakWidthRight.SetVisibility(True)
 
         elif isinstance(event, TabSignal_AlgorithmChangedEvent):
             match(self.radioAlgoVar.get()):
                 case "diffMax":
-                    self.currentSigDecAlgo = self.signalDetectionAlgorithms[0]
+                    SignalObject.ALGORITHM = SigDetect_DiffMax()
                 case "diffStd":
-                    self.currentSigDecAlgo = self.signalDetectionAlgorithms[1]
+                    SignalObject.ALGORITHM = SigDetect_DiffStd()
                 case _:
-                    self.currentSigDecAlgo = ISignalDetectionAlgorithm()
-            self.detect_signal()
+                    SignalObject.ALGORITHM = ISignalDetectionAlgorithm()
+            if self.active_image_object is not None:
+                self.active_image_object.signal_obj.clear()
+            self.window.invoke_tab_update_event(SignalChangedEvent())
 
         elif isinstance(event, TabSignal_RefindPeaksEvent):
-            if self.session.active_image_signal is None:
-                return
-            self.session.active_image_signal.detect_peaks(self.setting_peakProminence.Get()/100)
-            self.window.invoke_tab_update_event(SignalChangedEvent())
+            if self.active_image_object is not None:
+                self.active_image_object.signal_obj.prominence_factor = self.setting_peakProminence.Get()/100
+            self.window.invoke_tab_update_event(PeaksChangedEvent())
 
         elif isinstance(event, SignalChangedEvent):
             self.invalidate_signal()
+            self.invalidate_peaks()
 
     def invalidate_image(self):
         """ Invalidate the image and therefore adjust the slider range"""
@@ -174,7 +165,7 @@ class TabSignal(Tab):
     def invalidate_image_plot(self):
         """ Invalidates the current image plot and replots it """
         imgObj = self.session.active_image_object
-        frame = self.frameSlider.val
+        frame = int(self.frameSlider.val)
         show_original = (self.setting_originalImage.Get() == 1)
 
         _oldnorm = None
@@ -217,6 +208,8 @@ class TabSignal(Tab):
         if (self.setting_normalize.Get() == 0):
             _vmin = None
             _vmax = None
+        _vmin = float(_vmin) if _vmin is not None else None
+        _vmax = float(_vmax) if _vmax is not None else None
         if _img is not None:
             self.ax1Image = self.ax1.imshow(_img, vmin=_vmin, vmax=_vmax, cmap=_cmap)
             self.ax1.set_title(_title)
@@ -228,7 +221,6 @@ class TabSignal(Tab):
     def invalidate_signal(self):
         """ Invalidates the signal which replots it """
         imgObj = self.session.active_image_object
-        signalObj = self.session.active_image_signal
 
         self.axSignal.clear()
         self.axSignal.set_ylabel("Strength")
@@ -236,40 +228,29 @@ class TabSignal(Tab):
         self.axSignal.set_title("Signal")
         self.signal_artist = None
 
-        if imgObj is None or signalObj is None or (signal := signalObj.signal) is None:
+        if imgObj is None or imgObj.signal_obj.signal is None:
             self.canvasSignal.draw()
             return
 
+        signal = imgObj.signal_obj.signal
         self.signal_artist = self.axSignal.plot(range(1, len(signal)+1), signal, c="#1f77b4")[0]
         self.invalidate_peaks()
 
     def invalidate_peaks(self):
         """ Invalidates the peaks and replots them in the signal plot. Also it adjusts the valsteps in the frameSlider """
         imgObj = self.session.active_image_object
-        signalObj = self.session.active_image_signal
 
         for axImg in [x for x in self.axSignal.collections]: 
             axImg.remove()
         _valstep = 1
-        if imgObj is not None and signalObj is not None and (peaks := signalObj.peaks) is not None and (signal := signalObj.signal) is not None:
-            peaks = np.array(peaks, dtype=int)
-            self.axSignal.scatter(peaks+1, signal[peaks], c="orange")
+        if imgObj is not None and imgObj.signal_obj.peaks is not None:
+            peaks = np.array(imgObj.signal_obj.peaks, dtype=int)
+            self.axSignal.scatter(peaks+1, imgObj.signal_obj.peaks[peaks], c="orange")
             if self.setting_snapFrames.Get() == 1:
                 _valstep = peaks + 1
         
         self.frameSlider.valstep = _valstep
         self.canvasSignal.draw()
-
-    # Data functions 
-
-    def detect_signal(self) -> bool:
-        imgObj = self.session.active_image_object
-        signalObj = self.session.active_image_signal
-        if imgObj is None or imgObj.imgDiff is None or signalObj is None:
-            return False
-        signalObj.signal = self.currentSigDecAlgo.GetSignal(imgObj)
-        self.window.invoke_tab_update_event(TabSignal_RefindPeaksEvent())
-        return True
 
     # GUI
 
