@@ -127,11 +127,13 @@ class TabSignal(Tab):
 
         elif isinstance(event, TabSignal_RefindPeaksEvent):
             if self.active_image_object is not None:
-                self.active_image_object.signal_obj.prominence_factor = self.setting_peakProminence.Get()/100
+                self.active_image_object.signal_obj.prominence_factor = self.setting_peakProminence.Get()/100 # Setter is already clearing
             self.window.invoke_tab_update_event(PeaksChangedEvent())
 
         elif isinstance(event, SignalChangedEvent):
             self.invalidate_signal()
+
+        elif isinstance(event, PeaksChangedEvent):
             self.invalidate_peaks()
 
     def invalidate_image(self):
@@ -263,3 +265,7 @@ class TabSignal(Tab):
         newval = min(self.frameSlider.valmax, max(self.frameSlider.valmin, self.frameSlider.val + 1))
         if self.frameSlider.active:
             self.frameSlider.set_val(newval)
+
+    def update_peak_width_left_setting(self):
+        SignalObject.set_settings(peak_width_left=self.setting_peakWidthLeft.Get())
+        self.invoke_update(PeaksChangedEvent())

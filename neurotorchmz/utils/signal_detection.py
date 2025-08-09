@@ -36,13 +36,17 @@ class SignalObject:
 
     def clear(self):
         self._signal: np.ndarray|None = None
-        self._img_diff_without_signal: ImageProperties|None = None
-        self._img_diff_signal_only: ImageProperties|None = None
-        self._img_diff_without_signal_views: dict[ImageView, AxisImage] = {}
         self.clear_peaks()
 
-    def clear_peaks(self) -> None:
+    def clear_peaks(self):
         self._peaks: list[int]|None = None
+        self._img_diff_without_signal: ImageProperties|None = None
+        self._img_diff_signal_only: ImageProperties|None = None
+
+        self._img_without_signal_views: dict[ImageView, AxisImage] = {}
+        self._img_signal_only_views: dict[ImageView, AxisImage] = {}
+        self._img_diff_without_signal_views: dict[ImageView, AxisImage] = {}
+        self._img_diff_no_signal_views: dict[ImageView, AxisImage] = {}
 
     @property
     def signal(self) -> np.ndarray|None:
@@ -57,7 +61,7 @@ class SignalObject:
     @prominence_factor.setter
     def prominence_factor(self, val: float) -> None:
         self._prominence_factor = val
-        self._peaks = None
+        self.clear_peaks()
 
     @property
     def peaks(self) -> list[int]|None:
@@ -67,6 +71,10 @@ class SignalObject:
             self._peaks = [int(p) for p in find_peaks(self.signal, prominence=self.prominence_factor*(np.max(self.signal)-np.min(self.signal)))[0]]
             self._peaks.sort()
         return self._peaks
+    
+    @property
+    def img_without_signal(self) -> ImageProperties:
+        return ImageProperties(None)
 
     @property
     def img_diff_without_signal(self) -> ImageProperties:
@@ -109,6 +117,28 @@ class SignalObject:
                 self._img_diff_signal_only = ImageProperties(None)
         
         return self._img_diff_signal_only
+    
+    def img_without_signal_view(self, mode: ImageView) -> AxisImage:
+        if mode not in self._img_diff_without_signal_views.keys():
+            if mode == ImageView.DEFAULT:
+                if self.imgObj.imgDiff is None or self.peaks is None:
+                    return AxisImage(None, axis=mode.value, name=self.imgObj.name)
+                _slices = []
+                for i, p in enumerate([*self.peaks, self.imgObj.imgDiff.shape[0]]):
+                    pStart = (self.peaks[i-1]+1 + SignalObject.PEAK_WIDTH_RIGHT) if i >= 1 else 0
+                    pStop = p - SignalObject.PEAK_WIDTH_LEFT if i != len(self.peaks) else p
+                    if pStop <= pStart:
+                        continue
+                    _slices.append(slice(pStart, pStop))
+                if len(_slices) > 0:
+                    _sliceObj = np.s_[_slices]
+                    self._img_diff_without_signal_views[mode] = AxisImage(img=np.concatenate([self.imgObj.imgDiff[_slice] for _slice in _sliceObj]), axis=mode.value, name=self.imgObj.name)
+                else:
+                    self._img_diff_without_signal_views[mode] = AxisImage(img=None, axis=mode.value, name=self.imgObj.name)
+        
+
+            #self._img_diff_without_signal_views[mode] = AxisImage(self.img_diff_without_signal.img, axis=mode.value, name=self.imgObj.name)
+        return self._img_diff_without_signal_views[mode]
     
     def img_diff_without_signal_view(self, mode: ImageView) -> AxisImage:
         if mode not in self._img_diff_without_signal_views.keys():
