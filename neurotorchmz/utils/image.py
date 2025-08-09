@@ -453,6 +453,7 @@ class ImageObject(Serializable):
 
     def clear_cache(self) -> None:
         """Clears caches of unsused convolutions """
+        # TODO: This does not make any sense
         k, v = self._img_props.popitem()
         self._img_props = {k: v}
         k, v = self._img_views.popitem()
@@ -600,6 +601,9 @@ class ImageView(Enum):
     """ 
         Collapse a 3D image (t, y, x) into a smaller dimension
     """
+
+    DEFAULT = None
+    """ DEFAULT: Returns the 3D image """
 
     SPATIAL = (0,)
     """ SPATIAL: Removes the temporal component and creates a 2D image """
