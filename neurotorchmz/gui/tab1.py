@@ -151,11 +151,9 @@ class TabImage(Tab):
                 self.ax2D.set_axis_on()
                 self.imshow2D = self.ax2D.imshow(imgObj.imgDiffView(ImageView.SPATIAL).Std, cmap="inferno") # type: ignore (imgView() is never None)
             case "diffMaxWithoutSignal":
-                if imgObj.signal_obj.img_diff_without_signal.img is not None:
+                if (_img_diff_no_signal := imgObj.signal_obj.img_diff_without_signal_view(ImageView.SPATIAL).Max) is not None:
                     self.ax2D.set_axis_on()
-                    self.imshow2D = self.ax2D.imshow(signalObj.imgObj_sliced.imgDiffView(ImageView.SPATIAL).Max, cmap="inferno") # type: ignore (imgView() is never None)
-                    self.imshow2D = self.ax2D.imshow(signalObj.imgObj_sliced.imgDiffView(ImageView.SPATIAL).Max, cmap="inferno") # type: ignore (imgView() is never None)
-                else:
+                    self.imshow2D = self.ax2D.imshow(_img_diff_no_signal, cmap="inferno")  
                     self.ax2D.set_axis_off()
             case _:
                 self.ax2D.set_axis_off()
@@ -180,8 +178,8 @@ class TabImage(Tab):
             case "diffStd":
                 self.imshow3D = self.ax3D.plot_surface(X,Y, imgObj.imgDiffView(ImageView.SPATIAL).Std, cmap="inferno") # type: ignore (imgView() is never None)
             case "diffMaxWithoutSignal":
-                if imgObj.signal_obj.imgObj_sliced and imgObj.signal_obj.imgObj_sliced.imgDiff is not None:
-                    self.imshow3D = self.ax3D.plot_surface(X,Y, signalObj.imgObj_sliced.imgDiffView(ImageView.SPATIAL).Max, cmap="inferno") # type: ignore (imgView() is never None)
+                if (_img_diff_no_signal := imgObj.signal_obj.img_diff_without_signal_view(ImageView.SPATIAL).Max) is not None:
+                    self.imshow3D = self.ax3D.plot_surface(X,Y, _img_diff_no_signal, cmap="inferno")
             case _:
                 pass
         if self.imshow3D is not None:
