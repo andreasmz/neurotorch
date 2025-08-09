@@ -1,6 +1,6 @@
 """ Module holding code to launch and manage a Neurotorch program """
 from .. import __version__, __author__
-from ..core import settings, resources, logs, plugin_manager, events # pyright: ignore[reportUnusedImport]
+from ..core import logs, settings, resources, plugin_manager, events # pyright: ignore[reportUnusedImport]
 from ..core.logs import logger
 from ..core.serialize import Serializable
 from ..core.task_system import Task

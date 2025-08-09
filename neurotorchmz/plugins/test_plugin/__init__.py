@@ -8,6 +8,6 @@ __plugin_desc__ = """ A demo plugin to test Neurotorch's plugin system """
 from neurotorchmz.core.session import *
 
 
-@events.SessionCreateEvent.hook
-def on_session_start(e: events.SessionCreateEvent):
+@SessionCreateEvent.hook
+def on_session_start(e: SessionCreateEvent):
     logger.debug(f"Testplugin noticed that the session started")

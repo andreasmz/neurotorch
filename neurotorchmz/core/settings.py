@@ -115,8 +115,9 @@ class Option:
         raise NotImplementedError()    
     
     def set(self, val: Any, save: bool = False) -> None:
+        old_val = self.get()
         self.config_parser.set(self.section.__name__, self.name, str(val))
-        logger.debug(f"Changed setting '{self.section.__name__}.{self.name}' from '{str(self.get())}' to '{str(val)}'")
+        logger.debug(f"Changed setting '{self.section.__name__}.{self.name}' from '{str(old_val)}' to '{str(val)}'")
         if save:
             self.save()
     

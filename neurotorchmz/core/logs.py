@@ -6,6 +6,7 @@ import types
 from pathlib import Path
 from logging.handlers import RotatingFileHandler
 import atexit
+import os
 
 logger = logging.getLogger("NeurotorchMZ")
 """ The root logger for NeurotorchMZ. The level defaults to DEBUG to allow derived Handlers (e.g. StreamHandler, RotatingFileHandler) to set custom (higher) levels """
@@ -36,6 +37,8 @@ def init_file_handler(path: Path) -> None:
     file_logging_handler.setFormatter(_fmtFile)
     file_logging_handler.setLevel(logging.DEBUG)
     logger.addHandler(file_logging_handler)
+    if "NEUROTORCH_DEBUG" in os.environ:
+        start_debugging()
 
 def log_exceptions_hook(exc_type: type[BaseException], exc_value: BaseException, exc_traceback: types.TracebackType | None = None) -> None:
     global logger

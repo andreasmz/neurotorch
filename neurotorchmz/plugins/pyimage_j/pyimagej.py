@@ -1,4 +1,5 @@
 from neurotorchmz.core.session import *
+from neurotorchmz.gui import events as gui_events
 
 import tkinter as tk
 from tkinter import messagebox, filedialog
@@ -26,7 +27,7 @@ class ImageJHandler:
         # Image J Objects
         self.RM = None # Roi Manager
 
-        events.WindowLoadedEvent.register(self.on_window_loaded)
+        gui_events.WindowLoadedEvent.register(self.on_window_loaded)
 
     # Convinience functions
     @property
@@ -35,7 +36,7 @@ class ImageJHandler:
     
     # Event hooks
 
-    def on_window_loaded(self, e: events.WindowLoadedEvent) -> None:
+    def on_window_loaded(self, e: gui_events.WindowLoadedEvent) -> None:
         """ Creates the GUI elements for this plugin. Is only called from WindowLoadedEvent in GUI mode """
         assert e.session.window is not None
 
@@ -335,7 +336,7 @@ class ImageJHandler:
             self.session.window.menu_run.entryconfig("Start Fiji/ImageJ", state="normal")
         self.task = None
 
-@events.SessionCreateEvent.hook
-def on_session_created(e: events.SessionCreateEvent):
+@SessionCreateEvent.hook
+def on_session_created(e: SessionCreateEvent):
     global ijH
     ijH = ImageJHandler(e.session)
