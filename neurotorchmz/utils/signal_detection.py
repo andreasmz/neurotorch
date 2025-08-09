@@ -35,52 +35,27 @@ class SignalObject:
     PEAK_WIDTH_RIGHT: int = 6
     ALGORITHM: ISignalDetectionAlgorithm = ISignalDetectionAlgorithm()
 
-    def __init__(self, imgObj: ImageObject|None):
-        self.imgObj: ImageObject|None = imgObj
-        self.clear()
+    def __init__(self, imgObj: ImageObject):
+        self.imgObj: ImageObject = imgObj
+        self.detect()
 
-    def clear(self):
-        self._signal: np.ndarray|None = None
-        self._peaks: list[int]|None = None
-        self.clear_cache()        
+    def detect(self):
+        self.signal = self.__class__.ALGORITHM.get_signal(self.imgObj)
+        self.peaks: list[int]|None = None
+        self._img_sliced: None|Literal[False]|ImageObject = None # Set to False if slice would be empty
 
-    def clear_cache(self):
-        self._imgObj_sliced: None|Literal[False]|ImageObject = None # Set to False if slice would be empty
-
-    @property
-    def signal(self) -> np.ndarray|None:
-        if self.imgObj is None:
-            return None
-        if self._signal is None:
-            self._signal = self.__class__.ALGORITHM.get_signal(self.imgObj)
-        return self._signal
-    
-    @signal.setter
-    def signal(self, val):
-        self._signal = val
-        self._peaks = None
-
-    @property
-    def peaks(self) -> list[int]|None:
-        return self._peaks
-    
-    @property
-    def imgObj(self):
-        return self._imgObj
-    
-    @imgObj.setter
-    def imgObj(self, val: ImageObject|None):
-        if not isinstance(val, ImageObject) or not val is None:
-            raise TypeError(f"Setting the ImageObject of the SignalObject requires None or a ImageObject, but you provided {type(val)}")
-        self.clear_cache()
-        self._imgObj = val
-
-    def detect_peaks(self, prominenceFactor:float):
+    def detect_peaks(self, prominence_factor: float) -> None:
         if self.signal is None:
             return
-        self._peaks = [int(p) for p in find_peaks(self._signal, prominence=prominenceFactor*(np.max(self.signal)-np.min(self.signal)))[0]]
-        self._peaks.sort()
-        self.clear_cache()
+        self.peaks = [int(p) for p in find_peaks(self.signal, prominence=prominence_factor*(np.max(self.signal)-np.min(self.signal)))[0]]
+        self.peaks.sort()
+
+    @property
+    def img_sliced(self) -> ImageProperties|None:
+        if self.signal is None:
+            return None
+        if self._img_sliced is None:
+
 
     @property
     def imgObj_sliced(self) -> ImageObject | Literal[False] | None:
@@ -88,8 +63,6 @@ class SignalObject:
             Return a new SlicedImageObject (which is except for the name identical to an ImageObject), where diffImg has been set to the sliced version.
             Returns the sliced image object without signal or None if image or signal is not ready and False if image would be empty 
         """
-        if self._imgObj is None or self._imgObj.imgDiff is None:
-            return None
         if self._imgObj_sliced is None:
             self._imgObj_sliced = ImageObject()
             if self._peaks is None:

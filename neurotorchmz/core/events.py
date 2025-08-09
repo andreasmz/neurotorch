@@ -1,9 +1,6 @@
-from typing import Any
-from ..core import session
+from typing import Any, Callable, Self
 
-from typing import Callable, Self
-import inspect
-import tkinter as tk
+from ..core.logs import logger
 
 class Event:
     """ 
@@ -36,37 +33,4 @@ class Event:
             try:
                 hook(self)
             except Exception:
-                session.logger.warning(f"Failed to propagate {self.__class__.__name__} to {hook.__module__}:", exc_info=True)
-
-        
-class SessionCreateEvent(Event):
-    """ Triggers after a session is created (not launched yet) """
-
-    def __init__(self, session: session.Session) -> None:
-        self.session = session
-
-class ImageObjectChangedEvent(Event):
-    """ Triggers after the ImageObject of a session was changed """
-
-    def __init__(self, session: session.Session) -> None:
-        self.session = session
-
-class WindowLoadedEvent(Event):
-    """ Triggers after the GUI has loaded """
-
-    def __init__(self, session: session.Session) -> None:
-        self.session = session
-
-    @property
-    def menu_settings(self) -> tk.Menu:
-        assert self.session.window is not None
-        return self.session.window.menu_settings
-    
-    @property
-    def menu_plugins(self) -> tk.Menu:
-        assert self.session.window is not None
-        return self.session.window.menu_plugins
-    
-
-class WindowTKReadyEvent(WindowLoadedEvent):
-    """ Triggers after the GUI has loaded and tkinter is in main loop """
+                logger.warning(f"Failed to propagate {self.__class__.__name__} to {hook.__module__}:", exc_info=True)

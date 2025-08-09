@@ -1,6 +1,6 @@
 """ Module holding code to launch and manage a Neurotorch program """
 from .. import __version__, __author__
-from ..core import settings, resources, logs, plugin_manager # pyright: ignore[reportUnusedImport]
+from ..core import settings, resources, logs, plugin_manager, events # pyright: ignore[reportUnusedImport]
 from ..core.logs import logger
 from ..core.serialize import Serializable
 from ..core.task_system import Task
@@ -35,10 +35,10 @@ class Session(Serializable):
 
             :param Edition edition: Which edition of Neurotorch (for example NEUROTORCH_LIGHT, NEUROTORCH_DEBUG, ...) should be launched
         """
+
         self.edition: Edition = edition
         if self.edition == Edition.NEUROTORCH_DEBUG:
             logs.start_debugging()
-        _import_plugin_manager()
 
         self.window = None 
         self._window_thread: threading.Thread|None = None
@@ -48,7 +48,7 @@ class Session(Serializable):
         self._roifinder_detection_result: DetectionResult = DetectionResult()
         self._snalysis_detection_result: DetectionResult = DetectionResult()
         self.api = SessionAPI(self)
-        events.SessionCreateEvent(session=self)
+        SessionCreateEvent(session=self)
 
 
     def launch(self, background: bool = False):
@@ -57,10 +57,12 @@ class Session(Serializable):
 
             :raises RuntimeError: The GUI has already been started
         """
+        global window, window_events
         if self.window is not None:
             raise RuntimeError("The Neurotorch GUI has already been started")
-        from ..gui.window import Neurotorch_GUI
-        self.window = Neurotorch_GUI(session=self)
+        from ..gui import window
+        from ..gui import events as window_events
+        self.window = window.Neurotorch_GUI(session=self)
         logger.info(f"Started NeurotorchMZ (GUI) version {__version__}")
         if background:
             task = threading.Thread(target=self.window.launch, name="Neurotorch GUI", args=(self.edition,))
@@ -75,17 +77,12 @@ class Session(Serializable):
     
     def set_active_image_object(self, imgObj: ImageObject|None):
         """ Replace the active ImageObject or remove it by setting it to zero. Creates a new SignalObject """
+        from ..gui.events import ImageObjectChangedEvent
         if self._image_object is not None:
             self._image_object.clear() # It's important to clear the object as the AxisImage, ImageProperties, ... create circular references not garbage collected
         self._image_object = imgObj
-        if imgObj is None:
-            self._signal_object = None
-        else:
-            self._signal_object = SignalObject(self._image_object)
-            self._roifinder_detection_result.clear()
-            self._snalysis_detection_result.clear()
         self.notify_image_object_change()
-        events.ImageObjectChangedEvent(session=self)
+        ImageObjectChangedEvent(session=self)
 
     @property
     def roifinder_detection_result(self) -> DetectionResult:
@@ -98,10 +95,8 @@ class Session(Serializable):
         return self._snalysis_detection_result
     
     @property
-    def root(self) -> "tk.Tk|None":
+    def root(self) -> "window.tk.Tk|None":
         """ Returns the current tkinter root. If in headless mode, return None """
-        global tk
-        import tkinter as tk
         if self.window is None:
             return None
         return self.window.root
@@ -109,8 +104,7 @@ class Session(Serializable):
     def notify_image_object_change(self):
         """ When changing the ImageObject, call this function to notify the GUI about the change. Will invoke a ImageChanged TabUpdateEvent on all tabs in the window. """
         if self.window is not None:
-            from ..gui.window import ImageChangedEvent # Import not in the file header to avoid circular imports. It is already imported in launch(), so minimal performance loss
-            self.window.invoke_tab_update_event(ImageChangedEvent())
+            self.window.invoke_tab_update_event(window.ImageChangedEvent())
 
 class SessionAPI:
     """ A class bound to a session object, which allows the user to communicate with the Neurotorch GUI. If you want to use the API without the object management of Neurotorch, use the neurotorchmz.API instead """
@@ -137,11 +131,12 @@ class SessionAPI:
         if run_async:
             return task
         return imgObj
+    
+class SessionCreateEvent(events.Event):
+    """ Triggers after a session is created (not launched yet) """
 
-def _import_plugin_manager(): # pyright: ignore[reportUnusedFunction]
-    """ Internal functions to import the event module and plugins. Wrapper is called when launching a session to prevent circular imports """
-    global events
-    from ..core import events # pyright: ignore[reportUnusedImport]
+    def __init__(self, session: Session) -> None:
+        self.session = session
 
-    plugin_manager.load_plugins_from_dir(path=Path(str(__file__)).parent.parent / "plugins", prefix="neurotorchmz.plugins")
-    plugin_manager.load_plugins_from_dir(path=settings.user_plugin_path, prefix="neurotorchmz.user.plugins")
+plugin_manager.load_plugins_from_dir(path=Path(str(__file__)).parent.parent / "plugins", prefix="neurotorchmz.plugins")
+plugin_manager.load_plugins_from_dir(path=settings.user_plugin_path, prefix="neurotorchmz.user.plugins")

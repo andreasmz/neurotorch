@@ -227,8 +227,6 @@ class ImageObject(Serializable):
                             "m_dXYPositionY0": "Y Position",
                             "m_dZPosition0": "Z Position",
                             }
-    SPATIAL = (0)
-    TEMPORAL = (1,2)
 
     # Dict used for serialization; key is property name, value is tuple of serialization name and conversion function for the given data to give at least a minimal property from 
     _serialize_dict = {"_name":("name", str), "_path":("path", Path), "_imgMode":("imgMode", int), "_pimsmetadata": ("pimsmetadata", collections.OrderedDict)}

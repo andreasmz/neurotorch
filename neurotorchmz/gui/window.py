@@ -15,6 +15,7 @@ from collections import deque
 matplotlib.use('TkAgg')
 
 from .components.general import Statusbar
+from ..gui import events as window_events
 from ..core.session import *
 from ..core.session import __version__
 
@@ -135,8 +136,8 @@ class Neurotorch_GUI:
         self.tabMain.pack(expand=1, fill="both")
 
         # Events and main loop
-        events.WindowLoadedEvent(session=self.session)
-        self.root.after(1000, lambda: events.WindowTKReadyEvent(session=self.session))
+        window_events.WindowLoadedEvent(session=self.session)
+        self.root.after(1000, lambda: window_events.WindowTKReadyEvent(session=self.session))
         self.root.mainloop()
 
     # Update handling
@@ -280,8 +281,11 @@ class Neurotorch_GUI:
 
     def menu_debug_save_peaks_click(self):
         imgObj = self.session.active_image_object
-        signalObj = self.session.active_image_signal
-        if imgObj is None or imgObj.img is None or signalObj is None or signalObj.peaks is None or len(signalObj.peaks) == 0:
+        if imgObj is None or imgObj.img is None:
+            self.root.bell()
+            return
+        signalObj = imgObj.signal_obj
+        if signalObj.peaks is None or len(signalObj.peaks) == 0:
             self.root.bell()
             return
         if not messagebox.askyesnocancel("Neurotorch", "Do you want to save the current diffImg Peak Frames in a Dump?"):
