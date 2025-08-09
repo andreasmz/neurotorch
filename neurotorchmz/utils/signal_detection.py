@@ -37,63 +37,79 @@ class SignalObject:
 
     def __init__(self, imgObj: ImageObject):
         self.imgObj: ImageObject = imgObj
-        self.detect()
+        self._prominence_factor: float = 1.1
+        self.clear()
 
     def clear(self):
+        self._signal: np.ndarray|None = None
+        self._peaks: list[int]|None = None
         self._img_diff_without_signal: ImageProperties|None = None
         self._img_diff_signal_only: ImageProperties|None = None
         self._img_diff_without_signal_views: dict[ImageView, AxisImage] = {}
 
-    def detect(self):
-        self.clear()
-        self.signal = self.__class__.ALGORITHM.get_signal(self.imgObj)
-        self.peaks: list[int]|None = None
+    @property
+    def signal(self) -> np.ndarray|None:
+        if self._signal is None:
+            self._signal = self.__class__.ALGORITHM.get_signal(self.imgObj)
+        return self._signal
 
-    def detect_peaks(self, prominence_factor: float) -> None:
+    @property
+    def prominence_factor(self) -> float:
+        return self._prominence_factor
+    
+    @prominence_factor.setter
+    def prominence_factor(self, val: float) -> None:
+        self._prominence_factor = val
+        self._peaks = None
+
+    @property
+    def peaks(self) -> list[int]|None:
         if self.signal is None:
-            return
-        self.peaks = [int(p) for p in find_peaks(self.signal, prominence=prominence_factor*(np.max(self.signal)-np.min(self.signal)))[0]]
-        self.peaks.sort()
+            return None
+        if self._peaks is None:
+            self._peaks = [int(p) for p in find_peaks(self.signal, prominence=self.prominence_factor*(np.max(self.signal)-np.min(self.signal)))[0]]
+            self._peaks.sort()
+        return self._peaks
 
     @property
     def img_diff_without_signal(self) -> ImageProperties:
         """ Returns the img_diff without the peaks. This is useful to detect for example spontanous peaks """
-        if self.signal is None or self.imgObj.imgDiff is None:
+        if self.imgObj.imgDiff is None or self.peaks is None:
             return ImageProperties(None)
         if self._img_diff_without_signal is None:
-            self._img_diff_without_signal = ImageProperties(None)
             logger.debug(f"Calculating no signal img_diff slice for '{self.imgObj.name}'")
-            if self.peaks is not None and len(self.peaks) > 0:
-                _slices = []
-                for i, p in enumerate([*self.peaks, self.imgObj.imgDiff.shape[0]]):
-                    pStart = (self.peaks[i-1]+1 + SignalObject.PEAK_WIDTH_RIGHT) if i >= 1 else 0
-                    pStop = p - SignalObject.PEAK_WIDTH_LEFT if i != len(self.peaks) else p
-                    if pStop <= pStart:
-                        continue
-                    _slices.append(slice(pStart, pStop))
-                if len(_slices) > 0:
-                    _sliceObj = np.s_[_slices]
-                    self._img_diff_without_signal = ImageProperties(np.concatenate([self.imgObj.imgDiff[_slice] for _slice in _sliceObj]))
+            _slices = []
+            for i, p in enumerate([*self.peaks, self.imgObj.imgDiff.shape[0]]):
+                pStart = (self.peaks[i-1]+1 + SignalObject.PEAK_WIDTH_RIGHT) if i >= 1 else 0
+                pStop = p - SignalObject.PEAK_WIDTH_LEFT if i != len(self.peaks) else p
+                if pStop <= pStart:
+                    continue
+                _slices.append(slice(pStart, pStop))
+            if len(_slices) > 0:
+                _sliceObj = np.s_[_slices]
+                self._img_diff_without_signal = ImageProperties(np.concatenate([self.imgObj.imgDiff[_slice] for _slice in _sliceObj]))
+            else:
+                self._img_diff_without_signal = ImageProperties(None)
         
         return self._img_diff_without_signal
     
     @property
     def img_diff_signal_only(self) -> ImageProperties:
         """ Returns the img_diff but sliced to only include the peak frames"""
-        if self.signal is None or self.imgObj.imgDiff is None:
+        if self.imgObj.imgDiff is None or self.peaks is None:
             return ImageProperties(None)
         if self._img_diff_signal_only is None:
-            self._img_diff_signal_only = ImageProperties(None)
             logger.debug(f"Calculating signal only img_diff slice for '{self.imgObj.name}'")
-            if self.peaks is not None and len(self.peaks) > 0:
-                _slices = []
-                for p in self.peaks:
-                    pStart = max((p - SignalObject.PEAK_WIDTH_LEFT), 0)
-                    pStop = min((p + SignalObject.PEAK_WIDTH_RIGHT + 1) , self.imgObj.imgDiff.shape[0])
-                    _slices.append(slice(pStart, pStop))
-                if len(_slices) > 0:
-                    _sliceObj = np.s_[_slices]
-                    self._img_diff_signal_only = ImageProperties(np.concatenate([self.imgObj.imgDiff[_slice] for _slice in _sliceObj]))
+            _slices = []
+            for p in self.peaks:
+                pStart = max((p - SignalObject.PEAK_WIDTH_LEFT), 0)
+                pStop = min((p + SignalObject.PEAK_WIDTH_RIGHT + 1) , self.imgObj.imgDiff.shape[0])
+                _slices.append(slice(pStart, pStop))
+            if len(_slices) > 0:
+                _sliceObj = np.s_[_slices]
+                self._img_diff_signal_only = ImageProperties(np.concatenate([self.imgObj.imgDiff[_slice] for _slice in _sliceObj]))
+            else:
+                self._img_diff_signal_only = ImageProperties(None)
         
         return self._img_diff_signal_only
     

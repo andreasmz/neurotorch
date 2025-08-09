@@ -409,10 +409,12 @@ class ImageObject(Serializable):
     def set_conv_func(self, func: Callable[..., np.ndarray]|None = None, func_args: dict[str, Any]|None = None) -> None:
         self._img_conv_func = func
         self._img_conv_args = func_args
+        self._signal_obj.clear()
 
     def set_diff_conv_func(self, func: Callable[..., np.ndarray]|None = None, func_args: dict[str, Any]|None = None) -> None:
         self._img_diff_conv_func = func
         self._img_diff_conv_args = func_args
+        self.signal_obj.clear()
 
     @property
     def _conv_func_identifier(self) -> str:

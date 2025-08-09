@@ -154,6 +154,7 @@ class TabImage(Tab):
                 if imgObj.signal_obj.img_diff_without_signal.img is not None:
                     self.ax2D.set_axis_on()
                     self.imshow2D = self.ax2D.imshow(signalObj.imgObj_sliced.imgDiffView(ImageView.SPATIAL).Max, cmap="inferno") # type: ignore (imgView() is never None)
+                    self.imshow2D = self.ax2D.imshow(signalObj.imgObj_sliced.imgDiffView(ImageView.SPATIAL).Max, cmap="inferno") # type: ignore (imgView() is never None)
                 else:
                     self.ax2D.set_axis_off()
             case _:
