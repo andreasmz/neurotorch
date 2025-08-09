@@ -63,10 +63,10 @@ class TabSignal(Tab):
 
         self.frameSignal = ttk.LabelFrame(self.frameMain, text="Signal")
         self.frameSignal.grid(row=2, column=0, sticky="new")
-        self.setting_peakWidthLeft = GridSetting(self.frameSignal, row=5, text="Peak Width Left", default=3, min_=0, max_=50, scaleMin=0, scaleMax=20, tooltip=resources.get_string("tab2/peakWidth"))
-        self.setting_peakWidthRight = GridSetting(self.frameSignal, row=6, text="Peak Width Right", default=10, min_=0, max_=50, scaleMin=0, scaleMax=20, tooltip=resources.get_string("tab2/peakWidth"))
-        self.setting_peakWidthLeft.var.IntVar.trace_add("write", lambda _1,_2,_3: self._update_signal_widths())
-        self.setting_peakWidthRight.var.IntVar.trace_add("write", lambda _1,_2,_3: self._update_signal_widths())
+        self.setting_peakWidthLeft = GridSetting(self.frameSignal, row=5, text="Peak Width Left", default=SignalObject.PEAK_WIDTH_LEFT, min_=0, max_=50, scaleMin=0, scaleMax=20, tooltip=resources.get_string("tab2/peakWidth"))
+        self.setting_peakWidthRight = GridSetting(self.frameSignal, row=6, text="Peak Width Right", default=SignalObject.PEAK_WIDTH_RIGHT, min_=0, max_=50, scaleMin=0, scaleMax=20, tooltip=resources.get_string("tab2/peakWidth"))
+        self.setting_peakWidthLeft.var.IntVar.trace_add("write", lambda _1,_2,_3: SignalObject.set_settings(peak_width_left=self.setting_peakWidthLeft.Get()))
+        self.setting_peakWidthRight.var.IntVar.trace_add("write", lambda _1,_2,_3: SignalObject.set_settings(peak_width_right=self.setting_peakWidthRight.Get()))
         self.setting_peakWidthLeft.SetVisibility(False)
         self.setting_peakWidthRight.SetVisibility(False)
 
@@ -116,7 +116,6 @@ class TabSignal(Tab):
         if isinstance(event, ImageChangedEvent):
             for algo in self.signalDetectionAlgorithms: algo.clear()
             self.invalidate_image()
-            self.detect_signal()
             self.invalidate_signal() # Call twice on successfull detect, but minimal overhead
             if self.active_image_object is None or self.active_image_object.signal_obj.signal is None:
                 self.setting_peakWidthLeft.SetVisibility(False)
@@ -271,12 +270,6 @@ class TabSignal(Tab):
         signalObj.signal = self.currentSigDecAlgo.GetSignal(imgObj)
         self.window.invoke_tab_update_event(TabSignal_RefindPeaksEvent())
         return True
-    
-    def _update_signal_widths(self):
-        if self.active_image_object is None:
-            return
-        SignalObject.PEAK_WIDTH_LEFT = 
-        .SetPeakWidths(self.setting_peakWidthLeft.Get(), self.setting_peakWidthRight.Get())
 
     # GUI
 
