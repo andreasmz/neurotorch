@@ -39,10 +39,15 @@ class SignalObject:
         self.imgObj: ImageObject = imgObj
         self.detect()
 
+    def clear(self):
+        self._img_diff_without_signal: ImageProperties|None = None
+        self._img_diff_signal_only: ImageProperties|None = None
+
     def detect(self):
+        self.clear()
         self.signal = self.__class__.ALGORITHM.get_signal(self.imgObj)
         self.peaks: list[int]|None = None
-        self._img_sliced: None|Literal[False]|ImageObject = None # Set to False if slice would be empty
+        
 
     def detect_peaks(self, prominence_factor: float) -> None:
         if self.signal is None:
@@ -51,36 +56,47 @@ class SignalObject:
         self.peaks.sort()
 
     @property
-    def img_sliced(self) -> ImageProperties|None:
-        if self.signal is None:
+    def img_diff_without_signal(self) -> ImageProperties|None:
+        """ Returns the img_diff without the peaks. This is useful to detect for example spontanous peaks """
+        if self.signal is None or self.imgObj.imgDiff is None:
             return None
-        if self._img_sliced is None:
-
-
-    @property
-    def imgObj_sliced(self) -> ImageObject | Literal[False] | None:
-        """
-            Return a new SlicedImageObject (which is except for the name identical to an ImageObject), where diffImg has been set to the sliced version.
-            Returns the sliced image object without signal or None if image or signal is not ready and False if image would be empty 
-        """
-        if self._imgObj_sliced is None:
-            self._imgObj_sliced = ImageObject()
-            if self._peaks is None:
-                return None
-            if len(self._peaks) == 0:
-                self._imgObj_sliced.imgDiff = self._imgObj.imgDiff
+        if self._img_diff_without_signal is None:
+            if self.peaks is None or len(self.peaks) == 0:
+                self._img_diff_without_signal = ImageProperties(None)
             else:
                 _slices = []
-                for i, p in enumerate([*self._peaks, self._imgObj.imgDiff.shape[0]]):
-                    pStart = (self._peaks[i-1]+1 + SignalObject.PEAK_WIDTH_RIGHT) if i >= 1 else 0 
-                    pStop = p - SignalObject.PEAK_WIDTH_LEFT if i != len(self._peaks) else p
+                for i, p in enumerate([*self.peaks, self.imgObj.imgDiff.shape[0]]):
+                    pStart = (self.peaks[i-1]+1 + SignalObject.PEAK_WIDTH_RIGHT) if i >= 1 else 0
+                    pStop = p - SignalObject.PEAK_WIDTH_LEFT if i != len(self.peaks) else p
                     if pStop <= pStart:
                         continue
                     _slices.append(slice(pStart, pStop))
                 if len(_slices) > 0:
                     _sliceObj = np.s_[_slices]
-                    self._imgObj_sliced.imgDiff = np.concatenate([self._imgObj.imgDiff[_slice] for _slice in _sliceObj])
-        return self._imgObj_sliced
+                    self._img_diff_without_signal = ImageProperties(np.concatenate([self.imgObj.imgDiff[_slice] for _slice in _sliceObj]))
+        
+        return self._img_diff_without_signal
+    
+    @property
+    def img_diff_signal_only(self) -> ImageProperties|None:
+        """ Returns the img_diff but sliced to only include the peak frames"""
+        if self.signal is None or self.imgObj.imgDiff is None:
+            return None
+        if self._img_diff_signal_only is None:
+            if self.peaks is None or len(self.peaks) == 0:
+                self._img_diff_signal_only = ImageProperties(None)
+            else:
+                _slices = []
+                for p in self.peaks:
+                    pStart = max((p - SignalObject.PEAK_WIDTH_LEFT), 0)
+                    pStop = min((p + SignalObject.PEAK_WIDTH_RIGHT + 1) , self.imgObj.imgDiff.shape[0])
+                    _slices.append(slice(pStart, pStop))
+                if len(_slices) > 0:
+                    _sliceObj = np.s_[_slices]
+                    self._img_diff_signal_only = ImageProperties(np.concatenate([self.imgObj.imgDiff[_slice] for _slice in _sliceObj]))
+        
+        return self._img_diff_signal_only
+
     
     @classmethod
     def load_settings(cls) -> None:
@@ -94,8 +110,6 @@ class SignalObject:
             UserSettings.SIGNAL_DETECTION.peak_width_left.set(peak_width_left)
         if peak_width_right is not None and peak_width_right != cls.PEAK_WIDTH_RIGHT:
             UserSettings.SIGNAL_DETECTION.peak_width_right.set(peak_width_right)
-
-
 
 SignalObject.load_settings()
     
