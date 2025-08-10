@@ -28,7 +28,7 @@ class SynapseTreeview(ttk.Treeview):
                  session: Session, 
                  detection_result: DetectionResult,
                  selectCallback: Callable[[ISynapse|None, ISynapseROI|None], None], 
-                 updateCallback = Callable, 
+                 updateCallback = Callable[[None], None], 
                  allowSingleframe: bool = False,
                  allowMultiframe: bool = False,
                  **kwargs):
@@ -101,7 +101,8 @@ class SynapseTreeview(ttk.Treeview):
     def _SyncSynapses_task(self, task:Task):
         task.set_indeterminate()
         try: 
-            self._entryPopup.destroy()
+            if self._entryPopup is not None:
+                self._entryPopup.destroy()
         except AttributeError:
             pass    
         synapses = self.detection_result.synapses_dict
@@ -118,7 +119,7 @@ class SynapseTreeview(ttk.Treeview):
             if self.index(_uuid) != i: # Keep the order the same as in the list
                 self.move(_uuid, '', i)
             name = s.name
-            if s.name is None:
+            if name is None:
                 name = f"Synapse {synapse_index}"
                 synapse_index += 1
             isSingleframe = isinstance(s, SingleframeSynapse)
@@ -191,7 +192,7 @@ class SynapseTreeview(ttk.Treeview):
         if roi is not None and (synapse is None or self.item(synapse.uuid, "open") or len(synapse.rois) >= 2):
             self.selection_set(roi.uuid)
             self.see(roi.uuid)
-        else:
+        elif synapse is not None:
             self.selection_set(synapse.uuid)
             self.see(synapse.uuid)
         
@@ -214,7 +215,8 @@ class SynapseTreeview(ttk.Treeview):
     def _OnDoubleClick(self, event):
         """ Triggered on double clicking and creates a editable field if the clicked field is editable """
         try: 
-            self._entryPopup.destroy()
+            if self._entryPopup is not None:
+                self._entryPopup.destroy()
         except AttributeError:
             pass    
         rowid = self.identify_row(event.y)
@@ -413,7 +415,7 @@ class SynapseTreeview(ttk.Treeview):
                     r = PolygonalSynapseROI().set_frame(0)
                 case _:
                     return
-            s: MultiframeSynapse = self.detection_result.synapses_dict[synapse.uuid]
+            s = cast(MultiframeSynapse, self.detection_result.synapses_dict[synapse.uuid])
             s.add_roi(r)
         else:
             match class_:
@@ -569,7 +571,10 @@ class EntryPopup(ttk.Entry):
         self.bind("<FocusOut>", lambda *val1: self.destroy())
 
     def place_auto(self):
-        x,y,width,height = self.tv.bbox(self.rowid, self.column)
+        bbox = self.tv.bbox(self.rowid, self.column)
+        if bbox == "":
+            return
+        x,y,width,height = bbox
         pady = height // 2
         self.place(x=x, y=y+pady, width=width, height=height, anchor=tk.W)
 
