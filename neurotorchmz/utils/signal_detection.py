@@ -141,6 +141,7 @@ class SignalObject:
             return AxisImage(None, axis=mode.value, name=self.imgObj.name)
         
         if not ImageView.DEFAULT in _views.keys():
+            logger.debug(f"Calculating {slice_type} slice for {img_type}")
             _slices = []
             if slice_type == "only_signal":
                 for p in self.peaks:
@@ -157,12 +158,12 @@ class SignalObject:
                     _slices.append(slice(pStart, pStop))
             if len(_slices) > 0:
                 _sliceObj = np.s_[_slices]
-                _views[mode] = AxisImage(img=np.concatenate([_img[_slice] for _slice in _sliceObj]), axis=mode.value, name=self.imgObj.name)
+                _views[ImageView.DEFAULT] = AxisImage(img=np.concatenate([_img[_slice] for _slice in _sliceObj]), axis=ImageView.DEFAULT.value, name=f"{self.imgObj.name}-{img_type}-{slice_type}")
             else:
-                _views[mode] = AxisImage(img=None, axis=mode.value, name=self.imgObj.name)
+                _views[ImageView.DEFAULT] = AxisImage(img=None, axis=ImageView.DEFAULT.value, name=f"{self.imgObj.name}-{img_type}-{slice_type}")
 
         if mode not in _views.keys():
-            _views[mode] = AxisImage(_views[ImageView.DEFAULT].image, axis=ImageView.DEFAULT.value, name=self.imgObj.name)
+            _views[mode] = AxisImage(_views[ImageView.DEFAULT].image, axis=mode.value, name=f"{self.imgObj.name}-{img_type}-{slice_type}")
         return _views[mode]
     
     def export_img_only_signal(self, path: Path) -> None:

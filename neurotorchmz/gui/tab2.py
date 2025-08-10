@@ -111,7 +111,10 @@ class TabSignal(Tab):
     def update_tab(self, event: TabUpdateEvent):
         """ Handle the update loop call """
         if isinstance(event, ImageChangedEvent):
+            if self.active_image_object is not None:
+                self.active_image_object.signal_obj.prominence_factor = self.setting_peakProminence.Get()/100
             self.invalidate_image()
+            self.invalidate_signal()
 
         elif isinstance(event, TabSignal_AlgorithmChangedEvent):
             match(self.radioAlgoVar.get()):
@@ -140,7 +143,7 @@ class TabSignal(Tab):
         """ Invalidate the image and therefore adjust the slider range"""
         imgObj = self.session.active_image_object
         # Note: This function shows the range if imgDiff is present but not img itself. This must be catched in invalidate_image_plot
-        if imgObj is None or imgObj.img is None or imgObj.imgDiff is None: 
+        if imgObj is None or imgObj.imgDiff is None: 
             self.frameSlider.valmin = 0
             self.frameSlider.valmax = 0.1
             self.frameSlider.valstep = 1
@@ -150,7 +153,7 @@ class TabSignal(Tab):
             self.invalidate_image_plot()
         else:
             self.frameSlider.valmin = 0 if (self.setting_originalImage.Get() == 1) else 1
-            self.frameSlider.valmax = imgObj.img.shape[0]-1
+            self.frameSlider.valmax = imgObj.imgDiff.shape[0]
             if isinstance(self.frameSlider.valstep, int): # Only update if not valstep is custom set to peaks
                 self.frameSlider.valstep = 1
             self.ax1_slider1.set_xlim(self.frameSlider.valmin,self.frameSlider.valmax)
@@ -180,14 +183,15 @@ class TabSignal(Tab):
         for axImg in self.ax1.get_images(): 
             axImg.remove()
 
-        if imgObj is None or imgObj.img is None or imgObj.imgDiff is None or (show_original and imgObj.img is None):
+        if imgObj is None or imgObj.imgDiff is None or (show_original and imgObj.img is None):
             self.frameSlider.valtext.set_text("")
             self.canvas1.draw()
             return
         else:
-            self.frameSlider.valtext.set_text(f"{frame} / {imgObj.img.shape[0]-1}")
+            self.frameSlider.valtext.set_text(f"{frame} / {imgObj.imgDiff.shape[0]}")
 
         if show_original:
+            assert imgObj.img is not None # Assert is fullfilled by previous if query
             if frame < 0 or frame >= imgObj.img.shape[0]:
                 _img = None
             else:
@@ -245,9 +249,9 @@ class TabSignal(Tab):
         for axImg in [x for x in self.axSignal.collections]: 
             axImg.remove()
         _valstep = 1
-        if imgObj is not None and imgObj.signal_obj.peaks is not None:
+        if imgObj is not None and imgObj.signal_obj.signal is not None and imgObj.signal_obj.peaks is not None and len(imgObj.signal_obj.peaks) > 0:
             peaks = np.array(imgObj.signal_obj.peaks, dtype=int)
-            self.axSignal.scatter(peaks+1, imgObj.signal_obj.peaks[peaks], c="orange")
+            self.axSignal.scatter(peaks+1, imgObj.signal_obj.signal[peaks], c="orange")
             if self.setting_snapFrames.Get() == 1:
                 _valstep = peaks + 1
         

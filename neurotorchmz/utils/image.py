@@ -391,7 +391,7 @@ class ImageObject(Serializable):
         if not self._conv_func_identifier in self._img_views.keys():
             self._img_views[self._conv_func_identifier] = {}
         if mode not in self._img_views[self._conv_func_identifier].keys():
-            self._img_views[self._conv_func_identifier][mode] = AxisImage(self.img, axis=mode.value, name=self.name)
+            self._img_views[self._conv_func_identifier][mode] = AxisImage(self.img, axis=mode.value, name=f"{self.name}-{self._conv_func_identifier}-img")
         return self._img_views[self._conv_func_identifier][mode]
     
     def imgDiffView(self, mode: "ImageView") -> AxisImage:
@@ -399,7 +399,7 @@ class ImageObject(Serializable):
         if not self._diff_conv_func_identifier in self._img_diff_views.keys():
             self._img_diff_views[self._diff_conv_func_identifier] = {}
         if mode not in self._img_diff_views[self._diff_conv_func_identifier].keys():
-            self._img_diff_views[self._diff_conv_func_identifier][mode] = AxisImage(self.imgDiff, axis=mode.value, name=self.name)
+            self._img_diff_views[self._diff_conv_func_identifier][mode] = AxisImage(self.imgDiff, axis=mode.value, name=f"{self.name}-{self._diff_conv_func_identifier}-img_diff")
         return self._img_diff_views[self._diff_conv_func_identifier][mode]
     
     # Signal
@@ -559,7 +559,7 @@ class ImageObject(Serializable):
                 if getattr(_pimsImg, "get_metadata_raw", None) != None: 
                     self._metdata = collections.OrderedDict(sorted(_pimsImg.get_metadata_raw().items()))
             self._path = path
-            self.name = path.stem
+            self.name = path.name
             
             if precompute:
                 self.precompute_image(task_continue=True, run_async=run_async)
