@@ -14,7 +14,6 @@ class ImageJHandler:
     """
 
     def __init__(self, session: Session):
-        global tk, messagebox, filedialog, window, TabROIFinder_InvalidateEvent
         self.ij = None
         self.session = session
         self.task: Task|None = None
@@ -28,13 +27,6 @@ class ImageJHandler:
         # Image J Objects
         self.RM = None # Roi Manager
 
-        # Import tkinter if not headless
-        if session.window is not None:
-            import tkinter as tk
-            from tkinter import messagebox, filedialog
-            from neurotorchmz.gui import window
-            from neurotorchmz.gui.tab3 import TabROIFinder_InvalidateEvent
-
         gui_events.WindowLoadedEvent.register(self.on_window_loaded)
         gui_events.SynapseTreeviewContextMenuEvent.register(self.on_synapse_tv_context_menu_create)
 
@@ -47,7 +39,15 @@ class ImageJHandler:
 
     def on_window_loaded(self, e: gui_events.WindowLoadedEvent) -> None:
         """ Creates the GUI elements for this plugin. Is only called from WindowLoadedEvent in GUI mode """
+        global tk, messagebox, filedialog, window, TabROIFinder_InvalidateEvent
         assert e.session.window is not None
+
+        import tkinter as tk
+        from tkinter import messagebox, filedialog
+        from neurotorchmz.gui import window
+        from neurotorchmz.gui.tab3 import TabROIFinder_InvalidateEvent
+
+        self.plugin_menu = e.menu_plugins()
 
         self.menu_export_img = tk.Menu(e.session.window.menu_file_export, tearoff=0)
         self.menu_export_img_diff = tk.Menu(e.session.window.menu_file_export, tearoff=0)
@@ -65,6 +65,8 @@ class ImageJHandler:
         self.menu_export_img.add_command(label="As copy (faster on live measurements)", command=lambda: self.export_img(asCopy=True))
         self.menu_export_img_diff.add_command(label="As wrapper (faster loading, less memory)", command=lambda: self.export_img_diff(asCopy=False))
         self.menu_export_img_diff.add_command(label="As copy (faster on live measurements)", command=lambda: self.export_img_diff(asCopy=True))
+
+        self.plugin_menu.add_command(label="Open ROI Manager", command=self.open_roi_manager, state="disabled")
 
         e.session.window.menu_run.add_command(label="Start Fiji/ImageJ", command=self.menu_start_imageJ_click)
         self.menu_settings.add_command(label="Locate installation", command=self.menu_locate_installation_click)
@@ -421,6 +423,7 @@ class ImageJHandler:
         self.session.window.menu_file_export.entryconfig("To Fiji/ImageJ (video)", state="normal")
         self.session.window.menu_file_export.entryconfig("To Fiji/ImageJ (delta video)", state="normal")
         self.session.window.menu_file_export.entryconfig("To Fiji/ImageJ (ROIs)", state="normal")
+        self.plugin_menu.entryconfig("Open ROI Manager", state="normal")
 
     def _loading_error_callback(self, ex: Exception):
         """ Internal callback on an error when loading ImageJ to reset the start Button"""

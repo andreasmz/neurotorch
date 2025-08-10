@@ -1,6 +1,9 @@
 from ..core.events import Event
 from ..core.session import Session
+from ..core.plugin_manager import plugins
 import tkinter as tk
+from types import ModuleType
+import inspect
 
 class ImageObjectChangedEvent(Event):
     """ Triggers after the ImageObject of a session was changed """
@@ -19,11 +22,27 @@ class WindowLoadedEvent(Event):
         assert self.session.window is not None
         return self.session.window.menu_settings
     
-    @property
     def menu_plugins(self) -> tk.Menu:
+        """ Get the menu for the corosponding plugin"""
+        global plugins
+
         assert self.session.window is not None
-        return self.session.window.menu_plugins
-    
+
+        frame = inspect.currentframe()
+        if frame is None:
+            raise RuntimeError(f"Unexpected empty frame when trying to retrieve the plugin")
+        caller_frame = frame.f_back
+        caller_module = inspect.getmodule(caller_frame)
+        if caller_module is None:
+            raise RuntimeError(f"Called menu_plugin from a non package")
+
+        for p in plugins:
+            if caller_module.__name__ in p.__name__:
+                plugin = p
+                break
+        else:
+            raise RuntimeError(f"Called menu_plugin from a non plugin")
+        return self.session.window.plugin_menus[plugin]
 
 class WindowTKReadyEvent(WindowLoadedEvent):
     """ Triggers after the GUI has loaded and tkinter is in main loop """

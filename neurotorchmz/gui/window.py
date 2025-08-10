@@ -12,6 +12,7 @@ import subprocess
 import os
 import platformdirs
 from collections import deque
+from types import ModuleType
 matplotlib.use('TkAgg')
 
 from .components.general import Statusbar
@@ -122,10 +123,12 @@ class Neurotorch_GUI:
         # Settings menu
 
         # Plugins menu
+        self.plugin_menus: dict[ModuleType, tk.Menu] = {}
         for p in plugin_manager.plugins:
             name = str(p.__plugin_name__)
             plugin_menu = tk.Menu(self.menu_plugins, tearoff=0)
             self.menu_plugins.add_cascade(label=name, menu=plugin_menu)
+            self.plugin_menus[p] = plugin_menu
             ToolTip(plugin_menu, msg=p.__plugin_desc__, follow=True, delay=0.5)
 
         # About menu
@@ -143,7 +146,7 @@ class Neurotorch_GUI:
         self.tabs[TabWelcome] = TabWelcome(self.session, self.root, self.tabMain)
         self.tabs[TabImage] = TabImage(self.session, self.root, self.tabMain)
         self.tabs[TabSignal] = TabSignal(self.session, self.root, self.tabMain)
-        self.tabs[TabROIFinder] = TabROIFinder(self.session, self.root, self.tabMain)
+        #self.tabs[TabROIFinder] = TabROIFinder(self.session, self.root, self.tabMain)
         #self.tabs[TabAnalysis] = TabAnalysis(self.session, self.root, self.tabMain)
         for t in self.tabs.values(): t.init()
         self.tabMain.select(self.tabs[TabImage].tab)
