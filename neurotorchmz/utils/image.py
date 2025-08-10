@@ -140,6 +140,10 @@ class AxisImage:
         return self.MaxProps.img
     
     @property
+    def image(self) -> np.ndarray|None:
+        return self._img
+    
+    @property
     def ImageProps(self) -> ImageProperties:
         """ Returns the properties of the original image """
         if self._props is None:

@@ -40,13 +40,11 @@ class SignalObject:
 
     def clear_peaks(self):
         self._peaks: list[int]|None = None
-        self._img_diff_without_signal: ImageProperties|None = None
-        self._img_diff_signal_only: ImageProperties|None = None
 
         self._img_without_signal_views: dict[ImageView, AxisImage] = {}
-        self._img_signal_only_views: dict[ImageView, AxisImage] = {}
+        self._img_only_signal_views: dict[ImageView, AxisImage] = {}
         self._img_diff_without_signal_views: dict[ImageView, AxisImage] = {}
-        self._img_diff_no_signal_views: dict[ImageView, AxisImage] = {}
+        self._img_diff_only_signal_views: dict[ImageView, AxisImage] = {}
 
     @property
     def signal(self) -> np.ndarray|None:
@@ -118,27 +116,59 @@ class SignalObject:
         
         return self._img_diff_signal_only
     
-    def img_without_signal_view(self, mode: ImageView) -> AxisImage:
-        if mode not in self._img_diff_without_signal_views.keys():
-            if mode == ImageView.DEFAULT:
-                if self.imgObj.imgDiff is None or self.peaks is None:
-                    return AxisImage(None, axis=mode.value, name=self.imgObj.name)
-                _slices = []
-                for i, p in enumerate([*self.peaks, self.imgObj.imgDiff.shape[0]]):
-                    pStart = (self.peaks[i-1]+1 + SignalObject.PEAK_WIDTH_RIGHT) if i >= 1 else 0
-                    pStop = p - SignalObject.PEAK_WIDTH_LEFT if i != len(self.peaks) else p
+    def _get_view(self, img_type: Literal["img", "img_diff"], slice_type: Literal["only_signal", "without_signal"], mode: ImageView) -> AxisImage:
+        """ Internal function to get a view for every combination of img/img_diff and with or without signal frames """
+        match img_type:
+            case "img":
+                _img = self.imgObj.img
+                p_offset = 1
+                match slice_type:
+                    case "only_signal":
+                        _views = self._img_only_signal_views
+                    case "without_signal":
+                        _views = self._img_without_signal_views
+                    case _:
+                        raise ValueError(f"Invalid value '{slice_type}' for parameter slice_type")
+            case "img_diff":
+                _img = self.imgObj.imgDiff
+                p_offset = 0
+                match slice_type:
+                    case "only_signal":
+                        _views = self._img_diff_only_signal_views
+                    case "without_signal":
+                        _views = self._img_diff_without_signal_views
+                    case _:
+                        raise ValueError(f"Invalid value '{slice_type}' for parameter slice_type")
+            case _:
+                raise ValueError(f"Invalid value '{img_type}' for parameter img_type")
+            
+        if _img is None or self.peaks is None:
+            return AxisImage(None, axis=mode.value, name=self.imgObj.name)
+        
+        if not ImageView.DEFAULT in _views.keys():
+            _slices = []
+            if slice_type == "only_signal":
+                for p in self.peaks:
+                    p += p_offset
+                    pStart = max((p - SignalObject.PEAK_WIDTH_LEFT), 0)
+                    pStop = min((p + SignalObject.PEAK_WIDTH_RIGHT + 1) , _img.shape[0])
+                    _slices.append(slice(pStart, pStop))
+            elif slice_type == "without_signal":
+                for i, p in enumerate([*self.peaks, _img.shape[0]]):
+                    pStart = (self.peaks[i-1]+1+p_offset + SignalObject.PEAK_WIDTH_RIGHT) if i >= 1 else 0
+                    pStop = p + p_offset - SignalObject.PEAK_WIDTH_LEFT if i != len(self.peaks) else p
                     if pStop <= pStart:
                         continue
                     _slices.append(slice(pStart, pStop))
-                if len(_slices) > 0:
-                    _sliceObj = np.s_[_slices]
-                    self._img_diff_without_signal_views[mode] = AxisImage(img=np.concatenate([self.imgObj.imgDiff[_slice] for _slice in _sliceObj]), axis=mode.value, name=self.imgObj.name)
-                else:
-                    self._img_diff_without_signal_views[mode] = AxisImage(img=None, axis=mode.value, name=self.imgObj.name)
-        
+            if len(_slices) > 0:
+                _sliceObj = np.s_[_slices]
+                _views[mode] = AxisImage(img=np.concatenate([_img[_slice] for _slice in _sliceObj]), axis=mode.value, name=self.imgObj.name)
+            else:
+                _views[mode] = AxisImage(img=None, axis=mode.value, name=self.imgObj.name)
 
-            #self._img_diff_without_signal_views[mode] = AxisImage(self.img_diff_without_signal.img, axis=mode.value, name=self.imgObj.name)
-        return self._img_diff_without_signal_views[mode]
+        if mode not in _views.keys():
+            _views[mode] = AxisImage(_views[ImageView.DEFAULT].image, axis=ImageView.DEFAULT.value, name=self.imgObj.name)
+        return _views[mode]
     
     def img_diff_without_signal_view(self, mode: ImageView) -> AxisImage:
         if mode not in self._img_diff_without_signal_views.keys():
