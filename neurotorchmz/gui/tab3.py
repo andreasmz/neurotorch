@@ -6,6 +6,7 @@ from ..utils import synapse_detection_integration as detection
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.backends._backend_tk import NavigationToolbar2Tk
 from matplotlib.ticker import MaxNLocator
@@ -36,7 +37,7 @@ class TabROIFinder(Tab):
         self.ax2Image = None
         self.ax1_colorbar = None
         self.ax2_colorbar = None
-        self.frameAlgoOptions: tk.Frame|None = None
+        self.frameAlgoOptions: tk.LabelFrame|None = None
 
     def init(self):
         self.notebook.add(self.tab, text="Synapse ROI Finder")
@@ -93,7 +94,7 @@ class TabROIFinder(Tab):
                                           allowSingleframe=True)
         self.tvSynapses.pack(fill="both")
 
-        self.figure1 = plt.Figure(figsize=(20,10), dpi=100)
+        self.figure1 = Figure(figsize=(20,10), dpi=100)
         self.ax1 = self.figure1.add_subplot(221)  
         self.ax2 = self.figure1.add_subplot(222, sharex=self.ax1, sharey=self.ax1)  
         self.ax3 = self.figure1.add_subplot(223)  
@@ -136,7 +137,9 @@ class TabROIFinder(Tab):
             if event.selectedROIS: self.invalidate_selected_ROI(*event.selectedROI_tuple)
 
     def comboImage_changed(self):
-        signalObj = self.session.active_image_signal
+        if self.active_image_object is None:
+            return # TODO: Check
+        signalObj = self.active_image_object.signal_obj
         
         if signalObj is None or self.varImage.get() != "Delta" or signalObj.peaks is None:
             self.comboFrame['values'] = []
@@ -192,6 +195,9 @@ class TabROIFinder(Tab):
     def invalidate_image(self):
         imgObj = self.active_image_object
 
+        if self.detectionAlgorithm is None:
+            return
+
         self.detectionAlgorithm.update(image_prop=self.current_input_image)
 
         self.ax2.set_title("Delta Video")
@@ -208,11 +214,11 @@ class TabROIFinder(Tab):
                 axImg.remove()
             ax.set_axis_off()
         
-        if imgObj is None or imgObj.img is None or imgObj.imgDiff is None:
+        if imgObj is None or imgObj.img is None or imgObj.imgDiff is None or (_img := imgObj.imgView(ImageView.SPATIAL).Mean) is None:
             self.invoke_update(TabROIFinder_InvalidateEvent(rois=True))
             return
         
-        self.ax1Image = self.ax1.imshow(imgObj.imgView(ImageView.SPATIAL).Mean, cmap="Greys_r") 
+        self.ax1Image = self.ax1.imshow(_img, cmap="Greys_r") 
         self.ax1.set_axis_on()
         self.ax1_colorbar = self.figure1.colorbar(self.ax1Image, ax=self.ax1)
 
@@ -340,7 +346,6 @@ class TabROIFinder(Tab):
     def current_input_image(self) -> ImageProperties|None:
         """ Return the current input image as a ImageProperties object which caches statistics about the image """
         imgObj = self.session.active_image_object
-        signal = self.session.active_image_signal
         self._current_input_description_str = "NO IMAGE" # Stores a string describing the current input image 
         if imgObj is None or imgObj.imgDiff is None:
             return None
@@ -363,14 +368,14 @@ class TabROIFinder(Tab):
                 self._current_input_description_str = "Delta (std.)"
                 return imgObj.imgDiffView(ImageView.SPATIAL).StdNormedProps
             case "Delta (max.), signal removed":
-                if signal is None or signal.imgObj_sliced is None:
+                if imgObj.signal_obj.signal is None:
                     self._current_input_description_str = "SIGNAL MISSING"
                     return None
-                elif signal.imgObj_sliced is False:
+                elif imgObj.signal_obj.img_diff_without_signal_view(ImageView.SPATIAL).image is False:
                     self._current_input_description_str = "NO IMAGE"
                     return None
                 self._current_input_description_str = "Delta (max.), signal removed"
-                return signal.imgObj_sliced.imgDiffView(ImageView.SPATIAL).MaxProps
+                return imgObj.signal_obj.img_diff_without_signal_view(ImageView.SPATIAL).MaxProps
             case _:
                 return None
         
@@ -380,7 +385,7 @@ class TabROIFinder(Tab):
         self.current_input_image
         return self._current_input_description_str
         
-    def detect(self) -> Task:
+    def detect(self) -> Task|None:
         if self.detectionAlgorithm is None or self.session.active_image_object is None:
             self.root.bell()
             return
@@ -389,6 +394,8 @@ class TabROIFinder(Tab):
             return 
 
         def _detect(task: Task):
+            if self.detectionAlgorithm is None or self.current_input_image is None:
+                return
             self.tvSynapses.ClearSynapses(target='non_staged')
             self.tvSynapses.SyncSynapses()
             task.set_step_progress(0, "")
