@@ -83,19 +83,19 @@ class SignalObject:
         return self._peaks
     
     @property
-    def img_only_signal(self) -> ImageProperties:
+    def img_props_only_signal(self) -> ImageProperties:
         return self.get_view("img", "only_signal", mode=ImageView.DEFAULT).ImageProps
     
     @property
-    def img_without_signal(self) -> ImageProperties:
+    def img_props_without_signal(self) -> ImageProperties:
         return self.get_view("img", "without_signal", mode=ImageView.DEFAULT).ImageProps
     
     @property
-    def img_diff_only_signal(self) -> ImageProperties:
+    def img_diff_props_only_signal(self) -> ImageProperties:
         return self.get_view("img_diff", "only_signal", mode=ImageView.DEFAULT).ImageProps
     
     @property
-    def img_diff_without_signal(self) -> ImageProperties:
+    def img_diff_props_without_signal(self) -> ImageProperties:
         return self.get_view("img_diff", "without_signal", mode=ImageView.DEFAULT).ImageProps
     
     def img_only_signal_view(self, mode: ImageView) -> AxisImage:
@@ -164,6 +164,19 @@ class SignalObject:
         if mode not in _views.keys():
             _views[mode] = AxisImage(_views[ImageView.DEFAULT].image, axis=ImageView.DEFAULT.value, name=self.imgObj.name)
         return _views[mode]
+    
+    def export_img_only_signal(self, path: Path) -> None:
+        """ Export the current img """
+        if self.img_props_only_signal.img is None:
+            raise NoImageError()
+        if not path.is_file() or not path.parent.exists():
+            raise ValueError(f"The path '{str(path)}' is invalid")
+        match path.suffix.lower():
+            case ".tif"|".tiff":
+                tifffile.imwrite(path, data=self.img_props_only_signal.img, metadata=self.imgObj.metadata)
+            case _:
+                raise UnsupportedExtensionError(f"The extension '{path.suffix}' is not supported for exporting")
+        logger.info(f"Exported the video as '{path.name}'")
     
     @classmethod
     def load_settings(cls) -> None:

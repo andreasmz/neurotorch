@@ -313,7 +313,7 @@ class ImageObject(Serializable):
 
             :raises UnsupportedImageError: The image is not a valid image stack
         """
-        return self.imgProps.img
+        return self._img
     
     @img.setter
     def img(self, image: np.ndarray):
@@ -328,7 +328,9 @@ class ImageObject(Serializable):
 
             :raises UnsupportedImageError: The image is not a valid image stack
         """
-        return self.imgDiffProps.img
+        if self._img_diff is None and self.imgS is not None:
+            self._img_diff = np.diff(self.imgS, axis=0)
+        return self._img_diff
 
     @imgDiff.setter
     def imgDiff(self, image: np.ndarray):
@@ -567,6 +569,34 @@ class ImageObject(Serializable):
         self._task_open_image.start()
         return self._task_open_image
     
+    SUPPORTED_EXPORT_EXTENSIONS = [("Tiff file", ("*.tiff", "*.tif"))]
+    
+    def export_img(self, path: Path) -> None:
+        """ Export the current img """
+        if self.img is None:
+            raise NoImageError()
+        if not path.is_file() or not path.parent.exists():
+            raise ValueError(f"The path '{str(path)}' is invalid")
+        match path.suffix.lower():
+            case ".tif"|".tiff":
+                tifffile.imwrite(path, data=self.img, metadata=self.metadata)
+            case _:
+                raise UnsupportedExtensionError(f"The extension '{path.suffix}' is not supported for exporting")
+        logger.info(f"Exported the video as '{path.name}'")
+
+    def export_img_diff(self, path: Path) -> None:
+        """ Export the current img_diff"""    
+        if self.imgDiff is None:
+            raise NoImageError()
+        if not path.is_file() or not path.parent.exists():
+            raise ValueError(f"The path '{str(path)}' is invalid")
+        match path.suffix.lower():
+            case ".tif"|".tiff":
+                tifffile.imwrite(path, data=self.imgDiff, metadata=self.metadata)
+            case _:
+                raise UnsupportedExtensionError(f"The extension '{path.suffix}' is not supported for exporting")
+        logger.info(f"Exported the delta video as '{path.name}'")
+    
     # Static functions
 
     @staticmethod
@@ -593,6 +623,13 @@ class ImageView(Enum):
 class ImageObjectError(Exception):
     """ ImageObject Error"""
     pass
+
+class NoImageError(ImageObjectError):
+    """ There is no img or img_diff loaded"""
+    pass
+
+class UnsupportedExtensionError(ImageObjectError):
+    """ Raised when the extension of the image is not supported"""
 
 class AlreadyLoadingError(ImageObjectError):
     """ Already loading an Image into an ImageObject"""

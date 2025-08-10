@@ -11,6 +11,7 @@ from pathlib import Path
 import platform
 import subprocess
 import os
+import platformdirs
 from collections import deque
 matplotlib.use('TkAgg')
 
@@ -223,13 +224,48 @@ class Neurotorch_GUI:
         if image_path is None or image_path == "":
             return
         imgObj = ImageObject()
-        self.session.set_active_image_object(imgObj)
         task = imgObj.open_file(Path(image_path), precompute=True, calc_convoluted=noisy, run_async=True)
-        task.add_callback(self.session.notify_image_object_change)
+        task.add_callback(lambda: self.session.set_active_image_object(imgObj))
         task.set_error_callback(self._open_image_error_callback)
     
     def menu_file_close_click(self):
         self.session.set_active_image_object(None)
+
+    def menu_export_img_click(self):
+        if self.session.active_image_object is None or self.session.active_image_object.img is None:
+            self.root.bell()
+            return
+        path = filedialog.asksaveasfilename(title="Neurotorch: Export video", initialdir=platformdirs.user_desktop_path(), filetypes=ImageObject.SUPPORTED_EXPORT_EXTENSIONS)
+        if not path:
+            return
+        path = Path(path)
+        try:
+            self.session.active_image_object.export_img(path)
+        except UnsupportedExtensionError:
+            messagebox.showerror("Neurotorch: Export video", f"Failed to export the video: The file type '{path.suffix}' is not supported")
+        except Exception as ex:
+            logger.error("Failed to export the video:", exc_info=True)
+            messagebox.showerror("Neurotorch: Export video", f"Failed to export the video. For details see the logs")
+        else:
+            messagebox.showinfo("Neurotorch: Export video", f"Successfully exported video '{path.name}'")
+
+    def menu_export_img_only_signal_click(self):
+        if self.session.active_image_object is None or self.session.active_image_object.signal_obj.img_props_only_signal.img is None:
+            self.root.bell()
+            return
+        path = filedialog.asksaveasfilename(title="Neurotorch: Export video (signal frames only)", initialdir=platformdirs.user_desktop_path(), filetypes=ImageObject.SUPPORTED_EXPORT_EXTENSIONS)
+        if not path:
+            return
+        path = Path(path)
+        try:
+            self.session.active_image_object.signal_obj.export_img_only_signal(path)
+        except UnsupportedExtensionError:
+            messagebox.showerror("Neurotorch: Export video", f"Failed to export the video: The file type '{path.suffix}' is not supported")
+        except Exception as ex:
+            logger.error("Failed to export the video:", exc_info=True)
+            messagebox.showerror("Neurotorch: Export video", f"Failed to export the video. For details see the logs")
+        else:
+            messagebox.showinfo("Neurotorch: Export video", f"Successfully exported video '{path.name}'")
         
     def menu_image_denoise_click(self, func: Callable[..., np.ndarray]|None, func_args: dict|None):
         imgObj = self.session.active_image_object
@@ -260,53 +296,50 @@ class Neurotorch_GUI:
         messagebox.showinfo("Neurotorch", f"© Andreas Brilka 2025\nYou are running Neurotorch {__version__}")
 
     def menu_neurotorch_logs_click(self):
-        if platform.system() == 'Darwin':       # macOS
-            subprocess.call(('open', settings.log_path))
-        elif platform.system() == 'Windows':    # Windows
+        if sys.platform.startswith('darwin'):  # macOS
+            subprocess.Popen(['open', settings.log_path], start_new_session=True)
+        elif os.name == 'nt':  # Windows
             os.startfile(settings.log_path)
-        else:                                   # linux variants
-            subprocess.call(('xdg-open', settings.log_path))
+        elif os.name == 'posix':  # Linux / Unix-Systeme
+            subprocess.Popen(['xdg-open', filepath], start_new_session=True)
 
     def menu_debug_load_peaks_click(self):
         path = settings.app_data_path / "img_peaks.dump"
         if not path.exists() or not path.is_file():
-            self.root.bell()
+            if self.root is not None:
+                self.root.bell()
+            else:
+                logger.warning(f"Failed to load '{path.name}': The path does not exist")
             return
         
         with open(path, 'rb') as f:
             _img = pickle.load(f)
             _name = "img_peaks.dump"
             imgObj = ImageObject()
-            task = Task(lambda task, **kwargs: imgObj.set_image_precompute(**kwargs), name="Open image", run_async=True)
+            task = imgObj.set_image_precompute(img=_img, name=_name, run_async=False)
             task.add_callback(lambda: self.session.set_active_image_object(imgObj))
             task.set_error_callback(self._open_image_error_callback)
-            task.start(img=_img, name=_name, run_async=False)
 
     def menu_debug_save_peaks_click(self):
-        imgObj = self.session.active_image_object
-        if imgObj is None or imgObj.img is None:
-            self.root.bell()
-            return
-        signalObj = imgObj.signal_obj
-        if signalObj.peaks is None or len(signalObj.peaks) == 0:
-            self.root.bell()
-            return
-        if not messagebox.askyesnocancel("Neurotorch", "Do you want to save the current diffImg Peak Frames in a Dump?"):
-            return
-        _peaksExtended = []
-        for p in signalObj.peaks:
-            if p != 0 and p < (imgObj.img.shape[0] - 1):
-                if len(_peaksExtended) == 0:
-                    _peaksExtended.extend([int(p-1),int(p),int(p+1)])
-                else:
-                    _peaksExtended.extend([int(p),int(p+1)])
+        if self.session.active_image_object is None:
+            if self.root is not None:
+                self.root.bell()
             else:
-                logger.info(f"Skipped peak {p} as it is to near to the edge")
-        _peaksExtended.extend([int(max(signalObj.peaks) + 2)])
-        logger.info("Exported frames", _peaksExtended)
+                logger.warning(f"Can't save the current dump as no video is opened")
+            return
+        _img = self.session.active_image_object.signal_obj.img_props_only_signal.img
+        if _img is None:
+            if self.root is not None:
+                messagebox.showwarning(f"Can't save the current dump of peak frames as it would be empty. Check if you have peak frames")
+            else:
+                logger.warning(f"Can't save the current dump as the signal slice would be empty")
+            return
+        if self.root is not None and not messagebox.askyesnocancel("Neurotorch", f"Do you want to save the current video as a dump containing only the peak frames?"):
+            return
         savePath = settings.app_data_path / "img_peaks.dump"
         with open(savePath, 'wb') as f:
-            pickle.dump(imgObj.img[_peaksExtended, :, :], f, protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump(_img, f, protocol=pickle.HIGHEST_PROTOCOL)
+        logger.info(f"Saved the delta video dump to APPDATA/img_peaks.dump")
 
     def menu_debug_enable_debugging_click(self):
         logs.start_debugging()
