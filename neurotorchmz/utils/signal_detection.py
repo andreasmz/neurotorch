@@ -178,6 +178,19 @@ class SignalObject:
             case _:
                 raise UnsupportedExtensionError(f"The extension '{path.suffix}' is not supported for exporting")
         logger.info(f"Exported the video as '{path.name}'")
+
+    def export_img_without_signal(self, path: Path) -> None:
+        """ Export the current img """
+        if self.img_props_without_signal.img is None:
+            raise NoImageError()
+        if not path.is_file() or not path.parent.exists():
+            raise ValueError(f"The path '{str(path)}' is invalid")
+        match path.suffix.lower():
+            case ".tif"|".tiff":
+                tifffile.imwrite(path, data=self.img_props_without_signal.img, metadata=self.imgObj.metadata)
+            case _:
+                raise UnsupportedExtensionError(f"The extension '{path.suffix}' is not supported for exporting")
+        logger.info(f"Exported the video as '{path.name}'")
     
     @classmethod
     def load_settings(cls) -> None:

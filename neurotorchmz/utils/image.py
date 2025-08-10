@@ -249,6 +249,7 @@ class ImageObject(Serializable):
     def clear(self):
         """ Resets the ImageObject and clears all stored images and metadata """
         self._name: str|None = None
+        self._name_without_extension: str|None = None
         self._path: Path|None = None
         self._metdata: dict|None = None
 
@@ -294,6 +295,17 @@ class ImageObject(Serializable):
     def name(self, val):
         if val is None or isinstance(val, str):
             self._name = val
+
+    @property
+    def name_without_extension(self) -> str:
+        if self._name_without_extension is None:
+            return self.name
+        return self._name_without_extension
+    
+    @name_without_extension.setter
+    def name_without_extension(self, val):
+        if val is None or isinstance(val, str):
+            self._name_without_extension = val
 
     @property
     def path(self) -> Path|None:
@@ -489,7 +501,7 @@ class ImageObject(Serializable):
             self._task_open_image.start()
         return self._task_open_image
         
-    def set_image_precompute(self, img:np.ndarray, name:str|None = None, run_async:bool = True) -> Task:
+    def set_image_precompute(self, img:np.ndarray, name:str|None = None, name_without_extension: str|None = None, run_async:bool = True) -> Task:
         """ 
             Set a new image with a given name and run precompute_image() on it.
 
@@ -503,6 +515,7 @@ class ImageObject(Serializable):
             raise UnsupportedImageError()
         self.img = img
         self.name = name
+        self.name_without_extension = name_without_extension
         return self.precompute_image(run_async=run_async)
 
 
@@ -560,6 +573,7 @@ class ImageObject(Serializable):
                     self._metdata = collections.OrderedDict(sorted(_pimsImg.get_metadata_raw().items()))
             self._path = path
             self.name = path.name
+            self.name_without_extension = path.stem
             
             if precompute:
                 self.precompute_image(task_continue=True, run_async=run_async)

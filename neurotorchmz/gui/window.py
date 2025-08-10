@@ -78,6 +78,15 @@ class Neurotorch_GUI:
         self.menu_file.add_separator()
         self.menu_file.add_command(label="Close file", command=self.menu_file_close_click)
 
+        self.menu_file_export_file = tk.Menu(self.menu_file_export, tearoff=0)
+        self.menu_file_export.add_cascade(label="As file (video)", menu=self.menu_file_export_file)
+        self.menu_file_export_file.add_command(label="export", command=lambda: self.menu_export_click("img"))
+        self.menu_file_export_file.add_separator()
+        self.menu_file_export_file.add_command(label="... without stimulation", command=lambda: self.menu_export_click("img_without_signal"))
+        self.menu_file_export_file.add_command(label="... including only stimulation", command=lambda: self.menu_export_click("img_only_signal"))
+        self.menu_file_export.add_command(label="As file (delta video)", command=lambda: self.menu_export_click("img_diff"))
+        
+
         # Edit menu
         self.menu_denoise = tk.Menu(self.menu_edit,tearoff=0)
         self.menu_edit.add_cascade(label="Denoise imgDiff", menu=self.menu_denoise)
@@ -231,37 +240,49 @@ class Neurotorch_GUI:
     def menu_file_close_click(self):
         self.session.set_active_image_object(None)
 
-    def menu_export_img_click(self):
-        if self.session.active_image_object is None or self.session.active_image_object.img is None:
-            self.root.bell()
+    def menu_export_click(self, what: Literal["img", "img_diff", "img_only_signal", "img_without_signal"]):
+        if self.session.active_image_object is None:
+            messagebox.showwarning("Neurotorch", "You must open a file before you can export the video")
             return
-        path = filedialog.asksaveasfilename(title="Neurotorch: Export video", initialdir=platformdirs.user_desktop_path(), filetypes=ImageObject.SUPPORTED_EXPORT_EXTENSIONS)
+        if what == "img" and self.session.active_image_object.img is None:
+            messagebox.showwarning("Neurotorch", "You must open a file before you can export the video")
+            return
+        elif what == "img_diff" and self.session.active_image_object.imgDiff is None:
+            messagebox.showwarning("Neurotorch", "You must open a file before you can export the video")
+            return
+        elif what == "img_only_signal" and self.session.active_image_object.signal_obj.img_props_only_signal.img is None:
+            messagebox.showwarning("Neurotorch", "The video without signal would be empty. Try to adjust the signal settings")
+            return
+        elif what == "img_without_signal" and self.session.active_image_object.signal_obj.img_props_without_signal.img is None:
+            messagebox.showwarning("Neurotorch", "The video including only the signal would be empty. Try to adjust the signal settings")
+            return
+        ini_dir = self.session.active_image_object.path.parent if self.session.active_image_object.path is not None else platformdirs.user_downloads_path()
+        ini_file = self.session.active_image_object.name_without_extension if self.session.active_image_object.name_without_extension is not None else "export"
+        if what == "img_diff":
+            ini_file += "_delta"
+        elif what == "img_only_signal":
+            ini_file += "_only_stimulation"
+        elif what == "img_without_signal":
+            ini_file += "_without_stimulation"
+        elif what != "img":
+            raise RuntimeError(f"Invalid parameter '{what}'")
+        
+        path = filedialog.asksaveasfilename(title="Neurotorch: Export video", initialdir=ini_dir, filetypes=ImageObject.SUPPORTED_EXPORT_EXTENSIONS)
         if not path:
             return
         path = Path(path)
         try:
-            self.session.active_image_object.export_img(path)
+            if what == "img":
+                self.session.active_image_object.export_img(path)
+            elif what == "img_diff":
+                self.session.active_image_object.export_img_diff(path)
+            elif what == "img_only_signal":
+                self.session.active_image_object.signal_obj.export_img_only_signal(path)
+            elif what == "img_without_signal":
+                self.session.active_image_object.signal_obj.export_img_without_signal(path)
         except UnsupportedExtensionError:
             messagebox.showerror("Neurotorch: Export video", f"Failed to export the video: The file type '{path.suffix}' is not supported")
-        except Exception as ex:
-            logger.error("Failed to export the video:", exc_info=True)
-            messagebox.showerror("Neurotorch: Export video", f"Failed to export the video. For details see the logs")
-        else:
-            messagebox.showinfo("Neurotorch: Export video", f"Successfully exported video '{path.name}'")
-
-    def menu_export_img_only_signal_click(self):
-        if self.session.active_image_object is None or self.session.active_image_object.signal_obj.img_props_only_signal.img is None:
-            self.root.bell()
-            return
-        path = filedialog.asksaveasfilename(title="Neurotorch: Export video (signal frames only)", initialdir=platformdirs.user_desktop_path(), filetypes=ImageObject.SUPPORTED_EXPORT_EXTENSIONS)
-        if not path:
-            return
-        path = Path(path)
-        try:
-            self.session.active_image_object.signal_obj.export_img_only_signal(path)
-        except UnsupportedExtensionError:
-            messagebox.showerror("Neurotorch: Export video", f"Failed to export the video: The file type '{path.suffix}' is not supported")
-        except Exception as ex:
+        except Exception:
             logger.error("Failed to export the video:", exc_info=True)
             messagebox.showerror("Neurotorch: Export video", f"Failed to export the video. For details see the logs")
         else:
