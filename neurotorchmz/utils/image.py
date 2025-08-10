@@ -1,18 +1,16 @@
 from ..core.task_system import Task  
 from ..core.serialize import Serializable, DeserializeError, SerializeError
 from ..core.logs import logger
-from ..core.settings import UserSettings
 
 import collections
 from enum import Enum
-from typing import Callable, Literal, Self, Any, cast, Protocol
+from typing import Callable, Self, Any, cast
 import numpy as np
 import pims
 import tifffile
 import nd2
 from pathlib import Path
 import gc
-from scipy.signal import find_peaks
 
 class ImageProperties:
     """
