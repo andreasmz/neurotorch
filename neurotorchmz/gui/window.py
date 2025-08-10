@@ -7,13 +7,14 @@ from tkinter import ttk, messagebox, filedialog
 from tktooltip import ToolTip
 import pickle
 import matplotlib
+matplotlib.use('TkAgg')
+
 from pathlib import Path
 import subprocess
 import os
 import platformdirs
 from collections import deque
 from types import ModuleType
-matplotlib.use('TkAgg')
 
 from .components.general import Statusbar
 from ..gui import events as window_events
@@ -128,6 +129,8 @@ class Neurotorch_GUI:
             name = str(p.__plugin_name__)
             plugin_menu = tk.Menu(self.menu_plugins, tearoff=0)
             self.menu_plugins.add_cascade(label=name, menu=plugin_menu)
+            if not p.__package__:
+                logger.error(f"It seems like '{p.__plugin_name__}' is not a package")
             self.plugin_menus[p] = plugin_menu
             ToolTip(plugin_menu, msg=p.__plugin_desc__, follow=True, delay=0.5)
 

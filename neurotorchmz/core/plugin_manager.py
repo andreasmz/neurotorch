@@ -7,6 +7,7 @@ import importlib.util
 import sys
 from types import ModuleType
 from pathlib import Path
+import inspect
 
 plugins: list[ModuleType] = []
 
@@ -36,3 +37,15 @@ def load_plugins_from_dir(path: Path, prefix: str) -> None:
             continue
         plugins.append(module_type)
         logger.debug(f"Loaded plugin {module_info.name}")
+
+def get_module() -> ModuleType:
+    """ Returns the module of the caller """
+    frame = inspect.currentframe()
+    if frame is None:
+        raise RuntimeError(f"Unexpected empty frame when trying to retrieve the plugin")
+    caller_frame = frame.f_back
+    caller_module = inspect.getmodule(caller_frame)
+    if caller_module is None:
+        raise RuntimeError(f"Failed to get the module of the plugin")
+    
+    return caller_module

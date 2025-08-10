@@ -22,22 +22,13 @@ class WindowLoadedEvent(Event):
         assert self.session.window is not None
         return self.session.window.menu_settings
     
-    def menu_plugins(self) -> tk.Menu:
+    def menu_plugins(self, plugin_module) -> tk.Menu:
         """ Get the menu for the corosponding plugin"""
         global plugins
 
         assert self.session.window is not None
-
-        frame = inspect.currentframe()
-        if frame is None:
-            raise RuntimeError(f"Unexpected empty frame when trying to retrieve the plugin")
-        caller_frame = frame.f_back
-        caller_module = inspect.getmodule(caller_frame)
-        if caller_module is None:
-            raise RuntimeError(f"Called menu_plugin from a non package")
-
         for p in plugins:
-            if caller_module.__name__ in p.__name__:
+            if p.__name__ in plugin_module.__name__:
                 plugin = p
                 break
         else:

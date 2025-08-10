@@ -8,6 +8,8 @@ import shutil
 from scyjava import jimport
 import imagej
 
+plugin_module = plugin_manager.get_module()
+
 class ImageJHandler:
     """
         Provides a connection between Neurotorch and Fiji/ImageJ using pyimageJ
@@ -15,6 +17,7 @@ class ImageJHandler:
 
     def __init__(self, session: Session):
         self.ij = None
+        self.headless: bool = False
         self.session = session
         self.task: Task|None = None
 
@@ -40,6 +43,7 @@ class ImageJHandler:
     def on_window_loaded(self, e: gui_events.WindowLoadedEvent) -> None:
         """ Creates the GUI elements for this plugin. Is only called from WindowLoadedEvent in GUI mode """
         global tk, messagebox, filedialog, window, TabROIFinder_InvalidateEvent
+        global plugin_module
         assert e.session.window is not None
 
         import tkinter as tk
@@ -47,7 +51,7 @@ class ImageJHandler:
         from neurotorchmz.gui import window
         from neurotorchmz.gui.tab3 import TabROIFinder_InvalidateEvent
 
-        self.plugin_menu = e.menu_plugins()
+        self.plugin_menu = e.menu_plugins(plugin_module)
 
         self.menu_export_img = tk.Menu(e.session.window.menu_file_export, tearoff=0)
         self.menu_export_img_diff = tk.Menu(e.session.window.menu_file_export, tearoff=0)
@@ -120,6 +124,8 @@ class ImageJHandler:
             if self.root is not None:
                 messagebox.showinfo("Neurotorch: Fiji/ImageJ bridge", "Failed to start Fiji/ImageJ: An instance is already running")
             return
+        
+        self.headless = headless
 
         def _start_imageJ_Thread(task: Task, path_imagej: Path):
             try:
@@ -212,7 +218,7 @@ class ImageJHandler:
             javaImg = self.IJ_Plugin_Duplicator().run(javaImg) # type: ignore
         min = imgObj.imgProps.minClipped
         max = imgObj.imgProps.max
-        if not self.ij.is_headless():
+        if not self.headless:
             self.ij.ui().show(javaImg)  
             self.ij.py.run_macro(f"setMinAndMax({min}, {max});")
         logger.info(f"Exported image '{imgObj.name}' to Fiji/ImageJ")
@@ -236,10 +242,10 @@ class ImageJHandler:
         
         min = imgObj.imgDiffProps.minClipped
         max = imgObj.imgDiffProps.max
-        if not self.ij.is_headless():
+        if not self.headless:
             self.ij.ui().show(javaDiffImg)
             self.ij.py.run_macro(f"setMinAndMax({min}, {max});")
-        logger.info(f"Exported image '{imgObj.name}' to Fiji/ImageJ")
+        logger.info(f"Exported img_diff '{imgObj.name}' to Fiji/ImageJ")
 
     def import_rois(self) -> tuple[list[ISynapseROI], list[str]]|None:
         """ Import ROIs from ImageJ """
@@ -271,6 +277,7 @@ class ImageJHandler:
                     return None
             else:
                 logger.warning(f"Importing ROIs from ImageJ raised the following warnings:\n{flag_str}")
+        logger.info(f"Imported {len(rois)} from ImageJ")
         return (rois, names)
 
     def export_rois(self, synapses: list[ISynapse]):
@@ -347,7 +354,7 @@ class ImageJHandler:
             if self.root is not None:
                 messagebox.showerror("Neurotorch", "Fiji/ImageJ must first be started before it can be used")
             return None
-        if not self.ij.is_headless():
+        if not self.headless:
             self.ij.py.run_macro("roiManager('show all');")
         self.RM = self.ij.RoiManager.getRoiManager()
 
