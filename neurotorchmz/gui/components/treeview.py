@@ -34,9 +34,9 @@ class SynapseTreeview(ttk.Treeview):
                  **kwargs):
         """
             Parameters:
-                    synapseCallback: Callable to return the current list of Synapses. Used to emulate a by ref behaviour
-                    selectCallback: Called when the user selects a specific ISynapse. Called with None, if the user deselects from any ISynapse
-                    updateCallback: Called when a property of a synapse is changed
+                synapseCallback: Callable to return the current list of Synapses. Used to emulate a by ref behaviour
+                selectCallback: Called when the user selects a specific ISynapse. Called with None, if the user deselects from any ISynapse
+                updateCallback: Called when a property of a synapse is changed
         """
         self.master = master
         self.option_allowAddingSingleframeSynapses = allowSingleframe

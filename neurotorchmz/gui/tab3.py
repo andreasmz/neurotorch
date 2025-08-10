@@ -253,10 +253,10 @@ class TabROIFinder(Tab):
         # Plotting the ROIs
         for synapse in self.detection_result.synapses:
             for roi in synapse.rois:
-                if isinstance(roi, detection.CircularSynapseROI):
+                if isinstance(roi, detection.CircularSynapseROI) and roi.location is not None and roi.radius is not None:
                     c = patches.Circle(roi.location, roi.radius+0.5, color="red", fill=False)
                     c2 = patches.Circle(roi.location, roi.radius+0.5, color="green", fill=False)
-                elif isinstance(roi, detection.PolygonalSynapseROI):
+                elif isinstance(roi, detection.PolygonalSynapseROI) and roi.polygon is not None:
                     c = patches.Polygon(roi.polygon, color="red", fill=False)
                     c2 = patches.Polygon(roi.polygon, color="green", fill=False)
                 else:

@@ -3,16 +3,12 @@ import numpy as np
 from skimage import measure
 from skimage.measure._regionprops import RegionProperties
 from skimage.segmentation import expand_labels
-import math
 import uuid
 from skimage.feature import peak_local_max
 from skimage.draw import disk
-from typing import Self, Annotated
+from typing import Self, cast
 from scipy.spatial.distance import pdist
 from scipy.cluster.hierarchy import fcluster, ward
-from typing import Callable
-
-from .image import ImageObject
 
 # A Synapse Fire at a specific time. Must include a location (at least a estimation) to be display in the TreeView
 class ISynapseROI:
@@ -121,7 +117,7 @@ class CircularSynapseROI(ISynapseROI):
         self.radius: int|float|None = None
         """ Radius of the ROI """
 
-    def set_radius(self, radius: int|float) -> Self:
+    def set_radius(self, radius: int|float|None) -> Self:
         """ Set the radius of the ROI """
         self.radius = radius
         return self
@@ -145,7 +141,7 @@ class PolygonalSynapseROI(ISynapseROI):
         self.coords: list[tuple[int, int]]|None = None
         """ List of points inside the polygon in the format [(Y, X), (Y, X), ..] """
 
-    def set_polygon(self, polygon: list[tuple[int, int]], coords: list[tuple[int, int]], region_props: RegionProperties):
+    def set_polygon(self, polygon: list[tuple[int, int]], coords: list[tuple[int, int]]|None = None, region_props: RegionProperties|None = None):
         """
             Set the polygon by providing the coordinate tuples and either a) the pixel coords or b) a RegionProperties object (from which the coords are derived)
 
@@ -158,17 +154,18 @@ class PolygonalSynapseROI(ISynapseROI):
         if coords is not None:
             self.coords = coords
         elif region_props is not None:
-            self.coords = region_props.coords_scaled
+            self.coords = [(int(yx[0]), int(yx[1])) for yx in region_props.coords_scaled]
+            self.set_location(y=int(region_props.centroid_weighted[0]), x=int(region_props.centroid_weighted[1]))
         else:
             raise ValueError("set_polygon requires requires at least coords or region props, but you did not provide either one")
-        self.set_location(y=int(region_props.centroid_weighted[0]), x=int(region_props.centroid_weighted[1]))
+        
         return self
     
     def get_coordinates(self, shape:tuple) -> tuple[np.ndarray|list, np.ndarray|list]:
         if self.coords is None:
             return ([], [])
-        yy = np.array([ int(y) for y in self.coords[:, 0] if y >= 0 and y < shape[0]])
-        xx = np.array([ int(x) for x in self.coords[:, 1] if x >= 0 and x < shape[1]])
+        yy = np.array([ int(yx[0]) for yx in self.coords if yx[0] >= 0 and yx[0] < shape[0]])
+        xx = np.array([ int(yx[1]) for yx in self.coords if yx[1] >= 0 and yx[1] < shape[1]])
         return (yy, xx)
 
     def __str__(self) -> str:
@@ -188,7 +185,7 @@ class ISynapse:
         """ A synapse can be staged meaning it will not be replaced when rerunning the detection """
         self._rois: dict[str, ISynapseROI] = {}
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "<ISynapse Object>"
     
     def set_name(self, name: str|None) -> Self:
@@ -225,11 +222,11 @@ class SingleframeSynapse(ISynapse):
         Implements a synapse class which can hold exactly one ROI
     """
 
-    def __init__(self, roi: ISynapseROI = None):
+    def __init__(self, roi: ISynapseROI|None = None):
         super().__init__()
         self.set_roi(roi)
 
-    def __str__(self):
+    def __str__(self) -> str:
         if self.location is not None:
             return f"<SingleframeSynapse @{self.location}>"
         return f"<SingleframeSynapse>"
@@ -275,7 +272,7 @@ class MultiframeSynapse(ISynapse):
             return (int(np.mean(X)), int(np.mean(Y)))
         return None
     
-    def set_location(self, location:tuple[int|float, int|float] = None, y:int|float = None, x:int|float = None) -> Self:
+    def set_location(self, location:tuple[int|float, int|float]|None = None, y:int|float|None = None, x:int|float|None = None) -> Self:
         """ 
             Set the location of the synapse by either providing a tuple or Y and X explicitly
             which is for example used for sorting them. There is no need to provide an exact center 
@@ -288,9 +285,9 @@ class MultiframeSynapse(ISynapse):
         if location is not None and (x is not None or y is not None):
             raise ValueError("set_location requires either a tuple or x/y as seperate argument. You provided both")
         if location is not None:
-            self.location = location
+            self._location = location
         else:
-            self.location = (y, x)
+            self._location = (y, x)
         
         return self
 
@@ -364,7 +361,7 @@ class DetectionResult:
         self._synapses = val
 
         
-class IDetectionAlgorithm:
+class IDetectionAlgorithm():
     """ Abstract base class for a detection algorithm implementation """
 
     def __init__(self):
@@ -377,7 +374,7 @@ class IDetectionAlgorithm:
 
             :param np.ndarray img: The input image as 2D array
         """
-        pass
+        raise NotImplementedError()
     
     def reset(self):
         """ 
@@ -410,11 +407,12 @@ class Thresholding(IDetectionAlgorithm):
         self.imgRegProps = None
         """ Internal variable; Holding the region properties of each detected label """
 
-    def detect(self, 
-               img:np.ndarray, 
+    def detect(self,  # pyright: ignore[reportIncompatibleMethodOverride]
+               img:np.ndarray,
                threshold: int|float, 
                radius: int|float|None, 
-               minArea: int|float
+               minArea: int|float,
+               **kwargs
             ) -> list[ISynapseROI]:
         """
             Find ROIs in a given image. For details see the documentation
@@ -429,7 +427,10 @@ class Thresholding(IDetectionAlgorithm):
         if radius is not None and radius < 0:
             raise ValueError("Radius must be positive or None")
         self.imgThresholded = (img >= threshold).astype(int)
-        self.imgLabeled = measure.label(self.imgThresholded, connectivity=2)
+        imgLabeled = measure.label(self.imgThresholded, connectivity=2)
+        if not isinstance(imgLabeled, np.ndarray):
+            raise RuntimeError(f"skimage.measure.label returned an unexpected result of type '{type(imgLabeled)}'")
+        self.imgLabeled = imgLabeled
         self.imgRegProps = measure.regionprops(self.imgLabeled)
         synapses = []
         for i in range(len(self.imgRegProps)):
@@ -450,11 +451,12 @@ class HysteresisTh(IDetectionAlgorithm):
         self.region_props = None
         self.thresholdFiltered_img = None
 
-    def detect(self, 
+    def detect(self,  # pyright: ignore[reportIncompatibleMethodOverride]
                img:np.ndarray, 
                lowerThreshold: int|float, 
                upperThreshold: int|float, 
-               minArea: int|float
+               minArea: int|float,
+               **kwargs
         ) -> list[ISynapseROI]:
         """
             Find ROIs in a given image. For details see the documentation
@@ -485,6 +487,7 @@ class HysteresisTh(IDetectionAlgorithm):
                 startY = region.bbox[0] - 1 # -1 As correction for the padding
                 contour[:, 0] = contour[:, 0] + startX
                 contour[:, 1] = contour[:, 1] + startY
+                contour = [(yx[0], yx[1]) for yx in contour]
                 synapse = PolygonalSynapseROI().set_polygon(polygon=contour, region_props=region)
                 rois.append(synapse)
 
