@@ -170,8 +170,6 @@ class SignalObject:
         """ Export the current img """
         if self.img_props_only_signal.img is None:
             raise NoImageError()
-        if not path.is_file() or not path.parent.exists():
-            raise ValueError(f"The path '{str(path)}' is invalid")
         match path.suffix.lower():
             case ".tif"|".tiff":
                 tifffile.imwrite(path, data=self.img_props_only_signal.img, metadata=self.imgObj.metadata)

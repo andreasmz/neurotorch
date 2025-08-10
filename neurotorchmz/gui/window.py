@@ -267,7 +267,7 @@ class Neurotorch_GUI:
         elif what != "img":
             raise RuntimeError(f"Invalid parameter '{what}'")
         
-        path = filedialog.asksaveasfilename(title="Neurotorch: Export video", initialdir=ini_dir, filetypes=ImageObject.SUPPORTED_EXPORT_EXTENSIONS)
+        path = filedialog.asksaveasfilename(title="Neurotorch: Export video", initialdir=ini_dir, initialfile=ini_file, filetypes=ImageObject.SUPPORTED_EXPORT_EXTENSIONS, defaultextension="*.tiff")
         if not path:
             return
         path = Path(path)

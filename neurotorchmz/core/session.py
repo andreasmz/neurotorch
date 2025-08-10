@@ -81,6 +81,10 @@ class Session(Serializable):
         if self._image_object is not None:
             self._image_object.clear() # It's important to clear the object as the AxisImage, ImageProperties, ... create circular references not garbage collected
         self._image_object = imgObj
+        if self._image_object is None:
+            logger.debug(f"Cleared the active ImageObject")
+        else:
+            logger.debug(f"'{self._image_object.name}' is now the active ImageObject")
         self.notify_image_object_change()
         ImageObjectChangedEvent(session=self)
 
