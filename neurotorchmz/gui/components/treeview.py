@@ -266,19 +266,11 @@ class SynapseTreeview(ttk.Treeview):
         contextMenu.add_cascade(menu=clearMenu, label="Clear/Remove")
 
         importMenu = tk.Menu(contextMenu, tearoff=0)
-        importMenu.add_command(label="Import from ImageJ", command=self.ImportROIsImageJ)
         contextMenu.add_cascade(menu=importMenu, label="Import")
 
         exportMenu = tk.Menu(contextMenu, tearoff=0)
-        exportMenu.add_command(label="Export to ImageJ", command=self.ExportROIsImageJ)
         exportMenu.add_command(label="Export as file", command=self.ExportCSVMultiM)
         contextMenu.add_cascade(menu=exportMenu, label="Export")
-
-        for f in SynapseTreeview.API_rightClickHooks:
-            try:
-                f(contextMenu, importMenu, exportMenu)
-            except Exception as ex:
-                logger.error(f"SynapseTreeview: Failed to execute hook {str(f)} with the following error: {ex}")
 
         if synapse is not None or roi is not None:
             clearMenu.insert_separator(index=0)
@@ -296,6 +288,8 @@ class SynapseTreeview(ttk.Treeview):
 
         if roi is not None and isinstance(synapse, MultiframeSynapse):
             clearMenu.insert_command(index=0, label="Remove ROI", command = lambda: self._OnContextMenu_Remove(synapse=synapse, roi=roi))
+
+        window_events.SynapseTreeviewContextMenuEvent(import_context_menu=importMenu, export_context_menu=exportMenu)
 
         contextMenu.post(event.x_root, event.y_root)  
         
@@ -465,31 +459,6 @@ class SynapseTreeview(ttk.Treeview):
         synapse.name = None
         self.SyncSynapses()
         self._updateCallback()
-
-    def ImportROIsImageJ(self):
-        if self.session.ijH is None or self.session.ijH.ij is None:
-            messagebox.showerror("Neurotorch", "You must first start Fiji/ImageJ")
-            return
-        res = self.session.ijH.import_rois()
-        if res is None:
-            self.root.bell()
-            return
-        rois, names = res[0], res[1]
-        if len(rois) == 0:
-            self.root.bell()
-            return
-        synapses = self.detection_result.synapses_dict
-        for i in range(len(rois)):
-            s = SingleframeSynapse(rois[i]).set_name(names[i])
-            synapses[s.uuid] = s
-        self.SyncSynapses()
-        self._updateCallback()
-
-    def ExportROIsImageJ(self):
-        if self.session.ijH is None or self.session.ijH.ij is None:
-            messagebox.showerror("Neurotorch", "You must first start Fiji/ImageJ")
-            return
-        self.session.ijH.export_ROIS(list(self.detection_result.synapses_dict.values()))
 
     def ExportCSVMultiM(self, path:str|None = None, dropFrame=False) -> bool|None:
         synapses = self.detection_result.synapses_dict

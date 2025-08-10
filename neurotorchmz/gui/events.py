@@ -27,3 +27,11 @@ class WindowLoadedEvent(Event):
 
 class WindowTKReadyEvent(WindowLoadedEvent):
     """ Triggers after the GUI has loaded and tkinter is in main loop """
+
+
+class SynapseTreeviewContextMenuEvent(Event):
+    """ This event is called when a SynapseTreeview is generating its context menu. As the menu is recreated on every click, a hook into the WindowLoadedEvent is not working """
+
+    def __init__(self, import_context_menu: tk.Menu, export_context_menu: tk.Menu) -> None:
+        self.import_context_menu = import_context_menu
+        self.export_context_menu = export_context_menu

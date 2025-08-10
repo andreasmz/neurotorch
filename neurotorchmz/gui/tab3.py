@@ -12,8 +12,8 @@ from matplotlib.backends._backend_tk import NavigationToolbar2Tk
 from matplotlib.ticker import MaxNLocator
 import numpy as np
 
-class TabROIFinder_InvalidateROIsEvent(TabUpdateEvent):
-    pass
+# class TabROIFinder_InvalidateROIsEvent(TabUpdateEvent):
+#     pass
 
 class TabROIFinder_InvalidateEvent(TabUpdateEvent):
     """ Internal event to invalidate different parts of the tab """
@@ -130,6 +130,8 @@ class TabROIFinder(Tab):
             self.tvSynapses.SyncSynapses()
             self.clear_image_plot()
             self.comboImage_changed()
+        elif isinstance(event, UpdateRoiFinderDetectionResultEvent):
+            self.tvSynapses.SyncSynapses()
         elif isinstance(event, TabROIFinder_InvalidateEvent):
             if event.algorithm: self.invalidate_algorithm()
             if event.image: self.invalidate_image()
@@ -323,7 +325,7 @@ class TabROIFinder(Tab):
             else:
                 patch.set_color("green")
     
-        if synapse is not None and len(synapse.rois) == 1 and imgObj is not None and imgObj.img is not None:
+        if synapse is not None and len(synapse.rois) == 1 and imgObj is not None and imgObj.img is not None and imgObj.imgDiff is not None:
             self.ax3.set_axis_on()
             self.ax4.set_axis_on()
 
