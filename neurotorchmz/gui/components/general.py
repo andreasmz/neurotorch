@@ -1,8 +1,9 @@
 import tkinter as tk
 from tkinter import ttk
-from typing import Literal
+from typing import Literal, cast
 from tktooltip import ToolTip
 import psutil
+import numpy as np
 
 from ...core.settings import logger
 from ...core.task_system import Task, TaskState
@@ -105,10 +106,10 @@ class Statusbar:
     def _TimerTick(self):
         self._timerSpeed = Statusbar.timerHighSpeed
         def _Tick():
-            active_tasks = [t for t in Task.get_tasks() if t.state == TaskState.RUNNING and t.time_since_start >= 0.5]
-            finished_task = [t for t in Task.get_tasks() if t.tend is not None and t.time_since_end <= 5 and t.runtime >= 0.5]
+            active_tasks = [t for t in Task.get_tasks() if t.state == TaskState.RUNNING and t.time_since_start is not None and t.time_since_start >= 0.5]
+            finished_task = [t for t in Task.get_tasks() if t.tend is not None and t.time_since_end is not None and t.time_since_end <= 5 and t.runtime is not None and t.runtime >= 0.5]
 
-            sorted(active_tasks, key=lambda t: t.time_since_start, reverse=True) # Oldest tasks first
+            sorted(active_tasks, key=lambda t: (t.time_since_start if t.time_since_start is not None else np.inf), reverse=True) # Oldest tasks first
             sorted(finished_task, key=lambda t: (t.state.value, t.time_since_end)) # Newest finish first
 
             if len(active_tasks) == 0:
@@ -141,7 +142,7 @@ class Statusbar:
                 if t.is_determinate():
                     if str(self.progMain["mode"]) != "determinate":
                         self.progMain.configure(mode="determinate")
-                    if self.varProgMain.get() != t.progress:
+                    if self.varProgMain.get() != t.progress and t.progress is not None:
                         self.varProgMain.set(100*t.progress)
                 else:
                     if str(self.progMain["mode"]) != "indeterminate":
@@ -251,13 +252,13 @@ class GridSetting:
         self.var.IntVar.set(val)
     
     def SetRange(self, 
-                 min_:int = None, 
-                 max_:int = None, 
-                 scaleMin:int = None, 
-                 scaleMax:int = None,
-                 syncScale:bool = False):
-        min_ = self.spinbox.cget("from") if min_ is None else min_
-        max_ = self.spinbox.cget("to") if max_ is None else max_
+                 min_:int|None = None, 
+                 max_:int|None = None, 
+                 scaleMin:int|None = None, 
+                 scaleMax:int|None = None,
+                 syncScale:bool|None = False):
+        min_ = cast(int, self.spinbox.cget("from")) if min_ is None else min_
+        max_ = cast(int, self.spinbox.cget("to")) if max_ is None else max_
         self.spinbox.configure(from_=min_, to=max_)
 
         if syncScale:
@@ -340,7 +341,7 @@ class IntStringVar:
                 return
             if self.max is not None and int(strval) > self.max:
                 return
-            self.IntVar.set(strval)
+            self.IntVar.set(int(strval))
             if self.callback is not None:
                 self.callback()
 
@@ -363,8 +364,8 @@ class ScrolledFrame(ttk.Frame):
         def _configure_frame(e):
             # The scrollview is initially not set. Therefore, the user can scroll without limits to the left or right. Also, the canvas does not fit to content width """
             size = (self.frame.winfo_reqwidth(), self.frame.winfo_reqheight()) # Size of frame content
-            if self.canvas["scrollregion"] != ("0 0 %s %s" % size): # Change scroll region if necessary
-                self.canvas.config(scrollregion="0 0 %s %s" % size)
+            if self.canvas["scrollregion"] != (0, 0, size[0], size[1]): # Change scroll region if necessary
+                self.canvas.config(scrollregion=(0, 0, size[0], size[1]))
             if self.canvas.winfo_width() != self.frame.winfo_reqwidth(): # Change canvas width if necessary (height is autoset by fill=y)
                 self.canvas.config(width=self.frame.winfo_reqwidth())
         self.frame.bind("<Configure>", _configure_frame)
