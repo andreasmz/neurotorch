@@ -1,17 +1,15 @@
+""" Implements the ROI Finder Tab in Neurotorch"""
 from .window import *
 from .components.treeview import SynapseTreeview
 from .components.general import ScrolledFrame, GridSetting
 from ..utils import synapse_detection_integration as detection
 
-import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
-import matplotlib.widgets as PltWidget
 import matplotlib.patches as patches
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.backends._backend_tk import NavigationToolbar2Tk
 from matplotlib.ticker import MaxNLocator
 import numpy as np
-
 
 class TabROIFinder_InvalidateROIsEvent(TabUpdateEvent):
     pass
@@ -42,6 +40,7 @@ class TabROIFinder(Tab):
 
     def init(self):
         self.notebook.add(self.tab, text="Synapse ROI Finder")
+
         self.frameToolsContainer = ScrolledFrame(self.tab)
         self.frameToolsContainer.pack(side=tk.LEFT, fill="y", anchor=tk.NW)
         self.frameTools = self.frameToolsContainer.frame

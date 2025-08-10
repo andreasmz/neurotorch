@@ -2,8 +2,6 @@ from .window import *
 from ..utils.signal_detection import SigDetect_DiffMax, SigDetect_DiffStd, ISignalDetectionAlgorithm
 from .components.general import GridSetting
 
-import tkinter as tk
-import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.backends._backend_tk import NavigationToolbar2Tk

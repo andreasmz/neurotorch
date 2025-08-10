@@ -8,7 +8,6 @@ from tktooltip import ToolTip
 import pickle
 import matplotlib
 from pathlib import Path
-import platform
 import subprocess
 import os
 import platformdirs
