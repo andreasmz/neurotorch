@@ -340,9 +340,17 @@ class ROIList:
         return self._rois
 
     def clear(self) -> None:
-        _rois = self.to_list()
-        self._rois = {}
-        self.notify(removed=_rois)
+        self.clear_where(lambda s: True)
+
+    def clear_where(self, fn: Callable[[ISynapseROI], bool]) -> None:
+        deleted = []
+        for r in self._rois.values():
+            if fn(r):
+                deleted.append(r)
+                r.remove_callback(self._rois_callbacks[r.uuid])
+                del self._rois_callbacks[r.uuid]
+                del self._rois_callbacks[r.uuid]
+        self.notify(removed=deleted)
 
     def extend(self, rois: Iterable[ISynapseROI], /) -> None:
         if not isinstance(rois, Iterable):
@@ -376,6 +384,9 @@ class ROIList:
     def remove_callback(self, callback: Callable[[list[ISynapseROI], list[ISynapseROI], list[ISynapseROI]], None]) -> None:
         """ Remove a callback """
         self._callbacks.remove(callback)
+
+    def remove(self, roi: ISynapseROI) -> None:
+        del self[roi.uuid]
 
 # A synapse contains multiple (MultiframeSynapse) or a single SynapseROI (SingleframeSynapse)
 class ISynapse:
@@ -623,12 +634,20 @@ class DetectionResult:
 
     def as_dict(self) -> dict[str, ISynapse]:
         return self._synapses
-
+    
     def clear(self) -> None:
-        _synapses = self.to_list()
-        self._synapses = {}
-        self.notify(removed=_synapses)
+        self.clear_where(lambda s: False)
 
+    def clear_where(self, fn: Callable[[ISynapse], bool]) -> None:
+        deleted = []
+        for s in self._synapses.values():
+            if fn(s):
+                deleted.append(s)
+                s.remove_callback(self._synapses_callbacks[s.uuid])
+                del self._synapses_callbacks[s.uuid]
+                del self._synapses[s.uuid]
+        self.notify(removed=deleted)
+        
     def extend(self, synapses: Iterable[ISynapse], /) -> None:
         if not isinstance(synapses, Iterable):
             raise TypeError(f"{type(synapses)} is not iterable")
@@ -661,6 +680,9 @@ class DetectionResult:
     def remove_callback(self, callback: Callable[[list[ISynapse], list[ISynapse], list[ISynapse]], None]) -> None:
         """ Remove a callback """
         self._callbacks.remove(callback)
+
+    def remove(self, synapse: ISynapse) -> None:
+        del self[synapse.uuid]
 
         
 class IDetectionAlgorithm():

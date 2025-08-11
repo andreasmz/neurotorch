@@ -14,9 +14,6 @@ class SynapseTreeview(ttk.Treeview):
         A treeview component to display Synapses. Provides GUI components to edit them.
     """
 
-    # Constant to export data as Stream
-    TO_STREAM = "TO_STREAM"
-
     editableFiels = [
         "CircularSynapseROI.Frame",
         "CircularSynapseROI.Center",
@@ -233,7 +230,6 @@ class SynapseTreeview(ttk.Treeview):
             if synapse is None or roi is None: return
         else:
             return
-        
 
         self._entryPopup = EntryPopup(self, self._on_entry_changed, rowid, column)
         self._entryPopup.place_auto()
@@ -293,7 +289,7 @@ class SynapseTreeview(ttk.Treeview):
         contextMenu.post(event.x_root, event.y_root)  
         
 
-    def _on_entry_changed(self, rowid, column, oldval: str, val: str):
+    def _on_entry_changed(self, rowid: str, column: str, oldval: str, val: str):
         """ Called after a EntryPopup closes with a changed value. Determines the corresponding ISynapse and modifies it"""
 
         rowid_fiels = rowid.split("_")
@@ -322,9 +318,10 @@ class SynapseTreeview(ttk.Treeview):
                         logger.debug(f"Invalid input for edtiable field '{rowid_fiels[1]}': {val}")
                         self.master.bell()
                         return
-                    roi.set_location(int(x=_match.groups()[0]), y=int(_match.groups()[1]))
-                    logger.debug(f"Modified location of CircularSynapseROI to {roi.LocationStr}")
+                    roi.set_location(x=int(_match.groups()[0]), y=int(_match.groups()[1]))
+                    logger.debug(f"Modified location of CircularSynapseROI to {roi.location_string}")
                 case "CircularSynapseROI.Radius":
+                    roi = cast(CircularSynapseROI, roi)
                     if not val.isdigit():
                         logger.debug(f"Invalid input for edtiable field '{rowid_fiels[1]}': {val}")
                         self.master.bell()
@@ -406,8 +403,8 @@ class SynapseTreeview(ttk.Treeview):
                     r = PolygonalSynapseROI().set_frame(0)
                 case _:
                     return
-            s = cast(MultiframeSynapse, self.detection_result.synapses_dict[synapse.uuid])
-            s.add_roi(r)
+            s = cast(MultiframeSynapse, self.detection_result[synapse.uuid])
+            s.rois.append(r)
         else:
             match class_:
                 case "Singleframe_CircularROI":
@@ -418,18 +415,17 @@ class SynapseTreeview(ttk.Treeview):
                     s = MultiframeSynapse()
                 case _:
                     return
-            self.detection_result.synapses_dict[s.uuid] = s
+            self.detection_result.append(s)
         self.modified = True
         self.sync_synapses()
-        self._updateCallback()
 
     def _on_context_menu_all_to_stage(self):
-        for s in self.detection_result.synapses_dict.values():
+        for s in self.detection_result:
             s.staged = True
         self.sync_synapses()
 
     def _on_context_menu_all_from_stage(self):
-        for s in self.detection_result.synapses_dict.values():
+        for s in self.detection_result:
             s.staged = False
         self.sync_synapses()
 
@@ -437,36 +433,28 @@ class SynapseTreeview(ttk.Treeview):
         synapse.staged = not synapse.staged
         self.sync_synapses()
     
-    def _on_context_menu_remove(self, synapse: ISynapse = None, roi: ISynapseROI = None):
+    def _on_context_menu_remove(self, synapse: ISynapse|None = None, roi: ISynapseROI|None = None):
         if synapse is not None and roi is not None:
-            if roi.uuid not in synapse.rois_dict.keys():
-                logger.warning(f"SynapseTreeview: Can't remove ROI {synapse.uuid} from synapse {synapse.uuid} as it isn't contained")
-                return
-            del synapse.rois_dict[roi.uuid]
+            synapse.rois.remove(roi)
         elif synapse is not None:
-            if synapse.uuid not in self.detection_result.synapses_dict.keys():
-                logger.warning(f"SynapseTreeview: Can't remove synapse {synapse.uuid} as it does not exist")
-                return
-            self.detection_result.synapses_dict.pop(synapse.uuid)
+            self.detection_result.remove(synapse)
         self.modified = True
         self.sync_synapses()
-        self._updateCallback()
 
     def _on_context_menu_reset_name(self, synapse: ISynapse):
         synapse.name = None
         self.sync_synapses()
-        self._updateCallback()
 
-    def export_csv_multi_measure(self, path:str|None = None, dropFrame=False) -> bool|None:
-        synapses = self.detection_result.synapses_dict
+    def to_pandas(self) -> pd.DataFrame|None:
+        synapses = self.detection_result.to_list()
         if len(synapses) == 0 or self.session.active_image_object is None or self.session.active_image_object.img is None:
             self.master.bell()
             return None
         data = pd.DataFrame()
         i_synapse = 1
-        for synapse in synapses.values():
+        for synapse in synapses:
             name = synapse.name
-            if synapse.name is None:
+            if name is None:
                 name = f"Synapse {i_synapse}"
                 i_synapse += 1
             for i, roi in enumerate(synapse.rois):
@@ -485,29 +473,31 @@ class SynapseTreeview(ttk.Treeview):
                 data[name2] = np.mean(signal, axis=1)
         data = data.round(4)
         data.index += 1
+        return data
 
-        if path == SynapseTreeview.TO_STREAM:
-            return data.to_csv(lineterminator="\n",index=(not dropFrame))
+    def export_csv_multi_measure(self, path:str|None = None, dropFrame=False) -> bool:
+        df = self.to_pandas()
+        if df is None:
+            return False
         if path is None:
             path = filedialog.asksaveasfilename(title="Save Multi Measure", filetypes=(("CSV", "*.csv"), ("All files", "*.*")), defaultextension=".csv")
         if path is None or path == "":
-            return None
-        data.to_csv(path_or_buf=path, lineterminator="\n", mode="w", index=(not dropFrame))
+            return False
+        df.to_csv(path_or_buf=path, lineterminator="\n", mode="w", index=(not dropFrame))
         return True
 
     def clear_synapses(self, target: Literal['staged', 'non_staged', 'all']):
         match(target):
             case 'staged':
-                self.detection_result.synapses_dict = {_uuid: s for _uuid, s in self.detection_result.synapses_dict.items() if not s.staged}
+                self.detection_result.clear_where(lambda s: s.staged)
             case 'non_staged':
-                self.detection_result.synapses_dict = {_uuid: s for _uuid, s in self.detection_result.synapses_dict.items() if s.staged}
+                self.detection_result.clear_where(lambda s: s.staged)
             case 'all':
                 self.detection_result.clear()
             case _:
                 return
         self.modified = False
         self.sync_synapses()
-        self._updateCallback()
 
 
 
@@ -516,7 +506,7 @@ class EntryPopup(ttk.Entry):
         Implements editabled ttk Treeview entries
     """
 
-    def __init__(self, tv: ttk.Treeview, callback, rowid, column, **kw):
+    def __init__(self, tv: ttk.Treeview, callback: Callable[[str, str, str, str], None], rowid: str, column: str, **kw):
         ttk.Style().configure('pad.TEntry', padding='1 1 1 1')
         super().__init__(tv, style='pad.TEntry', **kw)
         self.tv = tv
@@ -544,7 +534,6 @@ class EntryPopup(ttk.Entry):
         pady = height // 2
         self.place(x=x, y=y+pady, width=width, height=height, anchor=tk.W)
 
-
     def on_return(self, event):
         val = self.get()
         try:
@@ -552,7 +541,6 @@ class EntryPopup(ttk.Entry):
                 self.callback(self.rowid, self.column, self.oldval, val)
         finally:
             self.destroy()
-
 
     def select_all(self, *val1):
         self.selection_range(0, 'end')
