@@ -16,7 +16,6 @@ class SynapseTreeview(ttk.Treeview):
 
     # Constant to export data as Stream
     TO_STREAM = "TO_STREAM"
-    API_rightClickHooks = []
 
     editableFiels = [
         "CircularSynapseROI.Frame",
@@ -28,8 +27,7 @@ class SynapseTreeview(ttk.Treeview):
                  master: tk.Widget, 
                  session: Session, 
                  detection_result: DetectionResult,
-                 select_callback: Callable[[ISynapse|None, ISynapseROI|None], None], 
-                 update_callback = Callable[[None], None], 
+                 select_callback: Callable[[ISynapse|None, ISynapseROI|None], None]|None = None, 
                  allow_singleframe: bool = False,
                  allow_multiframe: bool = False,
                  **kwargs):
@@ -37,13 +35,12 @@ class SynapseTreeview(ttk.Treeview):
             :param tk.Widget master: The reference to the master widget is used to create the tree view as sub widget inside of master
             :param Session session: A reference to the current session
             :param Detection_Result detection_result: A result to the DetectionResult object the treeview will be synced
-
-            # Parameters:
-            #     synapseCallback: Callable to return the current list of Synapses. Used to emulate a by ref behaviour
-            #     selectCallback: Called when the user selects a specific ISynapse. Called with None, if the user deselects from any ISynapse
-            #     updateCallback: Called when a property of a synapse is changed
+            :param Callable[[ISynapse|None, ISynapseROI|None], None] select_callback: If not None, the widget will call this function when the user selects an item in the tree view
+            :param bool allow_singleframe: If set to True, SingleFrame synapses are allowed
+            :param bool allow_singleframe: If set to True, MultiFrame synapses are allowed
         """
         self.master = master
+        self.session = session
         self.option_allowAddingSingleframeSynapses = allow_singleframe
         self.option_allowAddingMultiframeSynapses = allow_multiframe
         self.frame = ttk.Frame(self.master)
@@ -67,15 +64,15 @@ class SynapseTreeview(ttk.Treeview):
         self.frameButtons.pack()
         _btn_padx = 5
         if self.option_allowAddingSingleframeSynapses:
-            self.btnAdd = tk.Button(self.frameButtons, text="+ Add", command = lambda: self._OnContextMenu_Add("Singleframe_CircularROI"))
+            self.btnAdd = tk.Button(self.frameButtons, text="+ Add", command = lambda: self._on_context_menu_add("Singleframe_CircularROI"))
             self.btnAdd.pack(side=tk.LEFT, padx=_btn_padx)
         if self.option_allowAddingMultiframeSynapses:
-            self.btnAdd_Multiframe = tk.Button(self.frameButtons, text="+ Add Synapse", command= lambda: self._OnContextMenu_Add("MultiframeSynapse"))
+            self.btnAdd_Multiframe = tk.Button(self.frameButtons, text="+ Add Synapse", command= lambda: self._on_context_menu_add("MultiframeSynapse"))
             self.btnAdd_Multiframe.pack(side=tk.LEFT, padx=_btn_padx)
 
-        self.btnRemove = tk.Button(self.frameButtons, text="🗑 Remove", state="disabled", command=self._BtnRemoveClick)
+        self.btnRemove = tk.Button(self.frameButtons, text="🗑 Remove", state="disabled", command=self._btn_remove_cick)
         self.btnRemove.pack(side=tk.LEFT, padx=_btn_padx)
-        self.btnStage = tk.Button(self.frameButtons, text="🔒 Stage", state="disabled", command=self._BtnStageClick)
+        self.btnStage = tk.Button(self.frameButtons, text="🔒 Stage", state="disabled", command=self._btn_stage_click)
         self.btnStage.pack(side=tk.LEFT, padx=_btn_padx)
 
         tk.Label(self.frame, text="Use Right-Click to edit").pack(fill="x")
@@ -83,36 +80,31 @@ class SynapseTreeview(ttk.Treeview):
 
         self.configure(yscrollcommand = self.scrollbar.set)
         self.configure(xscrollcommand = self.scrollbarx.set)
-        self.bind("<<TreeviewSelect>>", self._OnSelect)
-        self.bind("<Double-1>", self._OnDoubleClick)
-        self.bind("<Button-3>", self._OnRightClick)
+        self.bind("<<TreeviewSelect>>", self._on_select)
+        self.bind("<Double-1>", self._on_double_click)
+        self.bind("<Button-3>", self._on_right_click)
 
         self.modified = False
+        self._select_callback = select_callback
         self.detection_result = detection_result # Returns dict of UUID -> ISynapse
-        self._selectCallback = select_callback
-        self._updateCallback = update_callback
+        self.detection_result.register_callback(lambda _1, _2, _3: self.sync_synapses())
 
-        self.session = session
         self._entryPopup = None
-        self._sync_task = Task(function=self._SyncSynapses_task, name="syncing synapse treeview", run_async=True, keep_alive=True)
+        self._sync_task = Task(function=self._sync_synapses_task, name="syncing synapse treeview", run_async=True, keep_alive=True)
 
     def pack(self, **kwargs):
         self.frame.pack(**kwargs)
 
-    def SyncSynapses(self):
+    def sync_synapses(self):
         """ Display the given list of ISynapse in the treeview. Updates existing values to keep the scrolling position. """
         self._sync_task.start()
 
-    def _SyncSynapses_task(self, task:Task):
+    def _sync_synapses_task(self, task:Task):
         task.set_indeterminate()
-        try: 
-            if self._entryPopup is not None:
-                self._entryPopup.destroy()
-        except AttributeError:
-            pass    
-        synapses = self.detection_result.synapses_dict
-        synapses = dict(sorted(synapses.items(), key=lambda item: (not item[1].staged, item[1].location[0] , item[1].location[1]) if item[1].location is not None else (not item[1].staged, 0, 0)))
-        #self._synapseCallback(synapses)
+        if self._entryPopup is not None:
+            self._entryPopup.destroy()   
+            self._entryPopup = None
+        synapses = dict(sorted(self.detection_result.as_dict().items(), key=lambda v: (not v[1].staged, v[1].location_y if v[1].location_y is not None else 0, v[1].location_x if v[1].location_x is not None else 0)))
 
         for _uuid in ((uuidsOld := set(self.get_children(''))) - (uuidsNew := set(synapses.keys()))):
             self.delete(_uuid) # Delete removed entries
@@ -133,7 +125,7 @@ class SynapseTreeview(ttk.Treeview):
             self.item(_uuid, tags=(("staged_synapse",) if s.staged else ()))
 
             # Now the same procedure for the ISynapseROIs
-            rois = dict(sorted(s.rois_dict.items(), key=lambda item: item[1].frame if item[1].frame is not None else -1))
+            rois = dict(sorted(s.rois.as_dict().items(), key=lambda item: item[1].frame if item[1].frame is not None else -1))
             for _ruuid in ((uuidsOld := set(self.get_children(_uuid))) - (uuidsNew := set(rois.keys()))):
                 self.delete(_ruuid)
             for _ruuid in (uuidsNew - uuidsOld):
@@ -142,12 +134,12 @@ class SynapseTreeview(ttk.Treeview):
             for si, (_ruuid, r) in enumerate(rois.items()):
                 if self.index(_ruuid) != si:
                     self.move(_ruuid, _uuid, si)
-                self._UpdateISynapseROI(r)
+                self._update_ISynapseROI(r)
         if len(self.get_children('')) == 0:
             self.btnRemove.config(state="disabled")
             self.btnStage.config(state="disabled")
 
-    def GetSynapseByRowID(self, rowid: str) -> tuple[ISynapse|None, ISynapseROI|None]:
+    def get_synapse_by_row_id(self, rowid: str) -> tuple[ISynapse|None, ISynapseROI|None]:
         """ 
             Given a rowid, return the corrosponding ISynapse and ISynapseROI as tuple (ISynapse, ISynapseROI).
             If provided with a ISynapse row, return (ISynapse, None). If provided with a root node, return (None, None).
@@ -159,31 +151,31 @@ class SynapseTreeview(ttk.Treeview):
         if len(parents) < 2:
             return (None, None)
         synapse_uuid = parents[-2]
-        if synapse_uuid not in self.detection_result.synapses_dict.keys():
+        if synapse_uuid not in self.detection_result:
             logger.warning(f"SynapseTreeview: Can't find synapse {synapse_uuid} in the callback")
             return (None, None)
-        synapse = self.detection_result.synapses_dict[synapse_uuid]
+        synapse = self.detection_result[synapse_uuid]
         if len(parents) < 3:
             return (synapse, None)
         roi_uuid = parents[-3]
-        if roi_uuid not in synapse.rois_dict.keys():
+        if roi_uuid not in synapse.rois:
             logger.warning(f"SynapseTreeview: Can't find ROI {roi_uuid} in synapse {synapse_uuid}")
             return (synapse, None)
-        roi = synapse.rois_dict[roi_uuid]
+        roi = synapse.rois[roi_uuid]
         return (synapse, roi)
     
-    def GetSelectedSynapse(self) -> tuple[ISynapse|None, ISynapseROI|None]:
+    def get_selected_synapse(self) -> tuple[ISynapse|None, ISynapseROI|None]:
         """
-            Identifies the currently selected rowid and returns the result of GetSynapseByRowID
+            Identifies the currently selected rowid and returns the result of get_synapse_by_row_id
         """
         selection = self.selection()
         if len(selection) != 1:
             return (None, None)
         rowid = selection[0]
-        synapse, roi = self.GetSynapseByRowID(rowid)
+        synapse, roi = self.get_synapse_by_row_id(rowid)
         return synapse, roi
     
-    def Select(self, synapse: ISynapse|None = None, roi:ISynapseROI|None = None):
+    def select(self, synapse: ISynapse|None = None, roi:ISynapseROI|None = None):
         """
             Selects an entry based on synapse or roi ID and scrolls to it. As a convenience feature, if both synapse and ROI are given,
             it will select the synapse if the node is collapsed and the ROI in the other case.
@@ -201,23 +193,25 @@ class SynapseTreeview(ttk.Treeview):
             self.selection_set(synapse.uuid)
             self.see(synapse.uuid)
         
-    def _OnSelect(self, event):
+    def _on_select(self, event):
         """ Triggered on selecting a row in the Treeview. Determines the corrosponding ISynapse and passes it back to the callback. """
         selection = self.selection()
         if len(selection) != 1:
-            self._selectCallback(None, None)
+            if self._select_callback is not None:
+                self._select_callback(None, None)
             return
         rowid = selection[0]
-        synapse, roi = self.GetSynapseByRowID(rowid)
+        synapse, roi = self.get_synapse_by_row_id(rowid)
         if synapse is not None or roi is not None:
             self.btnRemove.config(state="active")
             self.btnStage.config(state="active")
         else:
             self.btnRemove.config(state="disabled")
             self.btnStage.config(state="disabled")
-        self._selectCallback(synapse, roi)
+        if self._select_callback is not None:
+            self._select_callback(synapse, roi)
 
-    def _OnDoubleClick(self, event):
+    def _on_double_click(self, event):
         """ Triggered on double clicking and creates a editable field if the clicked field is editable """
         try: 
             if self._entryPopup is not None:
@@ -228,7 +222,7 @@ class SynapseTreeview(ttk.Treeview):
         column = self.identify_column(event.x)
         if rowid is None: return
         rowid_fiels = rowid.split("_")
-        synapse, roi = self.GetSynapseByRowID(rowid)
+        synapse, roi = self.get_synapse_by_row_id(rowid)
 
         if column == "#0": # Catches editable Synapse Name
             if synapse is None or roi is not None: 
@@ -241,40 +235,40 @@ class SynapseTreeview(ttk.Treeview):
             return
         
 
-        self._entryPopup = EntryPopup(self, self._OnEntryChanged, rowid, column)
+        self._entryPopup = EntryPopup(self, self._on_entry_changed, rowid, column)
         self._entryPopup.place_auto()
         return "break"
 
-    def _OnRightClick(self, event):
+    def _on_right_click(self, event):
         """ Triggered on right clicking in the Treeview. Opens a context menu. """
         rowid = self.identify_row(event.y)
-        synapse, roi = self.GetSynapseByRowID(rowid)
+        synapse, roi = self.get_synapse_by_row_id(rowid)
 
         contextMenu = tk.Menu(self.master, tearoff=0)
         addMenu = tk.Menu(contextMenu, tearoff=0)
         if self.option_allowAddingSingleframeSynapses or self.option_allowAddingMultiframeSynapses:
             if self.option_allowAddingSingleframeSynapses:
-                addMenu.add_command(label="Circular ROI Synapse", command = lambda: self._OnContextMenu_Add("Singleframe_CircularROI"))
+                addMenu.add_command(label="Circular ROI Synapse", command = lambda: self._on_context_menu_add("Singleframe_CircularROI"))
             if self.option_allowAddingMultiframeSynapses:
-                addMenu.add_command(label="Multiframe Synapse", command = lambda: self._OnContextMenu_Add("MultiframeSynapse"))  
+                addMenu.add_command(label="Multiframe Synapse", command = lambda: self._on_context_menu_add("MultiframeSynapse"))  
             contextMenu.add_cascade(menu=addMenu, label="Add")
 
         stageMenu = tk.Menu(contextMenu, tearoff=0)
-        stageMenu.add_command(label="All to stage", command = self._OnContextMenu_AllToStage)    
-        stageMenu.add_command(label="All from stage", command = self._OnContextMenu_AllFromStage)  
+        stageMenu.add_command(label="All to stage", command = self._on_context_menu_all_to_stage)    
+        stageMenu.add_command(label="All from stage", command = self._on_context_menu_all_from_stage)  
         contextMenu.add_cascade(menu=stageMenu, label="Stage")  
 
         clearMenu = tk.Menu(contextMenu, tearoff=0)
-        clearMenu.add_command(label="Clear", command= lambda: self.ClearSynapses('non_staged'))
-        clearMenu.add_command(label="Clear staged", command= lambda: self.ClearSynapses('staged'))
-        clearMenu.add_command(label="Clear all", command= lambda: self.ClearSynapses('all'))
+        clearMenu.add_command(label="Clear", command= lambda: self.clear_synapses('non_staged'))
+        clearMenu.add_command(label="Clear staged", command= lambda: self.clear_synapses('staged'))
+        clearMenu.add_command(label="Clear all", command= lambda: self.clear_synapses('all'))
         contextMenu.add_cascade(menu=clearMenu, label="Clear/Remove")
 
         importMenu = tk.Menu(contextMenu, tearoff=0)
         contextMenu.add_cascade(menu=importMenu, label="Import")
 
         exportMenu = tk.Menu(contextMenu, tearoff=0)
-        exportMenu.add_command(label="Export as file", command=self.ExportCSVMultiM)
+        exportMenu.add_command(label="Export as file", command=self.export_csv_multi_measure)
         contextMenu.add_cascade(menu=exportMenu, label="Export")
 
         if synapse is not None or roi is not None:
@@ -283,27 +277,27 @@ class SynapseTreeview(ttk.Treeview):
 
         if synapse is not None:
             if synapse.name is not None:
-                clearMenu.insert_command(index=0, label="Reset name", command = lambda: self._OnContextMenu_ResetName(synapse=synapse))
-            clearMenu.insert_command(index=0, label="Remove Synapse", command = lambda: self._OnContextMenu_Remove(synapse=synapse))
-            stageMenu.insert_command(index=0, label="Toggle Stage", command = lambda: self._OnContextMenu_ToggleStage(synapse=synapse))
+                clearMenu.insert_command(index=0, label="Reset name", command = lambda: self._on_context_menu_reset_name(synapse=synapse))
+            clearMenu.insert_command(index=0, label="Remove Synapse", command = lambda: self._on_context_menu_remove(synapse=synapse))
+            stageMenu.insert_command(index=0, label="Toggle Stage", command = lambda: self._on_context_menu_toggle_stage(synapse=synapse))
 
             if isinstance(synapse, MultiframeSynapse):
                 addMenu.add_separator()
-                addMenu.add_command(label="Circular ROI",  command = lambda: self._OnContextMenu_Add("CircularROI", synapse=synapse))
+                addMenu.add_command(label="Circular ROI",  command = lambda: self._on_context_menu_add("CircularROI", synapse=synapse))
 
         if roi is not None and isinstance(synapse, MultiframeSynapse):
-            clearMenu.insert_command(index=0, label="Remove ROI", command = lambda: self._OnContextMenu_Remove(synapse=synapse, roi=roi))
+            clearMenu.insert_command(index=0, label="Remove ROI", command = lambda: self._on_context_menu_remove(synapse=synapse, roi=roi))
 
         window_events.SynapseTreeviewContextMenuEvent(import_context_menu=importMenu, export_context_menu=exportMenu)
 
         contextMenu.post(event.x_root, event.y_root)  
         
 
-    def _OnEntryChanged(self, rowid, column, oldval: str, val: str):
+    def _on_entry_changed(self, rowid, column, oldval: str, val: str):
         """ Called after a EntryPopup closes with a changed value. Determines the corresponding ISynapse and modifies it"""
 
         rowid_fiels = rowid.split("_")
-        synapse, roi = self.GetSynapseByRowID(rowid)
+        synapse, roi = self.get_synapse_by_row_id(rowid)
 
         if column == "#0": # Catches editable Synapse Name
             if synapse is None or roi is not None: 
@@ -344,11 +338,9 @@ class SynapseTreeview(ttk.Treeview):
             return
         
         self.modified = True
-        self.SyncSynapses()
-        self._updateCallback()
-        
+        self.sync_synapses()
 
-    def _UpdateISynapseROI(self, roi: ISynapseROI):
+    def _update_ISynapseROI(self, roi: ISynapseROI):
         """ Updates the values in the treeview for a given ISynapseROI """
         _ruuid = roi.uuid
         self.delete(*self.get_children(_ruuid))
@@ -385,27 +377,27 @@ class SynapseTreeview(ttk.Treeview):
 
     # Button Clicks
 
-    def _BtnRemoveClick(self):
+    def _btn_remove_cick(self):
         """ Triggered when clicking the Remove button """
-        synapse, roi = self.GetSelectedSynapse()
+        synapse, roi = self.get_selected_synapse()
         if synapse is not None and roi is not None and self.option_allowAddingMultiframeSynapses:
-            self._OnContextMenu_Remove(synapse, roi)
+            self._on_context_menu_remove(synapse, roi)
         elif synapse is not None:
-            self._OnContextMenu_Remove(synapse)
+            self._on_context_menu_remove(synapse)
         else:
             self.master.bell()
             
-    def _BtnStageClick(self):
+    def _btn_stage_click(self):
         """ Triggered when clicking the Stage button """
-        synapse, roi = self.GetSelectedSynapse()
+        synapse, roi = self.get_selected_synapse()
         if synapse is not None:
-            self._OnContextMenu_ToggleStage(synapse)
+            self._on_context_menu_toggle_stage(synapse)
         else:
             self.master.bell()
 
     # Context Menu Clicks
 
-    def _OnContextMenu_Add(self, class_: Literal["CircularROI", "PolyonalROI", "MultiframeSynapse", "Singleframe_CircularROI", "Singleframe_PolyonalROI"], synapse: ISynapse|None = None):
+    def _on_context_menu_add(self, class_: Literal["CircularROI", "PolyonalROI", "MultiframeSynapse", "Singleframe_CircularROI", "Singleframe_PolyonalROI"], synapse: ISynapse|None = None):
         if isinstance(synapse, MultiframeSynapse):
             match class_:
                 case "CircularROI":
@@ -428,24 +420,24 @@ class SynapseTreeview(ttk.Treeview):
                     return
             self.detection_result.synapses_dict[s.uuid] = s
         self.modified = True
-        self.SyncSynapses()
+        self.sync_synapses()
         self._updateCallback()
 
-    def _OnContextMenu_AllToStage(self):
+    def _on_context_menu_all_to_stage(self):
         for s in self.detection_result.synapses_dict.values():
             s.staged = True
-        self.SyncSynapses()
+        self.sync_synapses()
 
-    def _OnContextMenu_AllFromStage(self):
+    def _on_context_menu_all_from_stage(self):
         for s in self.detection_result.synapses_dict.values():
             s.staged = False
-        self.SyncSynapses()
+        self.sync_synapses()
 
-    def _OnContextMenu_ToggleStage(self, synapse: ISynapse):
+    def _on_context_menu_toggle_stage(self, synapse: ISynapse):
         synapse.staged = not synapse.staged
-        self.SyncSynapses()
+        self.sync_synapses()
     
-    def _OnContextMenu_Remove(self, synapse: ISynapse = None, roi: ISynapseROI = None):
+    def _on_context_menu_remove(self, synapse: ISynapse = None, roi: ISynapseROI = None):
         if synapse is not None and roi is not None:
             if roi.uuid not in synapse.rois_dict.keys():
                 logger.warning(f"SynapseTreeview: Can't remove ROI {synapse.uuid} from synapse {synapse.uuid} as it isn't contained")
@@ -457,15 +449,15 @@ class SynapseTreeview(ttk.Treeview):
                 return
             self.detection_result.synapses_dict.pop(synapse.uuid)
         self.modified = True
-        self.SyncSynapses()
+        self.sync_synapses()
         self._updateCallback()
 
-    def _OnContextMenu_ResetName(self, synapse: ISynapse):
+    def _on_context_menu_reset_name(self, synapse: ISynapse):
         synapse.name = None
-        self.SyncSynapses()
+        self.sync_synapses()
         self._updateCallback()
 
-    def ExportCSVMultiM(self, path:str|None = None, dropFrame=False) -> bool|None:
+    def export_csv_multi_measure(self, path:str|None = None, dropFrame=False) -> bool|None:
         synapses = self.detection_result.synapses_dict
         if len(synapses) == 0 or self.session.active_image_object is None or self.session.active_image_object.img is None:
             self.master.bell()
@@ -503,7 +495,7 @@ class SynapseTreeview(ttk.Treeview):
         data.to_csv(path_or_buf=path, lineterminator="\n", mode="w", index=(not dropFrame))
         return True
 
-    def ClearSynapses(self, target: Literal['staged', 'non_staged', 'all']):
+    def clear_synapses(self, target: Literal['staged', 'non_staged', 'all']):
         match(target):
             case 'staged':
                 self.detection_result.synapses_dict = {_uuid: s for _uuid, s in self.detection_result.synapses_dict.items() if not s.staged}
@@ -514,7 +506,7 @@ class SynapseTreeview(ttk.Treeview):
             case _:
                 return
         self.modified = False
-        self.SyncSynapses()
+        self.sync_synapses()
         self._updateCallback()
 
 

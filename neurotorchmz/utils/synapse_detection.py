@@ -73,6 +73,18 @@ class ISynapseROI:
         return f"{self.location[1]}, {self.location[0]}"
     
     @property
+    def location_x(self) -> float|None:
+        if self._location is None:
+            return None
+        return self._location[0]
+    
+    @property
+    def location_y(self) -> float|None:
+        if self._location is None:
+            return None
+        return self._location[1]
+
+    @property
     def signal_strength(self) -> float|None:
         """ Optional parameter to determine the current signal strength of the ROI """
         return self._signal_strength
@@ -324,6 +336,9 @@ class ROIList:
             raise KeyError(f"Duplicate key '{synapse.uuid}'")
         self[synapse.uuid] = synapse # __setitem__ is registering callback
 
+    def as_dict(self) -> dict[str, ISynapseROI]:
+        return self._rois
+
     def clear(self) -> None:
         _rois = self.to_list()
         self._rois = {}
@@ -383,9 +398,21 @@ class ISynapse:
         return self._uuid
     
     @property
-    def location(self) -> tuple|None:
+    def location(self) -> tuple[float, float]|None:
         """ Get the location of the synapse """
         return None
+    
+    @property
+    def location_x(self) -> float|None:
+        if self.location is None:
+            return None
+        return self.location[0]
+    
+    @property
+    def location_y(self) -> float|None:
+        if self.location is None:
+            return None
+        return self.location[1]
     
     @property
     def location_string(self) -> str:
@@ -593,6 +620,9 @@ class DetectionResult:
         if synapse.uuid in self:
             raise KeyError(f"Duplicate key '{synapse.uuid}'")
         self[synapse.uuid] = synapse
+
+    def as_dict(self) -> dict[str, ISynapse]:
+        return self._synapses
 
     def clear(self) -> None:
         _synapses = self.to_list()

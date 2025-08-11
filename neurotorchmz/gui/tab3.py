@@ -85,13 +85,11 @@ class TabROIFinder(Tab):
         self.frameROIS = tk.LabelFrame(self.frameTools, text="ROIs")
         self.frameROIS.grid(row=2, column=0, sticky="news")
 
-        self.tvSynapses = SynapseTreeview(self.frameROIS, self.session, detection_result=self.session.roifinder_detection_result,selectCallback=lambda synapse, roi:self.invoke_update(TabROIFinder_InvalidateEvent(selectedROI=True, selectedROI_tuple=(synapse, roi))), updateCallback=lambda:self.invoke_update(TabROIFinder_InvalidateEvent(rois=True)), allowSingleframe=True)
-        self.tvSynapses = SynapseTreeview(self.frameROIS, self.session, 
+        self.tvSynapses = SynapseTreeview(master=self.frameROIS, 
+                                          session=self.session, 
                                           detection_result=self.session.roifinder_detection_result, 
-                                          selectCallback=lambda synapse, 
-                                          roi:self.invoke_update(TabROIFinder_InvalidateEvent(selectedROI=True, selectedROI_tuple=(synapse, roi))), 
-                                          updateCallback=lambda:self.invoke_update(TabROIFinder_InvalidateEvent(rois=True)), 
-                                          allowSingleframe=True)
+                                          select_callback=lambda synapse, roi:self.invoke_update(TabROIFinder_InvalidateEvent(selectedROI=True, selectedROI_tuple=(synapse, roi))), 
+                                          allow_singleframe=True)
         self.tvSynapses.pack(fill="both")
 
         self.figure1 = Figure(figsize=(20,10), dpi=100)
