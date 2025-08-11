@@ -6,7 +6,7 @@ from skimage.segmentation import expand_labels
 import uuid
 from skimage.feature import peak_local_max
 from skimage.draw import disk
-from typing import Self, Callable
+from typing import Self, Callable, cast, Iterable
 from collections.abc import Iterator
 from scipy.spatial.distance import pdist
 from scipy.cluster.hierarchy import fcluster, ward
@@ -29,16 +29,94 @@ class ISynapseROI:
     # Class functions
 
     def __init__(self):
-        self.location: tuple|None = None
-        """ (Estimated or actual) center of the synapse; used for selecting it in the plot and ordering """
-        self.region_props: RegionProperties|None = None 
-        """ Stores skimage RegionProperties for the ROI """
-        self.uuid = str(uuid.uuid4())
-        """ A unique UUID to identify the synapse """
-        self.frame: int|None = None
+        self._uuid = str(uuid.uuid4())
+        self._frame: int|None = None
+        self._location: tuple[float, float]|None = None
+        self._signal_strength: float|None = None
+        self._region_props: RegionProperties|None = None 
+        self._callbacks: list[Callable[[], None]] = []
+
+    @property
+    def uuid(self) -> str:
+        """ Returns the unique and nopt mutable UUID of the synapse object """
+        return self._uuid
+    
+    @property
+    def frame(self) -> int|None:
         """ The associate frame for this ROI or None if the object just defines a shape """
-        self.signal_strength: float|None = None
+        return self._frame
+    
+    @frame.setter
+    def frame(self, val: int|None) -> None:
+        if not (val is None or isinstance(val, int)):
+            raise TypeError(f"Bad type for frame: '{type(val)}'")
+        self._frame = val
+        self.notify()
+
+    @property
+    def location(self) -> tuple[float, float]|None:
+        """ (Estimated or actual) center of the synapse; used for selecting it in the plot and ordering """
+        return self._location
+    
+    @location.setter
+    def location(self, val: tuple[float, float]|None) -> None:
+        if not (val is None or (isinstance(val, tuple) and len(val) == 2 and isinstance(val[0], float) and isinstance(val[1], float))):
+            raise TypeError(f"Invalid location '{str(val)}'")
+        self._location = val
+        self.notify()
+
+    @property
+    def location_string(self) -> str:
+        """ Returns the location of the synapse in the format 'X, Y' or '' if the location is not set """
+        if self.location is None:
+            return ""
+        return f"{self.location[1]}, {self.location[0]}"
+    
+    @property
+    def signal_strength(self) -> float|None:
         """ Optional parameter to determine the current signal strength of the ROI """
+        return self._signal_strength
+    
+    @signal_strength.setter
+    def signal_strength(self, val: float|None) -> None:
+        if not (val is None or isinstance(val, float)):
+            raise TypeError(f"Bad type for signal_strength: '{type(val)}'")
+        self._signal_strength = val
+        self.notify()
+    
+    @property
+    def region_props(self) -> RegionProperties|None:
+        """ Stores skimage RegionProperties for the ROI """
+        return self._region_props
+    
+    @region_props.setter
+    def region_props(self, val: RegionProperties|None) -> None:
+        if not (val is None or not isinstance(val, RegionProperties)):
+            raise TypeError(f"Bad type for region_props: '{type(val)}'")
+        self._region_props = val
+        self.notify()
+
+    def get_coordinates(self, shape:tuple) -> tuple[np.ndarray|list, np.ndarray|list]:
+        """ 
+            Return coordinates of points inside the ROI and inside the given shape. They are returned as a tuple
+            with the first parameter beeing the y coordinates and the second the x coordinates.
+            
+            Example output: ([Y0, Y1, Y2, ...], [X0, X1, X2, ...])
+        
+            :returns tuple[np.array, np.array]: The coordinates inside the ROI in the format [yy, xx]
+        """
+        # ISynapseROI is empty placeholder, therefore return no coordinates
+        return ([], [])
+    
+    def get_signal_from_image(self, img: np.ndarray) -> np.ndarray:
+        """ Given an 3D ImageObject (t, y, x), flatten x and y to the pixels given by get_coordinates providing a shape (t, num_image_mask_pixel) """
+        yy, xx = self.get_coordinates(img.shape[-2:])
+        return img[:, yy, xx]
+
+    def notify(self) -> None:
+        """ Notify all callbacks that some properties have changed """
+        for c in self._callbacks:
+            c()
 
     def set_frame(self, frame: int|None) -> Self:
         """ Set the frame of the synapse or removes it by providing None """
@@ -59,8 +137,12 @@ class ISynapseROI:
         if location is not None:
             self.location = location
         else:
-            self.location = (y, x)
+            self.location = (cast(float, y), cast(float, x))
         
+        return self
+    
+    def set_signal_strength(self, signal_strength: float|None) -> Self:
+        self.signal_strength = signal_strength
         return self
     
     def set_region_props(self, region_props: RegionProperties|None) -> Self:
@@ -68,29 +150,15 @@ class ISynapseROI:
         self.region_props = region_props
         return self
     
-    @property
-    def location_string(self) -> str:
-        """ Returns the location of the synapse in the format 'X, Y' or '' if the location is not set """
-        if self.location is None:
-            return ""
-        return f"{self.location[1]}, {self.location[0]}"
-    
-    def get_coordinates(self, shape:tuple) -> tuple[np.ndarray|list, np.ndarray|list]:
-        """ 
-            Return coordinates of points inside the ROI and inside the given shape. They are returned as a tuple
-            with the first parameter beeing the y coordinates and the second the x coordinates.
-            
-            Example output: ([Y0, Y1, Y2, ...], [X0, X1, X2, ...])
-        
-            :returns tuple[np.array, np.array]: The coordinates inside the ROI in the format [yy, xx]
-        """
-        # ISynapseROI is empty placeholder, therefore return no coordinates
-        return ([], [])
-    
-    def get_signal_from_image(self, img: np.ndarray) -> np.ndarray:
-        """ Given an 3D ImageObject (t, y, x), flatten x and y to the pixels given by get_coordinates providing a shape (t, num_image_mask_pixel) """
-        yy, xx = self.get_coordinates(img.shape[-2:])
-        return img[:, yy, xx]
+    def register_callback(self, callback: Callable[[], None]) -> None:
+        """ Register a callback. The callback is called when properties of the ISynapseROI object have been modified """
+        if not callable(callback):
+            raise TypeError(f"'{type(callback)}' is not callable")
+        self._callbacks.append(callback)
+
+    def remove_callback(self, callback: Callable[[], None]) -> None:
+        """ Removes a callback """
+        self._callbacks.remove(callback)
     
     def __str__(self) -> str:
         return f"ISynapseROI ({self.location_string})" if self.location is not None else "ISynapseROI"
@@ -135,12 +203,31 @@ class PolygonalSynapseROI(ISynapseROI):
     """ Implements a polygonal synapse ROI """
 
     CLASS_DESC = "Polyonal ROI"
+
     def __init__(self):
         super().__init__()
-        self.polygon: list[tuple[int, int]]|None = None
-        """ List of polygon points in the format [(Y, X), (Y, X), ..] """
-        self.coords: list[tuple[int, int]]|None = None
+        self._coords: list[tuple[int, int]]|None = None
+        self._polygon: list[tuple[int, int]]|None = None
+
+    @property
+    def coords(self) -> list[tuple[int, int]]|None:
         """ List of points inside the polygon in the format [(Y, X), (Y, X), ..] """
+        return self._coords
+    
+    @coords.setter
+    def coords(self, val: list[tuple[int, int]]|None) -> None:
+        self._coords = val
+        self.notify()
+
+    @property
+    def polygon(self) -> list[tuple[int, int]]|None:
+        """ List of polygon points in the format [(Y, X), (Y, X), ..] """
+        return self._polygon
+    
+    @polygon.setter
+    def polygon(self, val: list[tuple[int, int]]|None) -> None:
+        self._polygon = val
+        self.notify()
 
     def set_polygon(self, polygon: list[tuple[int, int]], coords: list[tuple[int, int]]|None = None, region_props: RegionProperties|None = None):
         """
@@ -150,13 +237,15 @@ class PolygonalSynapseROI(ISynapseROI):
             :param list[tuple[int, int]] coords: The pixel coordinates of the polygon in the format [(Y, X), (Y, X), ..]. Either it or a RegionProperties object must be given
             :param RegionPropertiers region_props: A region_props object. Either it or the coords must be given
         """
-        self.polygon = polygon
-        self.region_props = region_props
+        self._polygon = polygon
+        self._region_props = region_props
         if coords is not None:
-            self.coords = coords
+            self._coords = coords
+            self.notify()
         elif region_props is not None:
-            self.coords = [(int(yx[0]), int(yx[1])) for yx in region_props.coords_scaled]
-            self.set_location(y=int(region_props.centroid_weighted[0]), x=int(region_props.centroid_weighted[1]))
+            self._coords = [(int(yx[0]), int(yx[1])) for yx in region_props.coords_scaled]
+            self.set_location(y=int(region_props.centroid_weighted[0]), x=int(region_props.centroid_weighted[1])) 
+            # Set location does already call self.notify()
         else:
             raise ValueError("set_polygon requires requires at least coords or region props, but you did not provide either one")
         
@@ -171,6 +260,107 @@ class PolygonalSynapseROI(ISynapseROI):
 
     def __str__(self) -> str:
         return f"Polyonal ROI centered at ({self.location_string})"  if self.location is not None else "Polygonal ROI"
+    
+class ROIList:
+    """ Implements a list of ROIS, but allows to access them via their UUID as in a dict. Also, a callback system is implemented """
+
+    def __init__(self) -> None:
+        self._rois: dict[str, ISynapseROI] = {}
+        self._rois_callbacks: dict[str, Callable[[], None]] = {}
+        self._callbacks: list[Callable[[list[ISynapseROI], list[ISynapseROI], list[ISynapseROI]], None]] = []
+
+    def __getitem__(self, key: str|int):
+        if isinstance(key, str) and key in self._rois:
+            return self._rois[key]
+        elif isinstance(key, int) and key < len(self):
+            return self.to_list()[key]
+        raise KeyError(f"Invalid key '{key}'")
+    
+    def __setitem__(self, key: str, value: ISynapseROI):
+        if not isinstance(key, str):
+            raise KeyError(f"Invalid key '{key}'")
+        if not isinstance(value, ISynapseROI):
+            raise TypeError(f"'{type(value)}' is not allowed")
+        if key != value.uuid:
+            raise ValueError(f"Invalid value: The key must match the UUID of the value")
+        self._rois[key]
+        self._rois_callbacks[key] = lambda: self.notify(modified=[value])
+        value.register_callback(self._rois_callbacks[key])
+        self.notify(added=[value])
+
+    def __delitem__(self, key: str) -> None:
+        if not isinstance(key, str) or not key in self._rois:
+            raise KeyError(f"Invalid key '{key}'")
+        s = self._rois[key]
+        s.remove_callback(self._rois_callbacks[key])
+        del self._rois[key]
+        del self._rois_callbacks[key]
+        self.notify(removed=[s])
+
+    def __contains__(self, key: ISynapseROI|str) -> bool:
+        if isinstance(key, str):
+            return key in self._rois
+        elif isinstance(key, ISynapseROI):
+            return key in self._rois.values()
+        return False
+    
+    def __iter__(self) -> Iterator[ISynapseROI]:
+        return iter(self._rois.values())
+
+    def __len__(self) -> int:
+        return len(self._rois)
+    
+    def __del__(self) -> None:
+        for r in self._rois.values():
+            r.remove_callback(self._rois_callbacks[r.uuid])
+
+    def __repr__(self) -> str:
+        return f"<ROIList of {len(self)} ROIs>"
+
+    def append(self, synapse: ISynapseROI, /) -> None:
+        if not isinstance(synapse, ISynapseROI):
+            raise TypeError(f"Can not append object of type '{type(synapse)}'")
+        if synapse.uuid in self:
+            raise KeyError(f"Duplicate key '{synapse.uuid}'")
+        self[synapse.uuid] = synapse # __setitem__ is registering callback
+
+    def clear(self) -> None:
+        _rois = self.to_list()
+        self._rois = {}
+        self.notify(removed=_rois)
+
+    def extend(self, rois: Iterable[ISynapseROI], /) -> None:
+        if not isinstance(rois, Iterable):
+            raise TypeError(f"{type(rois)} is not iterable")
+        for r in rois:
+            if not isinstance(r, ISynapseROI):
+                raise TypeError(f"'{type(r)}' is not allowed")
+            if r in self._rois:
+                raise KeyError(f"Duplicate key '{str(r)}'")
+        for r in rois:
+            self._rois[r.uuid] = r
+            self._rois_callbacks[r.uuid] = lambda: self.notify(modified=[r])
+            r.register_callback(self._rois_callbacks[r.uuid])
+        self.notify(added=list(rois))
+            
+    def notify(self, added: list[ISynapseROI] = [], removed: list[ISynapseROI] = [], modified: list[ISynapseROI] = []) -> None:
+        """ Notify all registered callbacks"""
+        for c in self._callbacks:
+            c(added, removed, modified)
+
+    def to_list(self) -> list[ISynapseROI]:
+        return list(self._rois.values())
+    
+    def register_callback(self, callback: Callable[[list[ISynapseROI], list[ISynapseROI], list[ISynapseROI]], None]) -> None:
+        """
+        Register a callback on this results object. The callback must accept three lists of ISynapseROI (added, removed and modified) and will be called
+        whenever the result changes
+        """
+        self._callbacks.append(callback)
+
+    def remove_callback(self, callback: Callable[[list[ISynapseROI], list[ISynapseROI], list[ISynapseROI]], None]) -> None:
+        """ Remove a callback """
+        self._callbacks.remove(callback)
 
 # A synapse contains multiple (MultiframeSynapse) or a single SynapseROI (SingleframeSynapse)
 class ISynapse:
@@ -181,13 +371,15 @@ class ISynapse:
         self._uuid = str(uuid.uuid4()) # Unique id
         self._name: str|None = None
         self._staged: bool = False
-        self._rois: dict[str, ISynapseROI] = {}
+        self.rois = ROIList()
+        self._rois_callback = lambda _1,_2,_3: self.notify()
+        self.rois.register_callback(self._rois_callback)
 
         self._callbacks: list[Callable[[], None]] = []
 
     @property
     def uuid(self) -> str:
-        """ Returns the unique, non mutable UUID of the synapse object """
+        """ Returns the unique and nopt mutable UUID of the synapse object """
         return self._uuid
     
     @property
@@ -212,15 +404,9 @@ class ISynapse:
         self._name = val
         self.notify()
 
-    @property
-    def rois(self) -> list[ISynapseROI]:
-        """ Returns the list of ROIS in this synapse"""
-        return list(self._rois.values())
-    
-    @property
-    def rois_dict(self) -> dict[str, ISynapseROI]:
-        """ Returns the rois as dictionary with their UUID as key """
-        return self._rois
+    def set_name(self, name: str|None) -> Self:
+        self.name = name
+        return self
 
     @property
     def staged(self) -> bool:
@@ -233,6 +419,15 @@ class ISynapse:
             raise TypeError(f"bad type for staged: '{type(val)}'")
         self._staged = val
         self.notify()
+
+    def get_roi_description(self) -> str:
+        """ Abstract function for displaying information about the rois. Needs to be implemented by each subclass """
+        return ""    
+
+    def notify(self) -> None:
+        """ Notify all callbacks that some properties have changed """
+        for c in self._callbacks:
+            c()    
     
     def register_callback(self, callback: Callable[[], None]) -> None:
         """ Register a callback. The callback is called when properties of the ISynapse object have been modified """
@@ -240,17 +435,15 @@ class ISynapse:
             raise TypeError(f"'{type(callback)}' is not callable")
         self._callbacks.append(callback)
 
-    def notify(self) -> None:
-        """ Notify all callbacks that some properties have changed """
-        for c in self._callbacks:
-            c()
-    
-    def get_roi_description(self) -> str:
-        """ Abstract function for displaying information about the rois. Needs to be implemented by each subclass """
-        return ""
+    def remove_callback(self, callback: Callable[[], None]) -> None:
+        """ Removes a callback """
+        self._callbacks.remove(callback)
     
     def __str__(self) -> str:
         return "<ISynapse Object>"
+    
+    def __del__(self) -> None:
+        self.rois.remove_callback(self._rois_callback)
     
 class SingleframeSynapse(ISynapse):
     """
@@ -259,7 +452,8 @@ class SingleframeSynapse(ISynapse):
 
     def __init__(self, roi: ISynapseROI|None = None):
         super().__init__()
-        self.set_roi(roi)
+        if roi is not None:
+            self.rois.append(roi)
 
     def __str__(self) -> str:
         if self.location is not None:
@@ -268,22 +462,21 @@ class SingleframeSynapse(ISynapse):
     
     def set_roi(self, roi: ISynapseROI|None = None) -> Self:
         """ Set the ROI or remove it by passing None or no argument"""
-        if roi is None:
-            self._rois = {}
-        else:
-            self._rois = {roi.uuid: roi}
+        self.rois.clear()
+        if roi is not None:
+            self.rois.append(roi)
         return self
     
     @property
     def location(self) -> tuple|None:
         """ Get the location of the synapse accessed from the ROI """
-        if len(self._rois) == 0:
+        if len(self.rois) == 0:
             return None
         return self.rois[0].location
     
     def get_roi_description(self) -> str:
         """ Displays information about the roi by calling str(roi) """
-        if len(self._rois) == 0:
+        if len(self.rois) == 0:
             return ""
         return str(self.rois[0])
 
@@ -325,33 +518,18 @@ class MultiframeSynapse(ISynapse):
             self._location = (y, x)
         
         return self
-
-    def add_roi(self, roi: ISynapseROI) -> Self:
-        """ Add a ROI to the synapse"""
-        self._rois[roi.uuid] = roi
-        return self
-
-    def add_rois(self, rois: list[ISynapseROI]) -> Self:
-        """ Add a range of rois to the synapse """
-        for r in rois:
-            self.add_roi(r)
-        return self
-
+    
     def set_rois(self, rois: list[ISynapseROI]) -> Self:
-        """ Remove all rois and append all rois in the given list """
-        self._rois = {r.uuid: r for r in rois}
+        """ Add a range of rois to the synapse """
+        self.rois.clear()
+        self.rois.extend(rois)
         return self
-    
-    def remove_roi(self, roi: ISynapseROI) -> Self:
-        """ Remove a roi """
-        del self._rois[roi.uuid]
+
+    def extend_rois(self, rois: list[ISynapseROI]) -> Self:
+        """ Add a range of rois to the synapse """
+        self.rois.extend(rois)
         return self
-    
-    def clear_rois(self) -> Self:
-        """ Remove all rois """
-        self._rois = {}
-        return self
-    
+
     def get_roi_description(self) -> str:
         """ In the future return information about the rois. Currently, only the text 'Multiframe Synapse' is returned """
         return "Multiframe Synapse"
@@ -363,6 +541,7 @@ class DetectionResult:
 
     def __init__(self) -> None:
         self._synapses: dict[str, ISynapse] = {}
+        self._synapses_callbacks: dict[str, Callable[[], None]] = {}
         self._callbacks: list[Callable[[list[ISynapse], list[ISynapse], list[ISynapse]], None]] = []
 
     def __getitem__(self, key: str):
@@ -375,13 +554,19 @@ class DetectionResult:
             raise KeyError(f"Invalid key '{key}'")
         if not isinstance(value, ISynapse):
             raise TypeError(f"'{type(value)}' is not allowed")
+        if key != value.uuid:
+            raise ValueError(f"Invalid value: The key must match the UUID of the value")
         self._synapses[key]
+        self._synapses_callbacks[key] = lambda: self.notify(modified=[value])
+        value.register_callback(self._synapses_callbacks[key])
         self.notify(added=[value])
 
     def __delitem__(self, key: str) -> None:
         if not isinstance(key, str) or not key in self._synapses:
             raise KeyError(f"Invalid key '{key}'")
         s = self._synapses[key]
+        s.remove_callback(self._synapses_callbacks[key])
+        del self._synapses_callbacks[key]
         del self._synapses[key]
         self.notify(removed=[s])
 
@@ -397,6 +582,10 @@ class DetectionResult:
 
     def __len__(self) -> int:
         return len(self._synapses)
+    
+    def __del__(self) -> None:
+        for s in self._synapses.values():
+            s.remove_callback(self._synapses_callbacks[s.uuid])
 
     def append(self, synapse: ISynapse, /) -> None:
         if not isinstance(synapse, ISynapse):
@@ -410,8 +599,8 @@ class DetectionResult:
         self._synapses = {}
         self.notify(removed=_synapses)
 
-    def extend(self, synapses: Iterator[ISynapse], /) -> None:
-        if not isinstance(synapses, Iterator):
+    def extend(self, synapses: Iterable[ISynapse], /) -> None:
+        if not isinstance(synapses, Iterable):
             raise TypeError(f"{type(synapses)} is not iterable")
         for s in synapses:
             if not isinstance(s, ISynapse):
@@ -420,6 +609,8 @@ class DetectionResult:
                 raise KeyError(f"Duplicate key '{str(s)}'")
         for s in synapses:
             self._synapses[s.uuid] = s
+            self._synapses_callbacks[s.uuid] = lambda: self.notify(modified=[s])
+            s.register_callback(self._synapses_callbacks[s.uuid])
         self.notify(added=list(synapses))
             
     def notify(self, added: list[ISynapse] = [], removed: list[ISynapse] = [], modified: list[ISynapse] = []) -> None:
