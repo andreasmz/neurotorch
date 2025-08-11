@@ -741,6 +741,8 @@ class HysteresisTh(IDetectionAlgorithm):
         self.thresholded_img = (img > lowerThreshold).astype(int)
         self.thresholded_img[self.thresholded_img > 0] = 1
         self.labeled_img = measure.label(self.thresholded_img, connectivity=1)
+        if not isinstance(self.labeled_img, np.ndarray):
+            raise RuntimeError(f"skimage.measure.label returned an unexpected result of type '{type(self.labeled_img)}'")
         self.region_props = measure.regionprops(self.labeled_img, intensity_image=img)
         self.thresholdFiltered_img = np.zeros(shape=img.shape)
         labels_ok = []
@@ -792,14 +794,15 @@ class LocalMax(IDetectionAlgorithm):
         self.region_props = None
         self.labeledImage = None
 
-    def detect(self, 
+    def detect(self, # pyright: ignore[reportIncompatibleMethodOverride]
                img:np.ndarray, 
                lowerThreshold: int|float,
                upperThreshold: int|float,
                expandSize: int,
                minArea: int,
                minDistance: int,
-               radius: int|float|None
+               radius: int|float|None,
+               **kwargs
                ) -> list[ISynapseROI]:
         """
             Detect ROIs in the given 2D image. For details see the documentation
@@ -826,6 +829,8 @@ class LocalMax(IDetectionAlgorithm):
 
         self.imgThresholded = (img >= lowerThreshold)
         self.imgThresholded_labeled = measure.label(self.imgThresholded, connectivity=1)
+        if not isinstance(self.imgThresholded_labeled, np.ndarray):
+            raise RuntimeError(f"skimage.measure.label returned an unexpected result of type '{type(self.imgThresholded_labeled)}'")
         self.maxima = peak_local_max(img, min_distance=minDistance, threshold_abs=upperThreshold) # ((Y, X), ..)
         self.maxima_labeled = np.zeros(shape=img.shape, dtype=int)
         for i in range(self.maxima.shape[0]):
@@ -864,7 +869,8 @@ class LocalMax(IDetectionAlgorithm):
                 startY = region.bbox[0] - 1 # -1 As correction for the padding
                 contour[:, 0] = contour[:, 0] + startX
                 contour[:, 1] = contour[:, 1] + startY
-                synapse = PolygonalSynapseROI()(polygon=contour, region_props=region)
+                contour = [(yx[0], yx[1]) for yx in contour]
+                synapse = PolygonalSynapseROI().set_polygon(polygon=contour, region_props=region)
             else:
                 y, x = region.centroid_weighted
                 x, y = int(round(x,0)), int(round(y,0))
@@ -886,14 +892,17 @@ class SynapseClusteringAlgorithm:
         a new list of synapses.
     """
 
+    @staticmethod
     def cluster(rois: list[ISynapseROI]) -> list[ISynapse]:
-        pass
+        raise NotImplementedError()
 
 class SimpleCustering(SynapseClusteringAlgorithm):
 
+    @staticmethod
     def cluster(rois: list[ISynapseROI]) -> list[ISynapse]:
         locations = [r.location for r in rois]
-        distances = pdist(locations)
+        # TODO
+        distances = pdist(locations) # type: ignore
         wardmatrix = ward(distances)
         cluster = fcluster(wardmatrix, criterion='distance', t=20)
 
@@ -903,6 +912,6 @@ class SimpleCustering(SynapseClusteringAlgorithm):
 
         for i,r in enumerate(rois):
             label = cluster[i]
-            synapses[label].add_roi(r)
+            synapses[label].rois.append(r)
 
         return list(synapses.values())
