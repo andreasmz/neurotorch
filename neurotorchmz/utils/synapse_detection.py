@@ -6,7 +6,8 @@ from skimage.segmentation import expand_labels
 import uuid
 from skimage.feature import peak_local_max
 from skimage.draw import disk
-from typing import Self, cast
+from typing import Self, Callable
+from collections.abc import Iterator
 from scipy.spatial.distance import pdist
 from scipy.cluster.hierarchy import fcluster, ward
 
@@ -177,21 +178,17 @@ class ISynapse:
         This abstract class defines the concept of a synapse. Currently there are two types of synapses: Singleframe and Multiframe.
     """
     def __init__(self):
-        self.uuid = str(uuid.uuid4()) # Unique id
-        """ Unique id of the synapse"""
-        self.name: str|None = None
-        """ Name of the synapse"""
-        self.staged = False
-        """ A synapse can be staged meaning it will not be replaced when rerunning the detection """
+        self._uuid = str(uuid.uuid4()) # Unique id
+        self._name: str|None = None
+        self._staged: bool = False
         self._rois: dict[str, ISynapseROI] = {}
 
-    def __str__(self) -> str:
-        return "<ISynapse Object>"
-    
-    def set_name(self, name: str|None) -> Self:
-        """ Set the name of the synapse """
-        self.name = name
-        return self
+        self._callbacks: list[Callable[[], None]] = []
+
+    @property
+    def uuid(self) -> str:
+        """ Returns the unique, non mutable UUID of the synapse object """
+        return self._uuid
     
     @property
     def location(self) -> tuple|None:
@@ -204,6 +201,18 @@ class ISynapse:
         return f"{self.location[1]}, {self.location[0]}" if self.location is not None else ""
     
     @property
+    def name(self) -> str|None:
+        """ Returns the name of the synapse or None """
+        return self._name
+    
+    @name.setter
+    def name(self, val: str|None) -> None:
+        if not (val is None or isinstance(val, str)):
+            raise TypeError(f"'{type(val)}' is not a valid name")
+        self._name = val
+        self.notify()
+
+    @property
     def rois(self) -> list[ISynapseROI]:
         """ Returns the list of ROIS in this synapse"""
         return list(self._rois.values())
@@ -212,10 +221,36 @@ class ISynapse:
     def rois_dict(self) -> dict[str, ISynapseROI]:
         """ Returns the rois as dictionary with their UUID as key """
         return self._rois
+
+    @property
+    def staged(self) -> bool:
+        """ A synapse can be staged meaning it will not be replaced when rerunning the detection """
+        return self._staged
+    
+    @staged.setter
+    def staged(self, val: bool) -> None:
+        if not isinstance(val, bool):
+            raise TypeError(f"bad type for staged: '{type(val)}'")
+        self._staged = val
+        self.notify()
+    
+    def register_callback(self, callback: Callable[[], None]) -> None:
+        """ Register a callback. The callback is called when properties of the ISynapse object have been modified """
+        if not callable(callback):
+            raise TypeError(f"'{type(callback)}' is not callable")
+        self._callbacks.append(callback)
+
+    def notify(self) -> None:
+        """ Notify all callbacks that some properties have changed """
+        for c in self._callbacks:
+            c()
     
     def get_roi_description(self) -> str:
         """ Abstract function for displaying information about the rois. Needs to be implemented by each subclass """
         return ""
+    
+    def __str__(self) -> str:
+        return "<ISynapse Object>"
     
 class SingleframeSynapse(ISynapse):
     """
@@ -321,44 +356,90 @@ class MultiframeSynapse(ISynapse):
         """ In the future return information about the rois. Currently, only the text 'Multiframe Synapse' is returned """
         return "Multiframe Synapse"
     
-
 class DetectionResult:
     """
         Class to store the result of synapse detections
     """
-    def __init__(self):
-        self.clear()
 
-    def clear(self):
+    def __init__(self) -> None:
         self._synapses: dict[str, ISynapse] = {}
+        self._callbacks: list[Callable[[list[ISynapse], list[ISynapse], list[ISynapse]], None]] = []
 
-    def add_synapse(self, s: ISynapse):
-        self._synapses[s.uuid] = s
+    def __getitem__(self, key: str):
+        if not isinstance(key, str) or not key in self._synapses:
+            raise KeyError(f"Invalid key '{key}'")
+        return self._synapses[key]
+    
+    def __setitem__(self, key: str, value: ISynapse):
+        if not isinstance(key, str):
+            raise KeyError(f"Invalid key '{key}'")
+        if not isinstance(value, ISynapse):
+            raise TypeError(f"'{type(value)}' is not allowed")
+        self._synapses[key]
+        self.notify(added=[value])
 
-    @property
-    def synapses(self) -> list[ISynapse]:
-        """ The current list of synapses in this tab. If you modify values inside this list, make sure to call tvSynapses.SyncSynapses() to reflect the changes in the TreeView. """
+    def __delitem__(self, key: str) -> None:
+        if not isinstance(key, str) or not key in self._synapses:
+            raise KeyError(f"Invalid key '{key}'")
+        s = self._synapses[key]
+        del self._synapses[key]
+        self.notify(removed=[s])
+
+    def __contains__(self, key: ISynapse|str) -> bool:
+        if isinstance(key, str):
+            return key in self._synapses
+        elif isinstance(key, ISynapse):
+            return key in self._synapses.values()
+        return False
+    
+    def __iter__(self) -> Iterator[ISynapse]:
+        return iter(self._synapses.values())
+
+    def __len__(self) -> int:
+        return len(self._synapses)
+
+    def append(self, synapse: ISynapse, /) -> None:
+        if not isinstance(synapse, ISynapse):
+            raise TypeError(f"Can not append object of type '{type(synapse)}'")
+        if synapse.uuid in self:
+            raise KeyError(f"Duplicate key '{synapse.uuid}'")
+        self[synapse.uuid] = synapse
+
+    def clear(self) -> None:
+        _synapses = self.to_list()
+        self._synapses = {}
+        self.notify(removed=_synapses)
+
+    def extend(self, synapses: Iterator[ISynapse], /) -> None:
+        if not isinstance(synapses, Iterator):
+            raise TypeError(f"{type(synapses)} is not iterable")
+        for s in synapses:
+            if not isinstance(s, ISynapse):
+                raise TypeError(f"'{type(s)}' is not allowed")
+            if s in self._synapses:
+                raise KeyError(f"Duplicate key '{str(s)}'")
+        for s in synapses:
+            self._synapses[s.uuid] = s
+        self.notify(added=list(synapses))
+            
+    def notify(self, added: list[ISynapse] = [], removed: list[ISynapse] = [], modified: list[ISynapse] = []) -> None:
+        """ Notify all registered callbacks"""
+        for c in self._callbacks:
+            c(added, removed, modified)
+
+    def to_list(self) -> list[ISynapse]:
         return list(self._synapses.values())
     
-    @synapses.setter
-    def synapses(self, val: list[ISynapse]):
-        if not isinstance(val, list) or not all(isinstance(v, ISynapse) for v in val):
-            raise ValueError("The synapse property expects a list of ISynapse")
-        self._synapses = {s.uuid:s for s in val}
-
-    @property
-    def synapses_dict(self) -> dict[str, ISynapse]:
-        """ 
-            The current list of synapses in this tab presented as dict with the UUID as key. 
-            If you modify values inside this list, make sure to call tvSynapses.SyncSynapses() to reflect the changes in the TreeView. 
+    def register_callback(self, callback: Callable[[list[ISynapse], list[ISynapse], list[ISynapse]], None]) -> None:
         """
-        return self._synapses
-    
-    @synapses_dict.setter
-    def synapses_dict(self, val: dict[str, ISynapse]):
-        if not isinstance(val, dict) or not all(isinstance(k, str) and isinstance(v, ISynapse) for k, v in val.items()):
-            raise ValueError("The synapse property expects a dictionary of ISynapses with their UUID as key")
-        self._synapses = val
+        Register a callback on this results object. The callback must accept three lists of ISynapse (added, removed and modified) and will be called
+        whenever the result changes
+        """
+        self._callbacks.append(callback)
+
+    def remove_callback(self, callback: Callable[[list[ISynapse], list[ISynapse], list[ISynapse]], None]) -> None:
+        """ Remove a callback """
+        self._callbacks.remove(callback)
 
         
 class IDetectionAlgorithm():

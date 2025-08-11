@@ -1,11 +1,12 @@
+""" This module defines the SynapseTreeviee, a class to display detection results and provide an interface to modify them"""
+
 import tkinter as tk
 from tkinter import ttk
-from typing import Callable, Type, Literal
+from typing import Callable, Literal
 import re
 import pandas as pd
 
 from ..window import *
-
 from ...utils.synapse_detection import *
 
 class SynapseTreeview(ttk.Treeview):
@@ -24,23 +25,27 @@ class SynapseTreeview(ttk.Treeview):
     ]
 
     def __init__(self, 
-                 master, 
+                 master: tk.Widget, 
                  session: Session, 
                  detection_result: DetectionResult,
-                 selectCallback: Callable[[ISynapse|None, ISynapseROI|None], None], 
-                 updateCallback = Callable[[None], None], 
-                 allowSingleframe: bool = False,
-                 allowMultiframe: bool = False,
+                 select_callback: Callable[[ISynapse|None, ISynapseROI|None], None], 
+                 update_callback = Callable[[None], None], 
+                 allow_singleframe: bool = False,
+                 allow_multiframe: bool = False,
                  **kwargs):
         """
-            Parameters:
-                synapseCallback: Callable to return the current list of Synapses. Used to emulate a by ref behaviour
-                selectCallback: Called when the user selects a specific ISynapse. Called with None, if the user deselects from any ISynapse
-                updateCallback: Called when a property of a synapse is changed
+            :param tk.Widget master: The reference to the master widget is used to create the tree view as sub widget inside of master
+            :param Session session: A reference to the current session
+            :param Detection_Result detection_result: A result to the DetectionResult object the treeview will be synced
+
+            # Parameters:
+            #     synapseCallback: Callable to return the current list of Synapses. Used to emulate a by ref behaviour
+            #     selectCallback: Called when the user selects a specific ISynapse. Called with None, if the user deselects from any ISynapse
+            #     updateCallback: Called when a property of a synapse is changed
         """
         self.master = master
-        self.option_allowAddingSingleframeSynapses = allowSingleframe
-        self.option_allowAddingMultiframeSynapses = allowMultiframe
+        self.option_allowAddingSingleframeSynapses = allow_singleframe
+        self.option_allowAddingMultiframeSynapses = allow_multiframe
         self.frame = ttk.Frame(self.master)
         self.frametv = ttk.Frame(self.frame)
         self.frametv.pack(fill="both")
@@ -84,8 +89,8 @@ class SynapseTreeview(ttk.Treeview):
 
         self.modified = False
         self.detection_result = detection_result # Returns dict of UUID -> ISynapse
-        self._selectCallback = selectCallback
-        self._updateCallback = updateCallback
+        self._selectCallback = select_callback
+        self._updateCallback = update_callback
 
         self.session = session
         self._entryPopup = None
