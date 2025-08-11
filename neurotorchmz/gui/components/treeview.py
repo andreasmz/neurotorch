@@ -88,6 +88,7 @@ class SynapseTreeview(ttk.Treeview):
 
         self._entryPopup = None
         self._sync_task = Task(function=self._sync_synapses_task, name="syncing synapse treeview", run_async=True, keep_alive=True)
+        self.sync_synapses()
 
     def pack(self, **kwargs):
         self.frame.pack(**kwargs)

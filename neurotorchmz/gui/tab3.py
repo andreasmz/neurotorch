@@ -82,16 +82,6 @@ class TabROIFinder(Tab):
         self.btnDetect = tk.Button(self.frameOptions, text="Detect", command=self.detect)
         self.btnDetect.grid(row=15, column=0)
 
-        self.frameROIS = tk.LabelFrame(self.frameTools, text="ROIs")
-        self.frameROIS.grid(row=2, column=0, sticky="news")
-
-        self.tvSynapses = SynapseTreeview(master=self.frameROIS, 
-                                          session=self.session, 
-                                          detection_result=self.session.roifinder_detection_result, 
-                                          select_callback=lambda synapse, roi:self.invoke_update(TabROIFinder_InvalidateEvent(selectedROI=True, selectedROI_tuple=(synapse, roi))), 
-                                          allow_singleframe=True)
-        self.tvSynapses.pack(fill="both")
-
         self.figure1 = Figure(figsize=(20,10), dpi=100)
         self.ax1 = self.figure1.add_subplot(221)  
         self.ax2 = self.figure1.add_subplot(222, sharex=self.ax1, sharey=self.ax1)  
@@ -106,10 +96,20 @@ class TabROIFinder(Tab):
         self.canvas1.mpl_connect('button_press_event', self.canvas1_click)
         self.canvas1.draw()
 
+        self.frameROIS = tk.LabelFrame(self.frameTools, text="ROIs")
+        self.frameROIS.grid(row=2, column=0, sticky="news")
+
+        self.tvSynapses = SynapseTreeview(master=self.frameROIS, 
+                                          session=self.session, 
+                                          detection_result=self.session.roifinder_detection_result, 
+                                          select_callback=lambda synapse, roi:self.invoke_update(TabROIFinder_InvalidateEvent(selectedROI=True, selectedROI_tuple=(synapse, roi))), 
+                                          allow_singleframe=True)
+        self.tvSynapses.pack(fill="both")
+        self.detection_result.register_callback(lambda _1, _2, _3: self.invoke_update(TabROIFinder_InvalidateEvent(rois=True)))
+
         #tk.Grid.rowconfigure(self.frameTools, 3, weight=1)
 
-        self.tvSynapses.SyncSynapses()
-        self.update_tab(TabROIFinder_InvalidateEvent(algorithm=True, image=True))
+        self.update_tab(TabROIFinder_InvalidateEvent(algorithm=True, image=True, rois=True))
 
 
     # Convience functions
@@ -124,12 +124,9 @@ class TabROIFinder(Tab):
     def update_tab(self, event: TabUpdateEvent):
         """ The main function to update this tab. """
         if isinstance(event, ImageChangedEvent):
-            self.tvSynapses.ClearSynapses(target='non_staged')
-            self.tvSynapses.SyncSynapses()
+            self.detection_result.clear_where(lambda s: not s.staged)
             self.clear_image_plot()
             self.comboImage_changed()
-        elif isinstance(event, UpdateRoiFinderDetectionResultEvent):
-            self.tvSynapses.SyncSynapses()
         elif isinstance(event, TabROIFinder_InvalidateEvent):
             if event.algorithm: self.invalidate_algorithm()
             if event.image: self.invalidate_image()
@@ -215,7 +212,7 @@ class TabROIFinder(Tab):
             ax.set_axis_off()
         
         if imgObj is None or imgObj.img is None or imgObj.imgDiff is None or (_img := imgObj.imgView(ImageView.SPATIAL).Mean) is None:
-            self.invoke_update(TabROIFinder_InvalidateEvent(rois=True))
+            #self.invoke_update(TabROIFinder_InvalidateEvent(rois=True))
             return
         
         self.ax1Image = self.ax1.imshow(_img, cmap="Greys_r") 
@@ -229,7 +226,7 @@ class TabROIFinder(Tab):
             self.ax2_colorbar = self.figure1.colorbar(self.ax2Image, ax=self.ax2)
             self.ax2.set_axis_on()
 
-        self.invoke_update(TabROIFinder_InvalidateEvent(rois=True))
+        #self.invoke_update(TabROIFinder_InvalidateEvent(rois=True))
 
 
     def invalidate_ROIs(self):
@@ -251,7 +248,7 @@ class TabROIFinder(Tab):
         _ax2HasImage = len(self.ax2.get_images()) > 0
         
         # Plotting the ROIs
-        for synapse in self.detection_result.synapses:
+        for synapse in self.detection_result:
             for roi in synapse.rois:
                 if isinstance(roi, detection.CircularSynapseROI) and roi.location is not None and roi.radius is not None:
                     c = patches.Circle(roi.location, roi.radius+0.5, color="red", fill=False)
@@ -273,7 +270,7 @@ class TabROIFinder(Tab):
             _currentSource = self.current_input_image.img
             if self.setting_plotPixels.Get() == 1 and _ax1HasImage and _currentSource is not None:
                 _overlay = np.zeros(shape=_currentSource.shape, dtype=_currentSource.dtype)
-                for synapse in self.detection_result.synapses:
+                for synapse in self.detection_result:
                     for roi in synapse.rois:
                         _overlay[roi.get_coordinates(_currentSource.shape)] = 1
                 self.ax1.imshow(_overlay, alpha=_overlay*0.5, cmap="viridis")
@@ -307,7 +304,7 @@ class TabROIFinder(Tab):
         self.ax4.set_axis_off()
 
         if synapse is not None and roi is None:
-            roi_uuids = list(synapse.rois_dict.keys())
+            roi_uuids = [r.uuid for r in synapse.rois]
         elif synapse is not None and roi is not None:
             roi_uuids = [roi.uuid]
         else:
@@ -396,15 +393,11 @@ class TabROIFinder(Tab):
         def _detect(task: Task):
             if self.detectionAlgorithm is None or self.current_input_image is None:
                 return
-            self.tvSynapses.ClearSynapses(target='non_staged')
-            self.tvSynapses.SyncSynapses()
+            self.detection_result.clear_where(lambda s: not s.staged)
             task.set_step_progress(0, "")
             rois = self.detectionAlgorithm.detect(self.current_input_image)
-            for r in rois:
-                s = SingleframeSynapse(r)
-                self.detection_result.add_synapse(s)
-            self.tvSynapses.SyncSynapses()
-            self.invoke_update(TabROIFinder_InvalidateEvent(rois=True))
+            synapes = [SingleframeSynapse(roi=r) for r in rois]
+            self.detection_result.extend(synapes)
 
         return Task(_detect, "Detecting ROIs", run_async=True).set_step_mode(1).start()
 
@@ -417,13 +410,13 @@ class TabROIFinder(Tab):
         if (event.inaxes != self.ax1 and event.inaxes != self.ax2):
             return
         x, y = event.xdata, event.ydata
-        rois = [(s, r) for s in self.detection_result.synapses for r in s.rois]
+        rois = [(s, r) for s in self.detection_result for r in s.rois]
         if len(rois) == 0: return
         rois.sort(key=lambda v: (v[1].location[0]-x)**2+(v[1].location[1]-y)**2 if v[1].location is not None else np.inf)
         synapse, roi = rois[0]
         d = ((roi.location[0]-x)**2+(roi.location[1]-y)**2)**0.5 if roi.location is not None else np.inf
         if d <= 40:
-            self.tvSynapses.Select(synapse=synapse, roi=roi)
+            self.tvSynapses.select(synapse=synapse, roi=roi)
 
     def _canvas1_resize(self, event):
         if self.tab.winfo_width() > 300:
