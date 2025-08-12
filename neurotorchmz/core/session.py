@@ -62,6 +62,8 @@ class Session(Serializable):
             raise RuntimeError("The Neurotorch GUI has already been started")
         from ..gui import window
         from ..gui import events as window_events
+        if not hasattr(window.tk, "_default_root") or window.tk._default_root is not None: # pyright: ignore[reportAttributeAccessIssue]
+            raise RuntimeError("A different session is already bound to the GUI")
         self.window = window.Neurotorch_GUI(session=self)
         logger.info(f"Started NeurotorchMZ (GUI) version {__version__}")
         if background:

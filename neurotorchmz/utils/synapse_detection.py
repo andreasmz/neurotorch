@@ -10,6 +10,7 @@ from typing import Self, Callable, cast, Iterable
 from collections.abc import Iterator
 from scipy.spatial.distance import pdist
 from scipy.cluster.hierarchy import fcluster, ward
+import numbers
 
 # A Synapse Fire at a specific time. Must include a location (at least a estimation) to be display in the TreeView
 class ISynapseROI:
@@ -60,7 +61,7 @@ class ISynapseROI:
     
     @location.setter
     def location(self, val: tuple[float, float]|None) -> None:
-        if not (val is None or (isinstance(val, tuple) and len(val) == 2 and isinstance(val[0], float) and isinstance(val[1], float))):
+        if not (val is None or (isinstance(val, tuple) and len(val) == 2 and isinstance(val[0], numbers.Real) and isinstance(val[1], numbers.Real))):
             raise TypeError(f"Invalid location '{str(val)}'")
         self._location = val
         self.notify()
@@ -295,7 +296,7 @@ class ROIList:
             raise TypeError(f"'{type(value)}' is not allowed")
         if key != value.uuid:
             raise ValueError(f"Invalid value: The key must match the UUID of the value")
-        self._rois[key]
+        self._rois[key] = value
         self._rois_callbacks[key] = lambda: self.notify(modified=[value])
         value.register_callback(self._rois_callbacks[key])
         self.notify(added=[value])
@@ -334,7 +335,7 @@ class ROIList:
             raise TypeError(f"Can not append object of type '{type(synapse)}'")
         if synapse.uuid in self:
             raise KeyError(f"Duplicate key '{synapse.uuid}'")
-        self[synapse.uuid] = synapse # __setitem__ is registering callback
+        self[synapse.uuid] = synapse
 
     def as_dict(self) -> dict[str, ISynapseROI]:
         return self._rois
@@ -344,7 +345,7 @@ class ROIList:
 
     def clear_where(self, fn: Callable[[ISynapseROI], bool]) -> None:
         deleted = []
-        for r in self._rois.values():
+        for r in self.to_list():
             if fn(r):
                 deleted.append(r)
                 r.remove_callback(self._rois_callbacks[r.uuid])
@@ -476,9 +477,16 @@ class ISynapse:
     def remove_callback(self, callback: Callable[[], None]) -> None:
         """ Removes a callback """
         self._callbacks.remove(callback)
+
+    def _format(self, append_str: str) -> str:
+        append_str = " " + append_str
+        return self.__class__.__name__ + (f" '{self.name}'" if self.name is not None else "") + f" of {len(self.rois)} ROIS" + append_str + (" staged" if self.staged else "")
     
     def __str__(self) -> str:
-        return "<ISynapse Object>"
+        return self._format("")
+    
+    def __repr__(self):
+        return "<%s>" % str(self)
     
     def __del__(self) -> None:
         self.rois.remove_callback(self._rois_callback)
@@ -495,8 +503,8 @@ class SingleframeSynapse(ISynapse):
 
     def __str__(self) -> str:
         if self.location is not None:
-            return f"<SingleframeSynapse @{self.location}>"
-        return f"<SingleframeSynapse>"
+            return self._format(f"@{self.location}")
+        return self._format("")
     
     def set_roi(self, roi: ISynapseROI|None = None) -> Self:
         """ Set the ROI or remove it by passing None or no argument"""
@@ -572,6 +580,11 @@ class MultiframeSynapse(ISynapse):
         """ In the future return information about the rois. Currently, only the text 'Multiframe Synapse' is returned """
         return "Multiframe Synapse"
     
+    def __str__(self) -> str:
+        if self.location is not None:
+            return self._format(f"@{self.location}")
+        return self._format("")
+    
 class DetectionResult:
     """
         Class to store the result of synapse detections
@@ -582,10 +595,12 @@ class DetectionResult:
         self._synapses_callbacks: dict[str, Callable[[], None]] = {}
         self._callbacks: list[Callable[[list[ISynapse], list[ISynapse], list[ISynapse]], None]] = []
 
-    def __getitem__(self, key: str):
-        if not isinstance(key, str) or not key in self._synapses:
-            raise KeyError(f"Invalid key '{key}'")
-        return self._synapses[key]
+    def __getitem__(self, key: str|int):
+        if isinstance(key, str) and key in self._synapses:
+            return self._synapses[key]
+        elif isinstance(key, int) and key < len(self):
+            return self.to_list()[key]
+        raise KeyError(f"Invalid key '{key}'")
     
     def __setitem__(self, key: str, value: ISynapse):
         if not isinstance(key, str):
@@ -594,7 +609,7 @@ class DetectionResult:
             raise TypeError(f"'{type(value)}' is not allowed")
         if key != value.uuid:
             raise ValueError(f"Invalid value: The key must match the UUID of the value")
-        self._synapses[key]
+        self._synapses[key] = value
         self._synapses_callbacks[key] = lambda: self.notify(modified=[value])
         value.register_callback(self._synapses_callbacks[key])
         self.notify(added=[value])
@@ -625,6 +640,9 @@ class DetectionResult:
         for s in self._synapses.values():
             s.remove_callback(self._synapses_callbacks[s.uuid])
 
+    def __repr__(self) -> str:
+        return f"<DetectionResult holding {len(self)} Synapses>"
+
     def append(self, synapse: ISynapse, /) -> None:
         if not isinstance(synapse, ISynapse):
             raise TypeError(f"Can not append object of type '{type(synapse)}'")
@@ -640,7 +658,7 @@ class DetectionResult:
 
     def clear_where(self, fn: Callable[[ISynapse], bool]) -> None:
         deleted = []
-        for s in self._synapses.values():
+        for s in self.to_list():
             if fn(s):
                 deleted.append(s)
                 s.remove_callback(self._synapses_callbacks[s.uuid])

@@ -7,6 +7,7 @@ __author__ = "Andreas Brilka"
 
 from .core.session import Session, Edition
 from .core import api as API # pyright: ignore[reportUnusedImport]
+from .core.logs import start_debugging, logger
 
 def start(edition: Edition = Edition.NEUROTORCH, headless: bool = False, background: bool = False) -> Session:
     """ 

@@ -492,7 +492,7 @@ class SynapseTreeview(ttk.Treeview):
             case 'staged':
                 self.detection_result.clear_where(lambda s: s.staged)
             case 'non_staged':
-                self.detection_result.clear_where(lambda s: s.staged)
+                self.detection_result.clear_where(lambda s: not s.staged)
             case 'all':
                 self.detection_result.clear()
             case _:

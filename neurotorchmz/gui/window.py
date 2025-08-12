@@ -211,6 +211,8 @@ class Neurotorch_GUI:
 
     def _on_closing(self):
         self.root.destroy()
+        self.session.window = None
+        logger.debug(f"Closed the Neurotorch GUI")
         #exit()
 
     # ImageObject handling
