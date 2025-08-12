@@ -17,7 +17,7 @@ import numpy as np
 
 class TabROIFinder_InvalidateEvent(TabUpdateEvent):
     """ Internal event to invalidate different parts of the tab """
-    def __init__(self, algorithm:bool = False, image:bool = False, rois:bool = False, selectedROI: bool = False, selectedROI_tuple: tuple = None):
+    def __init__(self, algorithm:bool = False, image:bool = False, rois:bool = False, selectedROI: bool = False, selectedROI_tuple: tuple[ISynapse|None, ISynapseROI|None]|None = None):
         super().__init__()
         self.algorithm = algorithm
         self.image = image
@@ -131,7 +131,7 @@ class TabROIFinder(Tab):
             if event.algorithm: self.invalidate_algorithm()
             if event.image: self.invalidate_image()
             if event.rois: self.invalidate_ROIs()
-            if event.selectedROIS: self.invalidate_selected_ROI(*event.selectedROI_tuple)
+            if event.selectedROIS and event.selectedROI_tuple is not None: self.invalidate_selected_ROI(*event.selectedROI_tuple)
 
     def comboImage_changed(self):
         if self.active_image_object is None:

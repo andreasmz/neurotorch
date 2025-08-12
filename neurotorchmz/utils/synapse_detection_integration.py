@@ -3,7 +3,7 @@
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk
 from matplotlib import patches
 
 from ..core.session import *
@@ -46,7 +46,7 @@ class IDetectionAlgorithmIntegration:
             This function must be overwritten by subclasses and should implement calling the underlying IDetectionAlgorithm with parameters
             choosen in the settings frame. 
         """
-        pass
+        raise NotImplementedError()
     
 
     def get_rawdata_overlay(self) -> tuple[tuple[np.ndarray]|None, list[patches.Patch]|None]:
@@ -63,12 +63,12 @@ class IDetectionAlgorithmIntegration:
                min_signal: float|None = None, 
                max_peaks: int|None = None) -> list[ISynapseROI]:
         """ Add the measured signal strength to a given a list of ROI. If sort is set to true, sort the list accordingly """
-        if self.image_obj is not None:
+        if self.image_obj is not None and self.image_obj.imgDiff is not None:
             for roi in rois:
                 roi.signal_strength = np.max(np.mean(roi.get_signal_from_image(self.image_obj.imgDiff), axis=1))
         if max_peaks is not None: 
-            signal_strengths = sorted([r.signal_strength for r in rois], reverse=False)
-            count_cutoff = signal_strengths[min(len(signal_strengths - 1))]
+            signal_strengths = sorted([r.signal_strength if r.signal_strength is not None else 0 for r in rois], reverse=False)
+            count_cutoff = signal_strengths[min(len(signal_strengths) - 1)]
             min_signal = max(count_cutoff, min_signal) if min_signal is not None else count_cutoff
         if min_signal is not None:
             rois = [r for r in rois if r.signal_strength > min_signal] 

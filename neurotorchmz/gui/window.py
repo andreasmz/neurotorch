@@ -149,7 +149,7 @@ class Neurotorch_GUI:
         self.tabs[TabWelcome] = TabWelcome(self.session, self.root, self.tabMain)
         self.tabs[TabImage] = TabImage(self.session, self.root, self.tabMain)
         self.tabs[TabSignal] = TabSignal(self.session, self.root, self.tabMain)
-        #self.tabs[TabROIFinder] = TabROIFinder(self.session, self.root, self.tabMain)
+        self.tabs[TabROIFinder] = TabROIFinder(self.session, self.root, self.tabMain)
         #self.tabs[TabAnalysis] = TabAnalysis(self.session, self.root, self.tabMain)
         for t in self.tabs.values(): t.init()
         self.tabMain.select(self.tabs[TabImage].tab)
