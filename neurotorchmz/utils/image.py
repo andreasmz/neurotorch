@@ -593,7 +593,7 @@ class ImageObject(Serializable):
             raise ValueError(f"The path '{str(path)}' is invalid")
         match path.suffix.lower():
             case ".tif"|".tiff":
-                tifffile.imwrite(path, data=self.img, metadata=self.metadata)
+                tifffile.imwrite(path, data=self.img, metadata=self.metadata, compression="zlib")
             case _:
                 raise UnsupportedExtensionError(f"The extension '{path.suffix}' is not supported for exporting")
         logger.info(f"Exported the video as '{path.name}'")
@@ -606,7 +606,7 @@ class ImageObject(Serializable):
             raise ValueError(f"The path '{str(path)}' is invalid")
         match path.suffix.lower():
             case ".tif"|".tiff":
-                tifffile.imwrite(path, data=self.imgDiff, metadata=self.metadata)
+                tifffile.imwrite(path, data=self.imgDiff, metadata=self.metadata, compression="zlib")
             case _:
                 raise UnsupportedExtensionError(f"The extension '{path.suffix}' is not supported for exporting")
         logger.info(f"Exported the delta video as '{path.name}'")

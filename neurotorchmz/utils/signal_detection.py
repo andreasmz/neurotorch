@@ -172,7 +172,7 @@ class SignalObject:
             raise NoImageError()
         match path.suffix.lower():
             case ".tif"|".tiff":
-                tifffile.imwrite(path, data=self.img_props_only_signal.img, metadata=self.imgObj.metadata)
+                tifffile.imwrite(path, data=self.img_props_only_signal.img, metadata=self.imgObj.metadata, compression="zlib")
             case _:
                 raise UnsupportedExtensionError(f"The extension '{path.suffix}' is not supported for exporting")
         logger.info(f"Exported the video as '{path.name}'")
@@ -185,7 +185,7 @@ class SignalObject:
             raise ValueError(f"The path '{str(path)}' is invalid")
         match path.suffix.lower():
             case ".tif"|".tiff":
-                tifffile.imwrite(path, data=self.img_props_without_signal.img, metadata=self.imgObj.metadata)
+                tifffile.imwrite(path, data=self.img_props_without_signal.img, metadata=self.imgObj.metadata, compression="zlib")
             case _:
                 raise UnsupportedExtensionError(f"The extension '{path.suffix}' is not supported for exporting")
         logger.info(f"Exported the video as '{path.name}'")
