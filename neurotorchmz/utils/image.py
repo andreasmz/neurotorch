@@ -256,12 +256,12 @@ class ImageObject(Serializable):
         self._img: np.ndarray|None = None
         self._img_views: dict[str, dict[ImageView|None, AxisImage]] = {"default" : {}}
         self._img_conv_func: Callable[..., np.ndarray]|None = None
-        self._img_conv_args: dict|None = None
+        self._img_conv_args: dict[str, Any]|None = None
 
         self._img_diff: np.ndarray|None = None
         self._img_diff_views: dict[str, dict[ImageView|None, AxisImage]] = {"default" : {}}
         self._img_diff_conv_func: Callable[..., np.ndarray]|None = None
-        self._img_diff_conv_args: dict|None = None
+        self._img_diff_conv_args: dict[str, Any]|None = None
 
         self._signal_obj: SignalObject = SignalObject(self)
 
@@ -325,13 +325,23 @@ class ImageObject(Serializable):
 
             :raises UnsupportedImageError: The image is not a valid image stack
         """
-        return self._img
+        return self.imgView(ImageView.DEFAULT).image
     
     @img.setter
     def img(self, image: np.ndarray):
         if not ImageObject._is_valid_image_stack(image): raise UnsupportedImageError()
         self.clear()
         self._img = image
+        self._img_views["default"] = {ImageView.DEFAULT: AxisImage(self.img_raw, axis=ImageView.DEFAULT.value, name=f"{self.name}-img")}
+
+    @property
+    def img_raw(self) -> np.ndarray|None:
+        """ Returns the image without any convolutions applied """
+        return self._img
+
+    @img_raw.setter
+    def img_raw(self, image: np.ndarray):
+        self.img = image
     
     @property
     def imgDiff(self) -> np.ndarray | None:
@@ -340,15 +350,24 @@ class ImageObject(Serializable):
 
             :raises UnsupportedImageError: The image is not a valid image stack
         """
-        if self._img_diff is None and self.imgS is not None:
-            self._img_diff = np.diff(self.imgS, axis=0)
-        return self._img_diff
+        return self.imgDiffView(ImageView.DEFAULT).image
 
     @imgDiff.setter
     def imgDiff(self, image: np.ndarray):
         if not ImageObject._is_valid_image_stack(image): raise UnsupportedImageError()
         self.clear()
         self._img_diff = image
+        self._img_diff_views["default"] = {ImageView.DEFAULT: AxisImage(self.img_diff_raw, axis=ImageView.DEFAULT.value, name=f"{self.name}-img_diff")}
+
+    @property
+    def img_diff_raw(self) -> np.ndarray | None:
+        if self._img_diff is None and self.imgS is not None:
+            self._img_diff = np.diff(self.imgS, axis=0)
+        return self._img_diff
+    
+    @img_diff_raw.setter
+    def img_diff_raw(self, image: np.ndarray):
+        self.img_diff = image
 
     @property
     def imgS(self) -> np.ndarray | None:
@@ -376,7 +395,6 @@ class ImageObject(Serializable):
         """ Returns the image properties (e.g. median, mean or maximum) """
         return self.imgView(ImageView.DEFAULT).ImageProps
     
-
     @property
     def imgDiffProps(self) -> ImageProperties:
         """ Returns the diff image properties (e.g. median, mean or maximum) """
@@ -400,18 +418,30 @@ class ImageObject(Serializable):
 
     def imgView(self, mode: "ImageView") -> AxisImage:
         """ Returns a view of the current image given an ImageView mode """
-        if not self._conv_func_identifier in self._img_views.keys():
-            self._img_views[self._conv_func_identifier] = {}
+        if self._img_conv_func is not None and self._conv_func_identifier not in self._img_views.keys():
+            if self._img_conv_args is None:
+                self._img_views[self._conv_func_identifier] = {ImageView.DEFAULT: AxisImage(self._img_conv_func(self), axis=ImageView.DEFAULT.value, name=f"{self.name}-{self._conv_func_identifier}-img")}
+            else:
+                self._img_views[self._conv_func_identifier] = {ImageView.DEFAULT: AxisImage(self._img_conv_func(self, **self._img_conv_args), axis=ImageView.DEFAULT.value, name=f"{self.name}-{self._conv_func_identifier}-img")}
+
         if mode not in self._img_views[self._conv_func_identifier].keys():
-            self._img_views[self._conv_func_identifier][mode] = AxisImage(self.img, axis=mode.value, name=f"{self.name}-{self._conv_func_identifier}-img")
+            img = self._img_views[self._conv_func_identifier][ImageView.DEFAULT].image
+            self._img_views[self._conv_func_identifier][mode] = AxisImage(img, axis=mode.value, name=f"{self.name}-{self._conv_func_identifier}-img")
+        
         return self._img_views[self._conv_func_identifier][mode]
     
     def imgDiffView(self, mode: "ImageView") -> AxisImage:
         """ Returns a view of the current diff image given an ImageView mode """
-        if not self._diff_conv_func_identifier in self._img_diff_views.keys():
-            self._img_diff_views[self._diff_conv_func_identifier] = {}
+        if self._img_diff_conv_func is not None and self._diff_conv_func_identifier not in self._img_views.keys():
+            if self._img_diff_conv_args is None:
+                self._img_diff_views[self._diff_conv_func_identifier] = {ImageView.DEFAULT: AxisImage(self._img_diff_conv_func(self), axis=ImageView.DEFAULT.value, name=f"{self.name}-{self._diff_conv_func_identifier}-img_diff")}
+            else:
+                self._img_diff_views[self._diff_conv_func_identifier] = {ImageView.DEFAULT: AxisImage(self._img_diff_conv_func(self, **self._img_diff_conv_args), axis=ImageView.DEFAULT.value, name=f"{self.name}-{self._diff_conv_func_identifier}-img_diff")}
+
         if mode not in self._img_diff_views[self._diff_conv_func_identifier].keys():
-            self._img_diff_views[self._diff_conv_func_identifier][mode] = AxisImage(self.imgDiff, axis=mode.value, name=f"{self.name}-{self._diff_conv_func_identifier}-img_diff")
+            img_diff = self._img_diff_views[self._diff_conv_func_identifier][ImageView.DEFAULT].image
+            self._img_diff_views[self._diff_conv_func_identifier][mode] = AxisImage(img_diff, axis=mode.value, name=f"{self.name}-{self._diff_conv_func_identifier}-img_diff")
+        
         return self._img_diff_views[self._diff_conv_func_identifier][mode]
     
     # Signal
@@ -449,13 +479,13 @@ class ImageObject(Serializable):
         for k in list(self._img_views.keys()):
             if not full_clear and len(self._img_views) <= self.conv_cache_size:
                 break
-            if k != self._conv_func_identifier:
+            if k != "default" and k != self._conv_func_identifier:
                 del self._img_views[k]
 
         for k in list(self._img_diff_views.keys()):
             if not full_clear and len(self._img_diff_views) <= self.diff_conv_cache_size:
                 break
-            if k != self._diff_conv_func_identifier:
+            if k != "default" and k != self._diff_conv_func_identifier:
                 del self._img_diff_views[k]
 
     # Image loading
