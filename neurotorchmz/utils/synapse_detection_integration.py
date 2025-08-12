@@ -41,7 +41,7 @@ class IDetectionAlgorithmIntegration:
         self.image_obj = self.session.active_image_object
         self.image_prop = image_prop
 
-    def detect(self) -> list[ISynapseROI]:
+    def detect_auto_params(self) -> list[ISynapseROI]:
         """
             This function must be overwritten by subclasses and should implement calling the underlying IDetectionAlgorithm with parameters
             choosen in the settings frame. 
@@ -98,7 +98,7 @@ class Thresholding_Integration(Thresholding, IDetectionAlgorithmIntegration):
         
         return self.optionsFrame
     
-    def detect(self) -> list[ISynapseROI]:
+    def detect_auto_params(self, **kwargs) -> list[ISynapseROI]:
         if self.image_prop is None:
             raise RuntimeError(f"The detection functions requires the update() function to be called first")
         threshold = self.setting_threshold.Get()
@@ -184,7 +184,7 @@ class HysteresisTh_Integration(HysteresisTh, IDetectionAlgorithmIntegration):
         r = round(np.sqrt(A/np.pi),2)
         self.lblMinAreaInfo["text"] = f"A circle with radius {r} px has the same area" 
 
-    def detect(self) -> list[ISynapseROI]:
+    def detect_auto_params(self) -> list[ISynapseROI]:
         if self.image_prop is None:
             raise RuntimeError(f"The detection functions requires the update() function to be called first")
         polygon = self.varCircularApprox.get()
@@ -286,7 +286,7 @@ class LocalMax_Integration(LocalMax, IDetectionAlgorithmIntegration):
         self.lblMinAreaInfo["text"] = f"A circle with radius {r} px\n has the same area" 
 
     
-    def detect(self) -> list[ISynapseROI]:
+    def detect_auto_params(self) -> list[ISynapseROI]:
         lowerThreshold = self.setting_lowerTh.Get()
         upperThreshold = self.setting_upperTh.Get()
         expandSize = self.setting_expandSize.Get()

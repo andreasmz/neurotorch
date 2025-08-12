@@ -328,7 +328,7 @@ class SynapseTreeview(ttk.Treeview):
                         self.master.bell()
                         return
                     roi.set_radius(int(val))
-                    logger.debug(f"Modified location of CircularSynapseROI to {roi.radius}")
+                    logger.debug(f"Modified radius of CircularSynapseROI to {roi.radius}")
                 case _:
                     logger.warning(f"SynapseTreeview: Unexpected invalid editable field {rowid_fiels[1]}")
                     return

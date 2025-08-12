@@ -395,7 +395,7 @@ class TabROIFinder(Tab):
                 return
             self.detection_result.clear_where(lambda s: not s.staged)
             task.set_step_progress(0, "")
-            rois = self.detectionAlgorithm.detect(self.current_input_image)
+            rois = self.detectionAlgorithm.detect_auto_params()
             synapes = [SingleframeSynapse(roi=r) for r in rois]
             self.detection_result.extend(synapes)
 

@@ -92,7 +92,7 @@ class ISynapseROI:
     
     @signal_strength.setter
     def signal_strength(self, val: float|None) -> None:
-        if not (val is None or isinstance(val, float)):
+        if not (val is None or isinstance(val, numbers.Real)):
             raise TypeError(f"Bad type for signal_strength: '{type(val)}'")
         self._signal_strength = val
         self.notify()
@@ -196,8 +196,19 @@ class CircularSynapseROI(ISynapseROI):
     CLASS_DESC = "Circular ROI"
     def __init__(self):
         super().__init__()
-        self.radius: int|float|None = None
+        self._radius: float|None = None
         """ Radius of the ROI """
+
+    @property
+    def radius(self) -> float|None:
+        return self._radius
+    
+    @radius.setter
+    def radius(self, val: float|None):
+        if not (val is None or isinstance(val, numbers.Real)):
+            raise TypeError(f"Bad type for radius: '{type(val)}'")
+        self._radius = val
+        self.notify()
 
     def set_radius(self, radius: int|float|None) -> Self:
         """ Set the radius of the ROI """

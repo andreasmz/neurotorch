@@ -111,6 +111,15 @@ class Neurotorch_GUI:
         self.menu_edit.add_cascade(label="Trigger", menu=self.menu_trigger)
         self.menu_trigger.add_command(label="Transient peak", command=lambda: self.set_img_diff_convolution_t(None))
         self.menu_trigger.add_command(label="Transient drop", command=lambda: self.set_img_diff_convolution_t(denoising.drop_t_kernel))
+        self.menu_trigger.add_command(label="Fast peak", command=lambda: self.set_img_diff_convolution_t(denoising.cumsum, {"frames": 3}))
+        self.menu_trigger.add_command(label="Fast drop", command=lambda: self.set_img_diff_convolution_t(denoising.cumsum, {"frames": 3, "negate": True}))
+        self.menu_trigger.add_command(label="Fast gaussian peak", command=lambda: self.set_img_diff_convolution_t(denoising.gaussian_t_kernel, {"sigma": 3}))
+        self.menu_trigger.add_command(label="Fast gaussian drop", command=lambda: self.set_img_diff_convolution_t(denoising.gaussian_t_kernel, {"sigma": 3, "negate": True}))
+        self.menu_trigger.add_command(label="Fast leap gaussian peak", command=lambda: self.set_img_diff_convolution_t(denoising.gaussian_t_kernel, {"sigma": 3}))
+        self.menu_trigger.add_command(label="Fast leap gaussian drop", command=lambda: self.set_img_diff_convolution_t(denoising.gaussian_t_kernel, {"sigma": 3, "negate": True}))
+        self.menu_trigger.add_command(label="Enable std norm", command=lambda: self.set_img_diff_std_norm(True))
+        self.menu_trigger.add_command(label="Disable std norm", command=lambda: self.set_img_diff_std_norm(False))
+        self.menu_trigger.add_separator()
         self.menu_trigger.add_command(label="Fast increase", command=lambda: self.set_img_diff_convolution_t(denoising.gaussian_t_kernel, {"sigma": 2}))
         self.menu_trigger.add_command(label="Normal increase", command=lambda: self.set_img_diff_convolution_t(denoising.gaussian_t_kernel, {"sigma": 5}))
         self.menu_trigger.add_command(label="Slow increase", command=lambda: self.set_img_diff_convolution_t(denoising.gaussian_t_kernel, {"sigma": 10}))
@@ -305,7 +314,8 @@ class Neurotorch_GUI:
         if imgObj._img_diff_conv_func != denoising.combined_diff_convolution:
             imgObj.set_diff_conv_func(denoising.combined_diff_convolution, 
                                       func_args={"xy_kernel_fn": None, "xy_kernel_args": {}, 
-                                                 "t_kernel_fn": None, "t_kernel_args": {}})
+                                                 "t_kernel_fn": None, "t_kernel_args": {},
+                                                 "std_norm": True})
 
         imgObj.update_diff_conv_args(xy_kernel_fn = func, xy_kernel_args = args)
         imgObj.precompute_image().add_callback(lambda: self.invoke_tab_update_event(ImageChangedEvent()))
@@ -319,9 +329,25 @@ class Neurotorch_GUI:
         if imgObj._img_diff_conv_func != denoising.combined_diff_convolution:
             imgObj.set_diff_conv_func(denoising.combined_diff_convolution, 
                                       func_args={"xy_kernel_fn": None, "xy_kernel_args": {}, 
-                                                 "t_kernel_fn": None, "t_kernel_args": {}})
+                                                 "t_kernel_fn": None, "t_kernel_args": {},
+                                                 "std_norm": True})
 
         imgObj.update_diff_conv_args(t_kernel_fn = func, t_kernel_args = args)
+        imgObj.precompute_image().add_callback(lambda: self.invoke_tab_update_event(ImageChangedEvent()))
+
+    def set_img_diff_std_norm(self, std_norm: bool) -> None:
+        imgObj = self.session.active_image_object
+        if imgObj is None or imgObj.imgDiff is None:
+            self.root.bell()
+            return
+        
+        if imgObj._img_diff_conv_func != denoising.combined_diff_convolution:
+            imgObj.set_diff_conv_func(denoising.combined_diff_convolution, 
+                                      func_args={"xy_kernel_fn": None, "xy_kernel_args": {}, 
+                                                 "t_kernel_fn": None, "t_kernel_args": {},
+                                                 "std_norm": True})
+
+        imgObj.update_diff_conv_args(std_norm= std_norm)
         imgObj.precompute_image().add_callback(lambda: self.invoke_tab_update_event(ImageChangedEvent()))
 
     def menu_image_clear_cache_click(self):

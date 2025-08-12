@@ -431,22 +431,24 @@ class ImageObject(Serializable):
         
         return self._img_views[self._conv_func_identifier][mode]
     
-    def imgDiffView(self, mode: "ImageView") -> AxisImage:
+    def imgDiffView(self, mode: "ImageView", conv_func_identifier: str|None = None) -> AxisImage:
         """ Returns a view of the current diff image given an ImageView mode """
+        if conv_func_identifier is None:
+            conv_func_identifier = self._diff_conv_func_identifier
         if ImageView.DEFAULT not in self._img_diff_views["default"].keys():
             self._img_diff_views["default"][ImageView.DEFAULT] = AxisImage(self.img_diff_raw, axis=ImageView.DEFAULT.value, name=f"{self.name}-img_diff")
 
-        if self._img_diff_conv_func is not None and self._diff_conv_func_identifier not in self._img_diff_views.keys():
+        if self._img_diff_conv_func is not None and conv_func_identifier not in self._img_diff_views.keys():
             if self._img_diff_conv_args is None:
-                self._img_diff_views[self._diff_conv_func_identifier] = {ImageView.DEFAULT: AxisImage(self._img_diff_conv_func(self), axis=ImageView.DEFAULT.value, name=f"{self.name}-{self._diff_conv_func_identifier}-img_diff")}
+                self._img_diff_views[conv_func_identifier] = {ImageView.DEFAULT: AxisImage(self._img_diff_conv_func(self), axis=ImageView.DEFAULT.value, name=f"{self.name}-{conv_func_identifier}-img_diff")}
             else:
-                self._img_diff_views[self._diff_conv_func_identifier] = {ImageView.DEFAULT: AxisImage(self._img_diff_conv_func(self, **self._img_diff_conv_args), axis=ImageView.DEFAULT.value, name=f"{self.name}-{self._diff_conv_func_identifier}-img_diff")}
+                self._img_diff_views[conv_func_identifier] = {ImageView.DEFAULT: AxisImage(self._img_diff_conv_func(self, **self._img_diff_conv_args), axis=ImageView.DEFAULT.value, name=f"{self.name}-{conv_func_identifier}-img_diff")}
 
-        if mode not in self._img_diff_views[self._diff_conv_func_identifier].keys():
-            img_diff = self._img_diff_views[self._diff_conv_func_identifier][ImageView.DEFAULT].image
-            self._img_diff_views[self._diff_conv_func_identifier][mode] = AxisImage(img_diff, axis=mode.value, name=f"{self.name}-{self._diff_conv_func_identifier}-img_diff")
+        if mode not in self._img_diff_views[conv_func_identifier].keys():
+            img_diff = self._img_diff_views[conv_func_identifier][ImageView.DEFAULT].image
+            self._img_diff_views[conv_func_identifier][mode] = AxisImage(img_diff, axis=mode.value, name=f"{self.name}-{conv_func_identifier}-img_diff")
         
-        return self._img_diff_views[self._diff_conv_func_identifier][mode]
+        return self._img_diff_views[conv_func_identifier][mode]
     
     # Signal
 

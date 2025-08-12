@@ -25,20 +25,29 @@ def gaussian_xy_kernel(sigma: float) -> np.ndarray:
 def gaussian_t_kernel(sigma: float, negate: bool = False) -> np.ndarray:
     ax = np.arange(-(3*sigma) // 2, (3*sigma) // 2 + 1)
     kernel = np.exp(-(ax**2) / (2 * sigma**2))
+    kernel /= kernel.sum()
     if negate:
         kernel = -kernel
-    return kernel / kernel.sum()
+    return kernel
 
 
-def leap_gaussian_t_kernel(sigma: float) -> np.ndarray:
+def leap_gaussian_t_kernel(sigma: float, negate: bool = False) -> np.ndarray:
     ax = np.arange(-(3*sigma) // 2, (3*sigma) // 2 + 1)
-    kernel = (ax > 0)*np.exp(-(ax**2) / (2 * sigma**2))
-    return kernel / kernel.sum()
+    kernel = int(ax > 0)*np.exp(-(ax**2) / (2 * sigma**2))
+    kernel /= kernel.sum()
+    if negate:
+        kernel = -kernel
+    return kernel
 
 def drop_t_kernel() -> np.ndarray:
     return np.array([-1])
 
-def combined_diff_convolution(img_obj: ImageObject, xy_kernel_fn: Callable|None, t_kernel_fn: Callable|None, xy_kernel_args: dict = {}, t_kernel_args: dict = {}) -> np.ndarray|None:
+def cumsum(frames: int, negate: bool = False) -> np.ndarray:
+    a1 = np.full(shape=(frames), fill_value=((-1/frames) if negate else (1/frames)))
+    a2 = np.full(shape=(frames), fill_value=0)
+    return np.concatenate([a2, np.array([0.0]), a1])
+
+def combined_diff_convolution(img_obj: ImageObject, std_norm: bool, xy_kernel_fn: Callable|None, t_kernel_fn: Callable|None, xy_kernel_args: dict = {}, t_kernel_args: dict = {}) -> np.ndarray|None:
     if img_obj.img_diff_raw is None:
         return None
     if xy_kernel_fn is None and t_kernel_fn is None:
@@ -55,4 +64,11 @@ def combined_diff_convolution(img_obj: ImageObject, xy_kernel_fn: Callable|None,
         t_kernel = t_kernel_fn(**t_kernel_args)
 
     kernel = t_kernel[:, None, None] * xy_kernel[None, :, :]
-    return convolve(img_obj.img_diff_raw, kernel, mode="reflect")
+    c = convolve(img_obj.img_diff_raw.astype(np.float32), kernel, mode="reflect")
+    if std_norm:
+        std_img =  img_obj.imgDiffView(ImageView.TEMPORAL, "default").Std
+        if std_img is None:
+            return None
+        c = c / std_img[:, None, None]
+    return c
+    #return (255 * c / np.max(c)).astype(img_obj.img_diff_raw.dtype)
