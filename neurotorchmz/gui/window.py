@@ -93,7 +93,7 @@ class Neurotorch_GUI:
 
         # Edit menu
         self.menu_denoise = tk.Menu(self.menu_edit,tearoff=0)
-        self.menu_edit.add_cascade(label="Denoise imgDiff", menu=self.menu_denoise)
+        self.menu_edit.add_cascade(label="Denoise delta video", menu=self.menu_denoise)
         self.menu_denoise.add_command(label="Disable denoising", command=lambda: self.menu_image_denoise_click(None, None))
         self.menu_denoise.add_command(label="Clear cache", command=self.menu_image_clear_cache_click)
         self.menu_denoise.add_separator()
@@ -105,6 +105,11 @@ class Neurotorch_GUI:
         self.menu_denoise.add_command(label=f"Gaussian kernel (σ=2.5)", command=lambda: self.menu_image_denoise_click(denoising.gaussian_blur, {"sigma": 2.5}))
         self.menu_denoise.add_command(label=f"Gaussian kernel (σ=3)", command=lambda: self.menu_image_denoise_click(denoising.gaussian_blur, {"sigma": 3}))
         self.menu_denoise.add_command(label=f"Gaussian kernel (σ=5)", command=lambda: self.menu_image_denoise_click(denoising.gaussian_blur, {"sigma": 5}))
+        self.menu_denoise.add_command(label=f"Gaussian kernel (σ=7.5)", command=lambda: self.menu_image_denoise_click(denoising.gaussian_blur, {"sigma": 7.5}))
+        self.menu_denoise.add_command(label=f"Gaussian kernel (σ=10)", command=lambda: self.menu_image_denoise_click(denoising.gaussian_blur, {"sigma": 10}))
+        self.menu_denoise.add_command(label=f"Gaussian kernel (σ=15)", command=lambda: self.menu_image_denoise_click(denoising.gaussian_blur, {"sigma": 15}))
+        self.menu_denoise.add_command(label=f"Gaussian kernel (σ=20)", command=lambda: self.menu_image_denoise_click(denoising.gaussian_blur, {"sigma": 20}))
+
 
         self.menu_filter = tk.Menu(self.menu_edit,tearoff=0)
         self.menu_edit.add_cascade(label="Apply filter", menu=self.menu_filter)
