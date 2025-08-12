@@ -583,7 +583,7 @@ class ImageObject(Serializable):
         self._task_open_image.start()
         return self._task_open_image
     
-    SUPPORTED_EXPORT_EXTENSIONS = [("Tiff file", ("*.tiff", "*.tif"))]
+    SUPPORTED_EXPORT_EXTENSIONS = [("Lossless compressed Tiff", ("*.tiff", "*.tif")), ("Tiff", ("*.tiff", "*.tif"))] # Note: 
     
     def export_img(self, path: Path) -> None:
         """ Export the current img """
