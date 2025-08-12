@@ -255,12 +255,12 @@ class ImageObject(Serializable):
 
         self._img: np.ndarray|None = None
         self._img_views: dict[str, dict[ImageView|None, AxisImage]] = {"default" : {}}
-        self._img_conv_func: Callable[..., np.ndarray]|None = None
+        self._img_conv_func: Callable[..., np.ndarray|None]|None = None
         self._img_conv_args: dict[str, Any]|None = None
 
         self._img_diff: np.ndarray|None = None
         self._img_diff_views: dict[str, dict[ImageView|None, AxisImage]] = {"default" : {}}
-        self._img_diff_conv_func: Callable[..., np.ndarray]|None = None
+        self._img_diff_conv_func: Callable[..., np.ndarray|None]|None = None
         self._img_diff_conv_args: dict[str, Any]|None = None
 
         self._signal_obj: SignalObject = SignalObject(self)
@@ -332,8 +332,7 @@ class ImageObject(Serializable):
         if not ImageObject._is_valid_image_stack(image): raise UnsupportedImageError()
         self.clear()
         self._img = image
-        self._img_views["default"] = {ImageView.DEFAULT: AxisImage(self.img_raw, axis=ImageView.DEFAULT.value, name=f"{self.name}-img")}
-
+        
     @property
     def img_raw(self) -> np.ndarray|None:
         """ Returns the image without any convolutions applied """
@@ -357,8 +356,7 @@ class ImageObject(Serializable):
         if not ImageObject._is_valid_image_stack(image): raise UnsupportedImageError()
         self.clear()
         self._img_diff = image
-        self._img_diff_views["default"] = {ImageView.DEFAULT: AxisImage(self.img_diff_raw, axis=ImageView.DEFAULT.value, name=f"{self.name}-img_diff")}
-
+        
     @property
     def img_diff_raw(self) -> np.ndarray | None:
         if self._img_diff is None and self.imgS is not None:
@@ -418,6 +416,9 @@ class ImageObject(Serializable):
 
     def imgView(self, mode: "ImageView") -> AxisImage:
         """ Returns a view of the current image given an ImageView mode """
+        if ImageView.DEFAULT not in self._img_views["default"].keys():
+            self._img_views["default"][ImageView.DEFAULT] = AxisImage(self.img_raw, axis=ImageView.DEFAULT.value, name=f"{self.name}-img")
+
         if self._img_conv_func is not None and self._conv_func_identifier not in self._img_views.keys():
             if self._img_conv_args is None:
                 self._img_views[self._conv_func_identifier] = {ImageView.DEFAULT: AxisImage(self._img_conv_func(self), axis=ImageView.DEFAULT.value, name=f"{self.name}-{self._conv_func_identifier}-img")}
@@ -432,7 +433,10 @@ class ImageObject(Serializable):
     
     def imgDiffView(self, mode: "ImageView") -> AxisImage:
         """ Returns a view of the current diff image given an ImageView mode """
-        if self._img_diff_conv_func is not None and self._diff_conv_func_identifier not in self._img_views.keys():
+        if ImageView.DEFAULT not in self._img_diff_views["default"].keys():
+            self._img_diff_views["default"][ImageView.DEFAULT] = AxisImage(self.img_diff_raw, axis=ImageView.DEFAULT.value, name=f"{self.name}-img_diff")
+
+        if self._img_diff_conv_func is not None and self._diff_conv_func_identifier not in self._img_diff_views.keys():
             if self._img_diff_conv_args is None:
                 self._img_diff_views[self._diff_conv_func_identifier] = {ImageView.DEFAULT: AxisImage(self._img_diff_conv_func(self), axis=ImageView.DEFAULT.value, name=f"{self.name}-{self._diff_conv_func_identifier}-img_diff")}
             else:
@@ -452,14 +456,21 @@ class ImageObject(Serializable):
     
     # Convolution functions
 
-    def set_conv_func(self, func: Callable[..., np.ndarray]|None = None, func_args: dict[str, Any]|None = None) -> None:
+    def set_conv_func(self, func: Callable[..., np.ndarray|None]|None = None, func_args: dict[str, Any]|None = None) -> None:
         self._img_conv_func = func
         self._img_conv_args = func_args
         self._signal_obj.clear()
 
-    def set_diff_conv_func(self, func: Callable[..., np.ndarray]|None = None, func_args: dict[str, Any]|None = None) -> None:
+    def set_diff_conv_func(self, func: Callable[..., np.ndarray|None]|None = None, func_args: dict[str, Any]|None = None) -> None:
         self._img_diff_conv_func = func
         self._img_diff_conv_args = func_args
+        self.signal_obj.clear()
+
+    def update_diff_conv_args(self, **kwargs):
+        if self._img_diff_conv_args is None:
+            self._img_diff_conv_args = {}
+        for k, v in kwargs.items():
+            self._img_diff_conv_args[k] = v
         self.signal_obj.clear()
 
     @property
@@ -578,7 +589,7 @@ class ImageObject(Serializable):
             if path.suffix.lower() in [".tif", ".tiff"]:
                 logger.debug(f"Opening '{path.name}' with tifffile")
                 with tifffile.TiffFile(path) as tif:
-                    self._img = tif.asarray()
+                    self.img = tif.asarray()
                     self._metdata = tif.metaseries_metadata
             elif nd2.is_supported_file(path):
                 logger.debug(f"Opening '{path.name}' with nd2")

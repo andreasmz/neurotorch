@@ -94,36 +94,29 @@ class Neurotorch_GUI:
         # Edit menu
         self.menu_denoise = tk.Menu(self.menu_edit,tearoff=0)
         self.menu_edit.add_cascade(label="Denoise delta video", menu=self.menu_denoise)
-        self.menu_denoise.add_command(label="Disable denoising", command=lambda: self.menu_image_denoise_click(None, None))
+        self.menu_denoise.add_command(label="Disable denoising", command=lambda: self.set_img_diff_convolution_xy(None))
         self.menu_denoise.add_command(label="Clear cache", command=self.menu_image_clear_cache_click)
         self.menu_denoise.add_separator()
-        self.menu_denoise.add_command(label=f"Gaussian kernel (σ=0.5)", command=lambda: self.menu_image_denoise_click(denoising.gaussian_blur, {"sigma": 0.5}))
-        self.menu_denoise.add_command(label=f"Gaussian kernel (σ=0.8)", command=lambda: self.menu_image_denoise_click(denoising.gaussian_blur, {"sigma": 0.8}))
-        self.menu_denoise.add_command(label=f"Gaussian kernel (σ=1)", command=lambda: self.menu_image_denoise_click(denoising.gaussian_blur, {"sigma": 1}))
-        self.menu_denoise.add_command(label=f"Gaussian kernel (σ=1.5)", command=lambda: self.menu_image_denoise_click(denoising.gaussian_blur, {"sigma": 1.5}))
-        self.menu_denoise.add_command(label=f"Gaussian kernel (σ=2, recommended)", command=lambda: self.menu_image_denoise_click(denoising.gaussian_blur, {"sigma": 2}))
-        self.menu_denoise.add_command(label=f"Gaussian kernel (σ=2.5)", command=lambda: self.menu_image_denoise_click(denoising.gaussian_blur, {"sigma": 2.5}))
-        self.menu_denoise.add_command(label=f"Gaussian kernel (σ=3)", command=lambda: self.menu_image_denoise_click(denoising.gaussian_blur, {"sigma": 3}))
-        self.menu_denoise.add_command(label=f"Gaussian kernel (σ=5)", command=lambda: self.menu_image_denoise_click(denoising.gaussian_blur, {"sigma": 5}))
-        self.menu_denoise.add_command(label=f"Gaussian kernel (σ=7.5)", command=lambda: self.menu_image_denoise_click(denoising.gaussian_blur, {"sigma": 7.5}))
-        self.menu_denoise.add_command(label=f"Gaussian kernel (σ=10)", command=lambda: self.menu_image_denoise_click(denoising.gaussian_blur, {"sigma": 10}))
-        self.menu_denoise.add_command(label=f"Gaussian kernel (σ=15)", command=lambda: self.menu_image_denoise_click(denoising.gaussian_blur, {"sigma": 15}))
-        self.menu_denoise.add_command(label=f"Gaussian kernel (σ=20)", command=lambda: self.menu_image_denoise_click(denoising.gaussian_blur, {"sigma": 20}))
-
-
-        self.menu_filter = tk.Menu(self.menu_edit,tearoff=0)
-        self.menu_edit.add_cascade(label="Apply filter", menu=self.menu_filter)
-        self.menu_filter.add_command(label="Disable filter", command=lambda: self.menu_image_denoise_click(None, None))
-        self.menu_filter.add_command(label="Clear cache", command=self.menu_image_clear_cache_click)
-        self.menu_filter.add_separator()
-        self.menu_filter.add_command(label="Cummulative imgDiff", command=lambda: self.menu_image_denoise_click(denoising.mean_diff, None))
-        ToolTip(self.menu_file, msg=resources.get_string("menubar/filters/meanMaxDiff"), follow=True, delay=0.5)
-        if edition == Edition.NEUROTORCH_DEBUG:
-            self.menu_denoise_img = tk.Menu(self.menu_edit,tearoff=0)
-            self.menu_edit.add_cascade(label="Denoise Image", menu=self.menu_denoise_img)
-            self.menu_denoise_img.add_command(label="On", command=lambda:self.menu_image_denoise_image_click(True))
-            self.menu_denoise_img.add_command(label="Off", command=lambda:self.menu_image_denoise_image_click(False))
-
+        self.menu_denoise.add_command(label=f"Gaussian kernel (σ=0.5)", command=lambda: self.set_img_diff_convolution_xy(denoising.gaussian_xy_kernel, {"sigma":0.5}))
+        self.menu_denoise.add_command(label=f"Gaussian kernel (σ=0.8)", command=lambda: self.set_img_diff_convolution_xy(denoising.gaussian_xy_kernel, {"sigma":0.8}))
+        self.menu_denoise.add_command(label=f"Gaussian kernel (σ=1)", command=lambda: self.set_img_diff_convolution_xy(denoising.gaussian_xy_kernel, {"sigma":1}))
+        self.menu_denoise.add_command(label=f"Gaussian kernel (σ=1.5)", command=lambda: self.set_img_diff_convolution_xy(denoising.gaussian_xy_kernel, {"sigma":1.5}))
+        self.menu_denoise.add_command(label=f"Gaussian kernel (σ=2, recommended)", command=lambda: self.set_img_diff_convolution_xy(denoising.gaussian_xy_kernel, {"sigma":2}))
+        self.menu_denoise.add_command(label=f"Gaussian kernel (σ=2.5)", command=lambda: self.set_img_diff_convolution_xy(denoising.gaussian_xy_kernel, {"sigma":2.5}))
+        self.menu_denoise.add_command(label=f"Gaussian kernel (σ=3)", command=lambda: self.set_img_diff_convolution_xy(denoising.gaussian_xy_kernel, {"sigma":3}))
+        self.menu_denoise.add_command(label=f"Gaussian kernel (σ=5)", command=lambda: self.set_img_diff_convolution_xy(denoising.gaussian_xy_kernel, {"sigma":5}))
+        self.menu_denoise.add_command(label=f"Gaussian kernel (σ=7.5)", command=lambda: self.set_img_diff_convolution_xy(denoising.gaussian_xy_kernel, {"sigma":7.5}))
+        self.menu_denoise.add_command(label=f"Gaussian kernel (σ=10)", command=lambda: self.set_img_diff_convolution_xy(denoising.gaussian_xy_kernel, {"sigma":10}))
+        self.menu_trigger = tk.Menu(self.menu_edit, tearoff=0)
+        self.menu_edit.add_cascade(label="Trigger", menu=self.menu_trigger)
+        self.menu_trigger.add_command(label="Transient peak", command=lambda: self.set_img_diff_convolution_t(None))
+        self.menu_trigger.add_command(label="Transient drop", command=lambda: self.set_img_diff_convolution_t(denoising.drop_t_kernel))
+        self.menu_trigger.add_command(label="Fast increase", command=lambda: self.set_img_diff_convolution_t(denoising.gaussian_t_kernel, {"sigma": 2}))
+        self.menu_trigger.add_command(label="Normal increase", command=lambda: self.set_img_diff_convolution_t(denoising.gaussian_t_kernel, {"sigma": 5}))
+        self.menu_trigger.add_command(label="Slow increase", command=lambda: self.set_img_diff_convolution_t(denoising.gaussian_t_kernel, {"sigma": 10}))
+        self.menu_trigger.add_command(label="Fast drop", command=lambda: self.set_img_diff_convolution_t(denoising.gaussian_t_kernel, {"sigma": 2, "negate": True}))
+        self.menu_trigger.add_command(label="Normal drop", command=lambda: self.set_img_diff_convolution_t(denoising.gaussian_t_kernel, {"sigma": 5, "negate": True}))
+        self.menu_trigger.add_command(label="Slow drop", command=lambda: self.set_img_diff_convolution_t(denoising.gaussian_t_kernel, {"sigma": 10, "negate": True}))
         # Run menu
 
         # Settings menu
@@ -302,20 +295,40 @@ class Neurotorch_GUI:
             messagebox.showerror("Neurotorch: Export video", f"Failed to export the video. For details see the logs")
         else:
             messagebox.showinfo("Neurotorch: Export video", f"Successfully exported video '{path.name}'")
-        
-    def menu_image_denoise_click(self, func: Callable[..., np.ndarray]|None, func_args: dict|None):
+
+    def set_img_diff_convolution_xy(self, func: Callable|None, args: dict = {}):
         imgObj = self.session.active_image_object
         if imgObj is None or imgObj.imgDiff is None:
             self.root.bell()
             return
-        imgObj.set_diff_conv_func(func, func_args)
+        
+        if imgObj._img_conv_func != denoising.combined_diff_convolution:
+            imgObj.set_diff_conv_func(denoising.combined_diff_convolution, 
+                                      func_args={"xy_kernel_fn": None, "xy_kernel_args": {}, 
+                                                 "t_kernel_fn": None, "t_kernel_args": {}})
+
+        imgObj.update_diff_conv_args(xy_kernel_fn = func, xy_kernel_args = args)
+        imgObj.precompute_image().add_callback(lambda: self.invoke_tab_update_event(ImageChangedEvent()))
+
+    def set_img_diff_convolution_t(self, func: Callable|None, args: dict = {}):
+        imgObj = self.session.active_image_object
+        if imgObj is None or imgObj.imgDiff is None:
+            self.root.bell()
+            return
+        
+        if imgObj._img_conv_func != denoising.combined_diff_convolution:
+            imgObj.set_diff_conv_func(denoising.combined_diff_convolution, 
+                                      func_args={"xy_kernel_fn": None, "xy_kernel_args": {}, 
+                                                 "t_kernel_fn": None, "t_kernel_args": {}})
+
+        imgObj.update_diff_conv_args(t_kernel_fn = func, t_kernel_args = args)
         imgObj.precompute_image().add_callback(lambda: self.invoke_tab_update_event(ImageChangedEvent()))
 
     def menu_image_clear_cache_click(self):
         if self.session.active_image_object is None:
             self.root.bell()
             return    
-        self.session.active_image_object.clear_cache()
+        self.session.active_image_object.clear_cache(full_clear=True)
         logger.debug("Cleared ImageObject cache")
 
     def menu_image_denoise_image_click(self, enable: bool):
