@@ -487,17 +487,23 @@ class ImageObject(Serializable):
 
     def clear_cache(self, full_clear: bool = False) -> None:
         """Clears caches of unsused convolutions """
+        gc_count = 0
         for k in list(self._img_views.keys()):
             if not full_clear and len(self._img_views) <= self.conv_cache_size:
                 break
             if k != "default" and k != self._conv_func_identifier:
                 del self._img_views[k]
-
+                gc_count += 1
+                
         for k in list(self._img_diff_views.keys()):
             if not full_clear and len(self._img_diff_views) <= self.diff_conv_cache_size:
                 break
             if k != "default" and k != self._diff_conv_func_identifier:
                 del self._img_diff_views[k]
+                gc_count += 1
+
+        if gc_count > 0:
+            logger.debug(f"Garbage collect {gc_count} convolutions")
 
     # Image loading
     

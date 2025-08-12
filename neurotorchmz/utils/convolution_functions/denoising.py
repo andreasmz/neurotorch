@@ -38,16 +38,16 @@ def leap_gaussian_t_kernel(sigma: float) -> np.ndarray:
 def drop_t_kernel() -> np.ndarray:
     return np.array([-1])
 
-def combined_diff_convolution(img_obj: ImageObject, xy_kernel_fn: Callable|None, t_kernel_fn: Callable|None, xn_kernel_args: dict = {}, t_kernel_args: dict = {}) -> np.ndarray|None:
+def combined_diff_convolution(img_obj: ImageObject, xy_kernel_fn: Callable|None, t_kernel_fn: Callable|None, xy_kernel_args: dict = {}, t_kernel_args: dict = {}) -> np.ndarray|None:
     if img_obj.img_diff_raw is None:
         return None
     if xy_kernel_fn is None and t_kernel_fn is None:
         return img_obj.img_diff_raw
     
     if xy_kernel_fn is None:
-        xy_kernel = np.array([1])
+        xy_kernel = np.array([[1]])
     else:
-        xy_kernel = xy_kernel_fn(**xn_kernel_args)
+        xy_kernel = xy_kernel_fn(**xy_kernel_args)
 
     if t_kernel_fn is None:
         t_kernel = np.array([1])

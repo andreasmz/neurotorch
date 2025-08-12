@@ -302,7 +302,7 @@ class Neurotorch_GUI:
             self.root.bell()
             return
         
-        if imgObj._img_conv_func != denoising.combined_diff_convolution:
+        if imgObj._img_diff_conv_func != denoising.combined_diff_convolution:
             imgObj.set_diff_conv_func(denoising.combined_diff_convolution, 
                                       func_args={"xy_kernel_fn": None, "xy_kernel_args": {}, 
                                                  "t_kernel_fn": None, "t_kernel_args": {}})
@@ -316,7 +316,7 @@ class Neurotorch_GUI:
             self.root.bell()
             return
         
-        if imgObj._img_conv_func != denoising.combined_diff_convolution:
+        if imgObj._img_diff_conv_func != denoising.combined_diff_convolution:
             imgObj.set_diff_conv_func(denoising.combined_diff_convolution, 
                                       func_args={"xy_kernel_fn": None, "xy_kernel_args": {}, 
                                                  "t_kernel_fn": None, "t_kernel_args": {}})
