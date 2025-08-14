@@ -764,7 +764,7 @@ class Thresholding(IDetectionAlgorithm):
                img:np.ndarray,
                threshold: int|float, 
                radius: int|float|None, 
-               minArea: int|float,
+               minArea: int|float|None,
                **kwargs
             ) -> list[ISynapseROI]:
         """
@@ -788,7 +788,7 @@ class Thresholding(IDetectionAlgorithm):
         synapses = []
         for i in range(len(self.imgRegProps)):
             props = self.imgRegProps[i]
-            if(props.area >= minArea):
+            if minArea is None or (props.area >= minArea):
                 s = CircularSynapseROI().set_location(y=int(round(props.centroid[0],0)), x=int(round(props.centroid[1],0))).set_radius(radius).set_region_props(props)
                 synapses.append(s)
         return synapses

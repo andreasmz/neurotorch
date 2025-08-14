@@ -22,7 +22,7 @@ class IDetectionAlgorithmIntegration:
 
         self.image_obj: ImageObject|None = None
         """ The current image object. Is for example used by some integrations to calculate the signal """
-        self.image_prop: ImageProperties|None = None
+        self.image_prop: ImageProperties = ImageProperties(None)
         """ The ImageProperties object should contain a 2D image and is used as input for the algorithm """
 
     def get_options_frame(self, master) -> tk.LabelFrame:
@@ -39,7 +39,10 @@ class IDetectionAlgorithmIntegration:
             image input
         """
         self.image_obj = self.session.active_image_object
-        self.image_prop = image_prop
+        if image_prop is None:
+            self.image_prop = ImageProperties(None)
+        else:
+            self.image_prop = image_prop
 
     def detect_auto_params(self) -> list[ISynapseROI]:
         """
@@ -62,21 +65,24 @@ class IDetectionAlgorithmIntegration:
                sort:None|Literal['Strength', 'Location'] = None, 
                min_signal: float|None = None, 
                max_peaks: int|None = None) -> list[ISynapseROI]:
-        """ Add the measured signal strength to a given a list of ROI. If sort is set to true, sort the list accordingly """
+        """
+        Filter the rois and add adds the signal strength to the ROI
+
+        :param sort: If not None, sort the ROIs based on theire location (top to down first)
+        :param min_signal: If not None, return only peaks exceeding the given signal strength
+        :param max_peaks: If not None, return only the n strongest peaks
+        """
         if self.image_obj is not None and self.image_obj.imgDiff is not None:
             for roi in rois:
                 roi.signal_strength = np.max(np.mean(roi.get_signal_from_image(self.image_obj.imgDiff), axis=1))
-        if max_peaks is not None: 
-            signal_strengths = sorted([r.signal_strength if r.signal_strength is not None else 0 for r in rois], reverse=False)
-            count_cutoff = signal_strengths[min(len(signal_strengths) - 1)]
-            min_signal = max(count_cutoff, min_signal) if min_signal is not None else count_cutoff
         if min_signal is not None:
-            rois = [r for r in rois if r.signal_strength > min_signal] 
-        if sort == "Strength":
-            rois.sort(key=lambda x: x.strength, reverse=True)
-        elif sort == "Location":
-            rois.sort(key=lambda x: (x.location[0], x.location[1]))
-        
+            rois = [r for r in rois if r.signal_strength is not None and r.signal_strength > min_signal] 
+        if sort == "Strength" or max_peaks is not None:
+            rois.sort(key=lambda x: (x.signal_strength if x.signal_strength is not None else 0), reverse=True)
+        if max_peaks is not None:
+            rois = rois[:max_peaks]
+        if sort == "Location":
+            rois.sort(key=lambda x: (x.location_x, x.location_y))
         return rois
 
 class Thresholding_Integration(Thresholding, IDetectionAlgorithmIntegration):
@@ -99,7 +105,7 @@ class Thresholding_Integration(Thresholding, IDetectionAlgorithmIntegration):
         return self.optionsFrame
     
     def detect_auto_params(self, **kwargs) -> list[ISynapseROI]:
-        if self.image_prop is None:
+        if self.image_prop.img is None:
             raise RuntimeError(f"The detection functions requires the update() function to be called first")
         threshold = self.setting_threshold.Get()
         radius = self.setting_radius.Get()
@@ -108,6 +114,8 @@ class Thresholding_Integration(Thresholding, IDetectionAlgorithmIntegration):
         return self.detect(img=self.image_prop.img, threshold=threshold, radius=radius, minArea=minArea)
 
     def get_rawdata_overlay(self) -> tuple[tuple[np.ndarray]|None, list[patches.Patch]|None]:
+        if self.imgThresholded is None:
+            return (None, None)
         return ((self.imgThresholded,), None)
     
     def _update_lbl_minarea(self):
@@ -259,13 +267,13 @@ class LocalMax_Integration(LocalMax, IDetectionAlgorithmIntegration):
     
     def update(self, image_prop: ImageProperties|None):
         super().update(image_prop=image_prop)
-        if self.image_prop is None:
+        if self.image_prop.img is None:
             self.lblImgStats["text"] = ""
             return
         
-        _t = f"Image Stats: range = [{int(self.image_prop.min)}, {int(self.image_prop.max)}], "
-        _t = _t + f"{np.round(self.image_prop.mean, 2)} ± {np.round(self.image_prop.std, 2)}, "
-        _t = _t + f"median = {np.round(self.image_prop.median, 2)}"
+        _t = f"Image Stats: range = [{self.image_prop.min:.5g}, {self.image_prop.max:.5g}], "
+        _t = _t + f"{self.image_prop.mean:.5g} ± {self.image_prop.std:.5g}, "
+        _t = _t + f"median = {self.image_prop.median:.5g}"
         self.lblImgStats["text"] = _t
         self.estimate_params()
 
