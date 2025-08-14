@@ -30,7 +30,7 @@ class IDetectionAlgorithmIntegration:
             Creates an tkinter widget for the algorithms settings in the provided master.
         """
         self.master = master
-        self.optionsFrame = tk.LabelFrame(self.master, text="Setting")
+        self.optionsFrame = tk.LabelFrame(self.master, text="Settings")
         return self.optionsFrame
     
     def update(self, image_prop: ImageProperties|None):
@@ -52,7 +52,7 @@ class IDetectionAlgorithmIntegration:
         raise NotImplementedError()
     
 
-    def get_rawdata_overlay(self) -> tuple[tuple[np.ndarray]|None, list[patches.Patch]|None]:
+    def get_rawdata_overlay(self) -> tuple[tuple[np.ndarray, ...]|None, list[patches.Patch]|None]:
         """
             An Integration may choose to provide an custom overlay image, usually the raw data obtained in one of the first steps. 
             Also it may provide a list of matplotlib patches for this overlay
@@ -166,13 +166,14 @@ class HysteresisTh_Integration(HysteresisTh, IDetectionAlgorithmIntegration):
     
     def update(self, image_prop: ImageProperties|None):
         super().update(image_prop=image_prop)
-        if self.image_prop is None:
+        if self.image_prop.img is None:
             self.lblImgStats["text"] = ""
             return
         
-        _t = f"Image Stats: range = [{int(self.image_prop.min)}, {int(self.image_prop.max)}], "
-        _t = _t + f"{np.round(self.image_prop.mean, 2)} ± {np.round(self.image_prop.std, 2)}, "
-        _t = _t + f"median = {np.round(self.image_prop.median, 2)}"
+        _t = f"Image Stats: range = [{self.image_prop.min:.5g}, {self.image_prop.max:.5g}], "
+        _t = _t + f"{self.image_prop.mean:.5g} ± {self.image_prop.std:.5g}, "
+        _t = _t + f"median = {self.image_prop.median:.5g}"
+
         self.lblImgStats["text"] = _t
         self.estimate_params()
 
@@ -180,10 +181,11 @@ class HysteresisTh_Integration(HysteresisTh, IDetectionAlgorithmIntegration):
         """
             Estimate some parameters based on the provided image.
         """
-        if self.varAutoParams.get() != 1 or self.image_prop is None:
+        if self.varAutoParams.get() != 1 or self.image_prop.img is None:
             return
+        assert self.image_prop.mean is not None and self.image_prop.std is not None and self.image_prop.max is not None
         lowerThreshold = int(self.image_prop.mean + 2.5*self.image_prop.std)
-        upperThreshold = max(lowerThreshold, min(self.image_prop.max/2, self.image_prop.mean + 5*self.image_prop.std))
+        upperThreshold = int(max(lowerThreshold, min(float(self.image_prop.max)/2, float(self.image_prop.mean + 5*self.image_prop.std))))
         self.setting_lowerTh.set(lowerThreshold)
         self.setting_upperTh.set(upperThreshold)
 
@@ -193,7 +195,7 @@ class HysteresisTh_Integration(HysteresisTh, IDetectionAlgorithmIntegration):
         self.lblMinAreaInfo["text"] = f"A circle with radius {r} px has the same area" 
 
     def detect_auto_params(self) -> list[ISynapseROI]:
-        if self.image_prop is None:
+        if self.image_prop.img is None:
             raise RuntimeError(f"The detection functions requires the update() function to be called first")
         polygon = self.varCircularApprox.get()
         radius = self.setting_radius.get()
@@ -201,25 +203,21 @@ class HysteresisTh_Integration(HysteresisTh, IDetectionAlgorithmIntegration):
         upperThreshold = self.setting_upperTh.get()
         minArea = self.setting_minArea.get() if polygon else 0
 
-        result = self.detect(img=self.image_prop.img, 
+        rois = self.detect(img=self.image_prop.img, 
                              lowerThreshold=lowerThreshold, 
                              upperThreshold=upperThreshold, 
                              minArea=minArea)
+        
+        rois: list[ISynapseROI] = self.filter_rois(rois, sort="Location")
 
-        if polygon:
-            return result
-        else:
-            synapses_return = []
-            if result is None:
-                return None
-            for s in result:
-                if isinstance(s, CircularSynapseROI):
-                    synapses_return.append(s)
-                    continue
-                synapses_return.append(CircularSynapseROI().set_location(x=s.location[0], y=s.location[1]).set_radius(radius))
-            return synapses_return
+        if not polygon:
+            rois = [CircularSynapseROI().set_location(r.location).set_radius(radius) for r in rois]
+        rois = self.filter_rois(rois, sort="Location")
+        return rois
             
     def Img_DetectionOverlay(self) -> tuple[tuple[np.ndarray]|None, list[patches.Patch]|None]:
+        if self.thresholdFiltered_img is None:
+            return (None, None)
         return ((self.thresholdFiltered_img, ), None)
     
 
@@ -285,7 +283,7 @@ class LocalMax_Integration(LocalMax, IDetectionAlgorithmIntegration):
             return
         assert self.image_prop.mean is not None and self.image_prop.std is not None and self.image_prop.max is not None
         lowerThreshold = int(self.image_prop.mean + 2.5*self.image_prop.std)
-        upperThreshold = max(lowerThreshold, min(float(self.image_prop.max)/2, float(self.image_prop.mean + 5*self.image_prop.std)))
+        upperThreshold = int(max(lowerThreshold, min(float(self.image_prop.max)/2, float(self.image_prop.mean + 5*self.image_prop.std))))
         self.setting_lowerTh.set(lowerThreshold)
         self.setting_upperTh.set(upperThreshold)
 
@@ -296,13 +294,17 @@ class LocalMax_Integration(LocalMax, IDetectionAlgorithmIntegration):
 
     
     def detect_auto_params(self) -> list[ISynapseROI]:
+        if self.image_prop.img is None:
+            return []
         lowerThreshold = self.setting_lowerTh.get()
         upperThreshold = self.setting_upperTh.get()
         expandSize = self.setting_expandSize.get()
         maxPeakCount = self.setting_maxPeakCount.get()
+        maxPeakCount = maxPeakCount if maxPeakCount != 0 else None
         minArea = self.setting_minArea.get()
         minDistance = self.setting_minDistance.get()
         minSignal = self.setting_minSignal.get()
+        minSignal = minSignal if minSignal != 0 else None
         radius = None if self.setting_polygonal_ROIS.get() == 1 else self.setting_radius.get()
         rois = self.detect(img=self.image_prop.img,
                            lowerThreshold=lowerThreshold, 
@@ -311,10 +313,10 @@ class LocalMax_Integration(LocalMax, IDetectionAlgorithmIntegration):
                            minArea=minArea,
                            minDistance=minDistance, 
                            radius=radius)
-        return self.add_signal_to_result(rois=rois, sort=False)
+        return self.filter_rois(rois=rois, sort="Location", min_signal=minSignal, max_peaks=maxPeakCount)
             
-    def get_rawdata_overlay(self) -> tuple[tuple[np.ndarray]|None, list[patches.Patch]|None]:
-        if self.maxima is None:
+    def get_rawdata_overlay(self) -> tuple[tuple[np.ndarray, np.ndarray]|None, list[patches.Patch]|None]:
+        if self.maxima is None or self.labeledImage is None or self.region_props is None or self.maxima_labeled_expanded is None:
             return (None, None)
         _patches = []
         for i in range(self.maxima.shape[0]):

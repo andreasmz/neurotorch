@@ -12,6 +12,8 @@ from scipy.spatial.distance import pdist
 from scipy.cluster.hierarchy import fcluster, ward
 import numbers
 
+from ..utils.image import *
+
 # A Synapse Fire at a specific time. Must include a location (at least a estimation) to be display in the TreeView
 class ISynapseROI:
     """ 
@@ -863,16 +865,16 @@ class LocalMax(IDetectionAlgorithm):
         self.reset()
 
     def reset(self):
-        self.imgThresholded = None
+        self.imgThresholded: np.ndarray|None = None
         self.imgThresholded_labeled = None
         self.imgMaximumFiltered = None
         self.maxima_mask = None
         self.maxima_labeled = None
-        self.maxima_labeled_expanded = None
+        self.maxima_labeled_expanded: np.ndarray|None = None
         self.maxima_labeled_expaned_adjusted = None
         self.maxima = None
         self.combined_labeled = None
-        self.region_props = None
+        self.region_props: list[RegionProperties]|None = None
         self.labeledImage = None
 
     def detect(self, # pyright: ignore[reportIncompatibleMethodOverride]
@@ -917,7 +919,7 @@ class LocalMax(IDetectionAlgorithm):
         for i in range(self.maxima.shape[0]):
             y,x = self.maxima[i, 0], self.maxima[i, 1]
             self.maxima_labeled[y,x] = i+1
-        self.maxima_labeled_expanded = expand_labels(self.maxima_labeled, distance=expandSize)
+        self.maxima_labeled_expanded = cast(np.ndarray, expand_labels(self.maxima_labeled, distance=expandSize))
         self.labeledImage = np.zeros(shape=img.shape, dtype=int)
 
         self.maxima_labeled_expaned_adjusted = np.zeros(shape=img.shape, dtype=int)
@@ -939,6 +941,7 @@ class LocalMax(IDetectionAlgorithm):
         for i in range(len(self.region_props)):
             region = self.region_props[i]
             if radius is None:
+                assert region.image_filled is not None
                 contours = measure.find_contours(np.pad(region.image_filled, 1, constant_values=0), 0.9)
                 contour = contours[0]
                 for c in contours: # Find the biggest contour and assume its the one wanted

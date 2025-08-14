@@ -29,7 +29,7 @@ class TabROIFinder(Tab):
 
     def __init__(self, session: Session, root:tk.Tk, notebook: ttk.Notebook):
         super().__init__(session, root, notebook, _tab_name="Tab ROI Finder")
-        self.detectionAlgorithm: detection.IDetectionAlgorithmIntegration|None = None
+        self.detectionAlgorithm: detection.IDetectionAlgorithmIntegration = detection.LocalMax_Integration(self.session)
         self.roiPatches = {}
         self.roiPatches2 = {}
         self.treeROIs_entryPopup = None
@@ -165,8 +165,7 @@ class TabROIFinder(Tab):
                     return
                 self.detectionAlgorithm = detection.LocalMax_Integration(self.session)
             case _:
-                self.detectionAlgorithm = None
-                return
+                raise RuntimeError(f"Invalid algorithm '{self.radioAlgoVar.get()}'")
         if (self.frameAlgoOptions is not None):
             self.frameAlgoOptions.grid_forget()
         self.frameAlgoOptions = self.detectionAlgorithm.get_options_frame(self.frameTools)
@@ -221,7 +220,7 @@ class TabROIFinder(Tab):
 
         ax2_ImgProp, _ax2Title = self.current_input_image, self.current_input_description
         self.ax2.set_title(_ax2Title)
-        if ax2_ImgProp is not None:
+        if ax2_ImgProp.img is not None:
             self.ax2Image = self.ax2.imshow(ax2_ImgProp.img, cmap="inferno")
             self.ax2_colorbar = self.figure1.colorbar(self.ax2Image, ax=self.ax2)
             self.ax2.set_axis_on()
@@ -266,9 +265,9 @@ class TabROIFinder(Tab):
                     self.roiPatches2[roi.uuid] = c2
 
         # Plotting the overlays
-        if self.current_input_image is not None:
+        if self.current_input_image.img is not None:
             _currentSource = self.current_input_image.img
-            if self.setting_plotPixels.get() == 1 and _ax1HasImage and _currentSource is not None:
+            if self.setting_plotPixels.get() == 1 and _ax1HasImage:
                 _overlay = np.zeros(shape=_currentSource.shape, dtype=_currentSource.dtype)
                 for synapse in self.detection_result:
                     for roi in synapse.rois:
@@ -340,22 +339,22 @@ class TabROIFinder(Tab):
     # Detection
 
     @property
-    def current_input_image(self) -> ImageProperties|None:
+    def current_input_image(self) -> ImageProperties:
         """ Return the current input image as a ImageProperties object which caches statistics about the image """
         imgObj = self.session.active_image_object
         self._current_input_description_str = "NO IMAGE" # Stores a string describing the current input image 
         if imgObj is None or imgObj.imgDiff is None:
-            return None
+            return ImageProperties(None)
         
         match(self.varImage.get()):
             case "Delta":
                 if self.varImageFrame.get() == "":
                     self._current_input_description_str = "INVALID FRAME"
-                    return None
+                    return ImageProperties(None)
                 _frame = int(v) - 1 if (v := self.varImageFrame.get()).isdigit() else -1
                 if _frame < 0 or _frame >= imgObj.imgDiff.shape[0]:
                     self._current_input_description_str = "INVALID FRAME"
-                    return None
+                    return ImageProperties(None)
                 self._current_input_description_str = f"Delta (Frame {_frame + 1})"
                 return imgObj.imgDiff_FrameProps(_frame)
             case "Delta (maximum)":
@@ -367,14 +366,14 @@ class TabROIFinder(Tab):
             case "Delta (max.), signal removed":
                 if imgObj.signal_obj.signal is None:
                     self._current_input_description_str = "SIGNAL MISSING"
-                    return None
+                    return ImageProperties(None)
                 elif imgObj.signal_obj.img_diff_without_signal_view(ImageView.SPATIAL).image is False:
                     self._current_input_description_str = "NO IMAGE"
-                    return None
+                    return ImageProperties(None)
                 self._current_input_description_str = "Delta (max.), signal removed"
                 return imgObj.signal_obj.img_diff_without_signal_view(ImageView.SPATIAL).MaxProps
             case _:
-                return None
+                return ImageProperties(None)
         
     @property
     def current_input_description(self) -> str:
@@ -391,7 +390,7 @@ class TabROIFinder(Tab):
             return 
 
         def _detect(task: Task):
-            if self.detectionAlgorithm is None or self.current_input_image is None:
+            if self.detectionAlgorithm is None or self.current_input_image.img is None:
                 return
             self.detection_result.clear_where(lambda s: not s.staged)
             task.set_step_progress(0, "")
