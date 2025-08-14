@@ -94,10 +94,10 @@ class Thresholding_Integration(Thresholding, IDetectionAlgorithmIntegration):
     def get_options_frame(self, master) -> tk.LabelFrame:
         super().get_options_frame(master=master)
 
-        self.setting_threshold = GridSetting(self.optionsFrame, row=5, text="Threshold", unit="", default=50, min_=0, max_=2**15-1, scaleMin=1, scaleMax=200, tooltip=resources.get_string("algorithms/threshold/params/threshold"))
-        self.setting_radius = GridSetting(self.optionsFrame, row=6, text="Radius", unit="px", default=6, min_=0, max_=1000, scaleMin=-1, scaleMax=30, tooltip=resources.get_string("algorithms/threshold/params/radius"))
-        self.setting_minArea = GridSetting(self.optionsFrame, row=7, text="Minimal area", unit="px", default=40, min_=0, max_=1000, scaleMin=0, scaleMax=200, tooltip=resources.get_string("algorithms/threshold/params/minArea"))
-        self.setting_minArea.var.IntVar.trace_add("write", lambda _1,_2,_3: self._update_lbl_minarea())
+        self.setting_threshold = GridSetting(self.optionsFrame, row=5, text="Threshold", unit="", default=50, min_=0, max_=2**15-1, scale_min=1, scale_max=200, tooltip=resources.get_string("algorithms/threshold/params/threshold"))
+        self.setting_radius = GridSetting(self.optionsFrame, row=6, text="Radius", unit="px", default=6, min_=0, max_=1000, scale_min=-1, scale_max=30, tooltip=resources.get_string("algorithms/threshold/params/radius"))
+        self.setting_minArea = GridSetting(self.optionsFrame, row=7, text="Minimal area", unit="px", default=40, min_=0, max_=1000, scale_min=0, scale_max=200, tooltip=resources.get_string("algorithms/threshold/params/minArea"))
+        self.setting_minArea.var.int_var.trace_add("write", lambda _1,_2,_3: self._update_lbl_minarea())
         self.lblMinAreaInfo = tk.Label(self.optionsFrame, text="")
         self.lblMinAreaInfo.grid(row=8, column=0, columnspan=3)
         self._update_lbl_minarea()
@@ -107,9 +107,9 @@ class Thresholding_Integration(Thresholding, IDetectionAlgorithmIntegration):
     def detect_auto_params(self, **kwargs) -> list[ISynapseROI]:
         if self.image_prop.img is None:
             raise RuntimeError(f"The detection functions requires the update() function to be called first")
-        threshold = self.setting_threshold.Get()
-        radius = self.setting_radius.Get()
-        minArea = self.setting_minArea.Get()
+        threshold = self.setting_threshold.get()
+        radius = self.setting_radius.get()
+        minArea = self.setting_minArea.get()
         minArea = None if minArea < 0 else minArea 
         return self.detect(img=self.image_prop.img, threshold=threshold, radius=radius, minArea=minArea)
 
@@ -120,7 +120,7 @@ class Thresholding_Integration(Thresholding, IDetectionAlgorithmIntegration):
     
     def _update_lbl_minarea(self):
         """ Internal function. Called to print in a label the equivalent radius of the min_area parameter"""
-        A = self.setting_minArea.Get()
+        A = self.setting_minArea.get()
         r = round(np.sqrt(A/np.pi),2)
         self.lblMinAreaInfo["text"] = f"A circle with radius {r} px has the same area" 
     
@@ -142,20 +142,20 @@ class HysteresisTh_Integration(HysteresisTh, IDetectionAlgorithmIntegration):
         self.checkAutoParams = ttk.Checkbutton(self.optionsFrame, variable=self.varAutoParams)
         self.checkAutoParams.grid(row=5, column=1, sticky="nw")
 
-        self.setting_lowerTh = GridSetting(self.optionsFrame, row=10, text="Lower threshold", unit="", default=50, min_=0, max_=2**15-1, scaleMin=1, scaleMax=200, tooltip=resources.get_string("algorithms/hysteresisTh/params/lowerThreshold"))
-        self.setting_upperTh = GridSetting(self.optionsFrame, row=11, text="Upper threshold", unit="", default=70, min_=0, max_=2**15-1, scaleMin=1, scaleMax=200, tooltip=resources.get_string("algorithms/hysteresisTh/params/upperThreshold"))
+        self.setting_lowerTh = GridSetting(self.optionsFrame, row=10, text="Lower threshold", unit="", default=50, min_=0, max_=2**15-1, scale_min=1, scale_max=200, tooltip=resources.get_string("algorithms/hysteresisTh/params/lowerThreshold"))
+        self.setting_upperTh = GridSetting(self.optionsFrame, row=11, text="Upper threshold", unit="", default=70, min_=0, max_=2**15-1, scale_min=1, scale_max=200, tooltip=resources.get_string("algorithms/hysteresisTh/params/upperThreshold"))
         self.lblPolygonalROIs = tk.Label(self.optionsFrame, text="Polygonal ROIs")
         self.lblPolygonalROIs.grid(row=12, column=0, sticky="ne")
         ToolTip(self.lblPolygonalROIs, msg=resources.get_string("algorithms/hysteresisTh/params/polygonalROIs"), follow=True, delay=0.1)
         self.varCircularApprox = tk.IntVar(value=1)
         self.checkCircularApprox = ttk.Checkbutton(self.optionsFrame, variable=self.varCircularApprox)
         self.checkCircularApprox.grid(row=12, column=1, sticky="nw")
-        self.setting_radius = GridSetting(self.optionsFrame, row=13, text="Radius", unit="px", default=6, min_=0, max_=1000, scaleMin=1, scaleMax=30, tooltip=resources.get_string("algorithms/hysteresisTh/params/radius"))
-        self.setting_radius.SetVisibility(not self.varCircularApprox.get())
-        self.varCircularApprox.trace_add("write", lambda _1,_2,_3:self.setting_radius.SetVisibility(not self.varCircularApprox.get()))
+        self.setting_radius = GridSetting(self.optionsFrame, row=13, text="Radius", unit="px", default=6, min_=0, max_=1000, scale_min=1, scale_max=30, tooltip=resources.get_string("algorithms/hysteresisTh/params/radius"))
+        self.setting_radius.set_visibility(not self.varCircularApprox.get())
+        self.varCircularApprox.trace_add("write", lambda _1,_2,_3:self.setting_radius.set_visibility(not self.varCircularApprox.get()))
         
-        self.setting_minArea = GridSetting(self.optionsFrame, row=14, text="Min. Area", unit="px", default=50, min_=1, max_=10000, scaleMin=0, scaleMax=200, tooltip=resources.get_string("algorithms/hysteresisTh/params/minArea"))
-        self.setting_minArea.var.IntVar.trace_add("write", lambda _1,_2,_3: self._update_lbl_minarea())
+        self.setting_minArea = GridSetting(self.optionsFrame, row=14, text="Min. Area", unit="px", default=50, min_=1, max_=10000, scale_min=0, scale_max=200, tooltip=resources.get_string("algorithms/hysteresisTh/params/minArea"))
+        self.setting_minArea.var.int_var.trace_add("write", lambda _1,_2,_3: self._update_lbl_minarea())
         self.lblMinAreaInfo = tk.Label(self.optionsFrame, text="")
         self.lblMinAreaInfo.grid(row=15, column=0, columnspan=3)
         self._update_lbl_minarea()
@@ -184,11 +184,11 @@ class HysteresisTh_Integration(HysteresisTh, IDetectionAlgorithmIntegration):
             return
         lowerThreshold = int(self.image_prop.mean + 2.5*self.image_prop.std)
         upperThreshold = max(lowerThreshold, min(self.image_prop.max/2, self.image_prop.mean + 5*self.image_prop.std))
-        self.setting_lowerTh.Set(lowerThreshold)
-        self.setting_upperTh.Set(upperThreshold)
+        self.setting_lowerTh.set(lowerThreshold)
+        self.setting_upperTh.set(upperThreshold)
 
     def _update_lbl_minarea(self):
-        A = self.setting_minArea.Get()
+        A = self.setting_minArea.get()
         r = round(np.sqrt(A/np.pi),2)
         self.lblMinAreaInfo["text"] = f"A circle with radius {r} px has the same area" 
 
@@ -196,10 +196,10 @@ class HysteresisTh_Integration(HysteresisTh, IDetectionAlgorithmIntegration):
         if self.image_prop is None:
             raise RuntimeError(f"The detection functions requires the update() function to be called first")
         polygon = self.varCircularApprox.get()
-        radius = self.setting_radius.Get()
-        lowerThreshold = self.setting_lowerTh.Get()
-        upperThreshold = self.setting_upperTh.Get()
-        minArea = self.setting_minArea.Get() if polygon else 0
+        radius = self.setting_radius.get()
+        lowerThreshold = self.setting_lowerTh.get()
+        upperThreshold = self.setting_upperTh.get()
+        minArea = self.setting_minArea.get() if polygon else 0
 
         result = self.detect(img=self.image_prop.img, 
                              lowerThreshold=lowerThreshold, 
@@ -241,22 +241,22 @@ class LocalMax_Integration(LocalMax, IDetectionAlgorithmIntegration):
         self.checkAutoParams.grid(row=5, column=1, sticky="nw")
 
         self.setting_polygonal_ROIS = GridSetting(self.optionsFrame, row=10, text="Polygonal ROIs", type_="Checkbox", default=1)
-        self.setting_polygonal_ROIS.var.IntVar.trace_add("write", lambda _1,_2,_3:self.setting_radius.SetVisibility(not self.setting_polygonal_ROIS.Get()))
-        self.setting_polygonal_ROIS.var.SetCallback(lambda: self.setting_radius.SetVisibility(not self.setting_polygonal_ROIS.Get()))
+        self.setting_polygonal_ROIS.var.int_var.trace_add("write", lambda _1,_2,_3:self.setting_radius.set_visibility(not self.setting_polygonal_ROIS.get()))
+        self.setting_polygonal_ROIS.var.set_callback(lambda: self.setting_radius.set_visibility(not self.setting_polygonal_ROIS.get()))
 
-        self.setting_radius = GridSetting(self.optionsFrame, row=11, text="Radius", unit="px", default=6, min_=1, max_=1000, scaleMin=-1, scaleMax=30, tooltip=resources.get_string("algorithms/localMax/params/radius"))
-        self.setting_radius.SetVisibility(not self.setting_polygonal_ROIS.Get())
-        self.setting_lowerTh = GridSetting(self.optionsFrame, row=12, text="Lower threshold", unit="", default=50, min_=0, max_=2**15-1, scaleMin=1, scaleMax=400, tooltip=resources.get_string("algorithms/localMax/params/lowerThreshold"))
-        self.setting_upperTh = GridSetting(self.optionsFrame, row=13, text="Upper threshold", unit="", default=70, min_=0, max_=2**15-1, scaleMin=1, scaleMax=400, tooltip=resources.get_string("algorithms/localMax/params/upperThreshold"))
+        self.setting_radius = GridSetting(self.optionsFrame, row=11, text="Radius", unit="px", default=6, min_=1, max_=1000, scale_min=-1, scale_max=30, tooltip=resources.get_string("algorithms/localMax/params/radius"))
+        self.setting_radius.set_visibility(not self.setting_polygonal_ROIS.get())
+        self.setting_lowerTh = GridSetting(self.optionsFrame, row=12, text="Lower threshold", unit="", default=50, min_=0, max_=2**15-1, scale_min=1, scale_max=400, tooltip=resources.get_string("algorithms/localMax/params/lowerThreshold"))
+        self.setting_upperTh = GridSetting(self.optionsFrame, row=13, text="Upper threshold", unit="", default=70, min_=0, max_=2**15-1, scale_min=1, scale_max=400, tooltip=resources.get_string("algorithms/localMax/params/upperThreshold"))
         self.setting_sortBySignal = GridSetting(self.optionsFrame, row=14, text="Sort by signal strength", type_="Checkbox", default=1, min_=0, tooltip=resources.get_string("algorithms/localMax/params/sortBySignal"))
         
         tk.Label(self.optionsFrame, text="Advanced settings").grid(row=20, column=0, columnspan=4, sticky="nw")
-        self.setting_maxPeakCount = GridSetting(self.optionsFrame, row=21, text="Max. Peak Count", unit="", default=0, min_=0, max_=200, scaleMin=0, scaleMax=100, tooltip=resources.get_string("algorithms/localMax/params/maxPeakCount"))
-        self.setting_minDistance = GridSetting(self.optionsFrame, row=22, text="Min. Distance", unit="px", default=20, min_=1, max_=1000, scaleMin=1, scaleMax=100, tooltip=resources.get_string("algorithms/localMax/params/minDistance"))
-        self.setting_expandSize = GridSetting(self.optionsFrame, row=23, text="Expand size", unit="px", default=6, min_=0, max_=200, scaleMin=0, scaleMax=50, tooltip=resources.get_string("algorithms/localMax/params/expandSize"))
-        self.setting_minSignal = GridSetting(self.optionsFrame, row=24, text="Minimum Signal", unit="", default=0, min_=0, max_=2**15-1, scaleMin=0, scaleMax=400, tooltip=resources.get_string("algorithms/localMax/params/minSignal"))
-        self.setting_minArea = GridSetting(self.optionsFrame, row=25, text="Min. Area", unit="px", default=50, min_=1, max_=10000, scaleMin=0, scaleMax=200, tooltip=resources.get_string("algorithms/localMax/params/minArea"))
-        self.setting_minArea.var.IntVar.trace_add("write", lambda _1,_2,_3: self._update_lbl_minarea())
+        self.setting_maxPeakCount = GridSetting(self.optionsFrame, row=21, text="Max. Peak Count", unit="", default=0, min_=0, max_=200, scale_min=0, scale_max=100, tooltip=resources.get_string("algorithms/localMax/params/maxPeakCount"))
+        self.setting_minDistance = GridSetting(self.optionsFrame, row=22, text="Min. Distance", unit="px", default=20, min_=1, max_=1000, scale_min=1, scale_max=100, tooltip=resources.get_string("algorithms/localMax/params/minDistance"))
+        self.setting_expandSize = GridSetting(self.optionsFrame, row=23, text="Expand size", unit="px", default=6, min_=0, max_=200, scale_min=0, scale_max=50, tooltip=resources.get_string("algorithms/localMax/params/expandSize"))
+        self.setting_minSignal = GridSetting(self.optionsFrame, row=24, text="Minimum Signal", unit="", default=0, min_=0, max_=2**15-1, scale_min=0, scale_max=400, tooltip=resources.get_string("algorithms/localMax/params/minSignal"))
+        self.setting_minArea = GridSetting(self.optionsFrame, row=25, text="Min. Area", unit="px", default=50, min_=1, max_=10000, scale_min=0, scale_max=200, tooltip=resources.get_string("algorithms/localMax/params/minArea"))
+        self.setting_minArea.var.int_var.trace_add("write", lambda _1,_2,_3: self._update_lbl_minarea())
         self.lblMinAreaInfo = tk.Label(self.optionsFrame, text="")
         self.lblMinAreaInfo.grid(row=26, column=1, columnspan=2)
         self._update_lbl_minarea()
@@ -281,28 +281,29 @@ class LocalMax_Integration(LocalMax, IDetectionAlgorithmIntegration):
         """
             Estimate some parameters based on the provided image.
         """
-        if self.varAutoParams.get() != 1 or self.image_prop is None:
+        if self.varAutoParams.get() != 1 or self.image_prop.img is None:
             return
+        assert self.image_prop.mean is not None and self.image_prop.std is not None and self.image_prop.max is not None
         lowerThreshold = int(self.image_prop.mean + 2.5*self.image_prop.std)
-        upperThreshold = max(lowerThreshold, min(self.image_prop.max/2, self.image_prop.mean + 5*self.image_prop.std))
-        self.setting_lowerTh.Set(lowerThreshold)
-        self.setting_upperTh.Set(upperThreshold)
+        upperThreshold = max(lowerThreshold, min(float(self.image_prop.max)/2, float(self.image_prop.mean + 5*self.image_prop.std)))
+        self.setting_lowerTh.set(lowerThreshold)
+        self.setting_upperTh.set(upperThreshold)
 
     def _update_lbl_minarea(self):
-        A = self.setting_minArea.Get()
+        A = self.setting_minArea.get()
         r = round(np.sqrt(A/np.pi),2)
         self.lblMinAreaInfo["text"] = f"A circle with radius {r} px\n has the same area" 
 
     
     def detect_auto_params(self) -> list[ISynapseROI]:
-        lowerThreshold = self.setting_lowerTh.Get()
-        upperThreshold = self.setting_upperTh.Get()
-        expandSize = self.setting_expandSize.Get()
-        maxPeakCount = self.setting_maxPeakCount.Get()
-        minArea = self.setting_minArea.Get()
-        minDistance = self.setting_minDistance.Get()
-        minSignal = self.setting_minSignal.Get()
-        radius = None if self.setting_polygonal_ROIS.Get() == 1 else self.setting_radius.Get()
+        lowerThreshold = self.setting_lowerTh.get()
+        upperThreshold = self.setting_upperTh.get()
+        expandSize = self.setting_expandSize.get()
+        maxPeakCount = self.setting_maxPeakCount.get()
+        minArea = self.setting_minArea.get()
+        minDistance = self.setting_minDistance.get()
+        minSignal = self.setting_minSignal.get()
+        radius = None if self.setting_polygonal_ROIS.get() == 1 else self.setting_radius.get()
         rois = self.detect(img=self.image_prop.img,
                            lowerThreshold=lowerThreshold, 
                            upperThreshold=upperThreshold, 

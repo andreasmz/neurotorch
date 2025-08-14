@@ -15,7 +15,7 @@ class Statusbar:
     timerLowSpeed = 1000 # ms
     timerHighSpeed = 100 # ms
     lowerTimerSpeed = 1000 #ms
-    def __init__(self, root, frame):
+    def __init__(self, root: tk.Tk, frame: tk.Widget|tk.Tk):
         self._statusTxt = ""
         self._progTxt = ""
         self._finishedTxt = ""
@@ -23,22 +23,6 @@ class Statusbar:
 
         self.root = root
         self.frame = frame
-
-        # self.statusFrame = tk.Frame(self.frame)
-        # self.statusFrame.pack(side=tk.BOTTOM, fill="x", expand=False)
-        # self.varProgMain = tk.DoubleVar()
-        # self.progMain = ttk.Progressbar(self.statusFrame,orient="horizontal", length=200, variable=self.varProgMain, maximum=100)
-        # self.progMain.pack(side=tk.LEFT)
-        # self.lblProg = tk.Label(self.statusFrame, text="", relief=tk.SUNKEN,borderwidth=1)
-        # self.lblProg.pack(side=tk.LEFT, padx=(10,10))
-        # self.lblStatus = tk.Label(self.statusFrame, text="", borderwidth=1, relief=tk.SUNKEN)
-        # self.lblStatus.pack(side=tk.LEFT, padx=(10, 10))
-        # self.lblSystemUsage = tk.Label(self.statusFrame, text="")
-        # self.lblSystemUsage2 = tk.Label(self.statusFrame, text="")
-        # self.lblSystemUsage3 = tk.Label(self.statusFrame, text="")
-        # self.lblSystemUsage3.pack(side=tk.RIGHT, padx=(0, 10))
-        # self.lblSystemUsage2.pack(side=tk.RIGHT, padx=(0, 0))
-        # self.lblSystemUsage.pack(side=tk.RIGHT, padx=(10, 0))
 
         self.statusbarFrame = tk.Frame(self.frame)
         self.statusbarFrame.pack(side=tk.BOTTOM, fill="x", expand=False)
@@ -70,40 +54,40 @@ class Statusbar:
         self.lblSystemUsage.pack(side=tk.RIGHT, padx=(5, 0))
 
 
-        self.root.after(0, self._TimerTick)
-        self.root.after(1000, self._LowerTimerTick)
+        self.root.after(0, self._on_timer_tick)
+        self.root.after(1000, self._on_lower_timer_tick)
 
     @property
-    def StatusText(self):
+    def status_text(self):
         return self._statusTxt
     
-    @StatusText.setter
-    def StatusText(self, val):
+    @status_text.setter
+    def status_text(self, val):
         if val != self._statusTxt:
             self._statusTxt = val
             self.lblStatus["text"] = self._statusTxt
 
     @property
-    def ProgressText(self):
+    def progress_text(self):
         return self._progTxt
     
-    @ProgressText.setter
-    def ProgressText(self, val):
+    @progress_text.setter
+    def progress_text(self, val):
         if val != self._progTxt:
             self._progTxt = val
             self.lblProg["text"] = self._progTxt
 
     @property
-    def TaskFinishedText(self):
+    def task_finished_text(self):
         return self._finishedTxt
     
-    @TaskFinishedText.setter
-    def TaskFinishedText(self, val):
+    @task_finished_text.setter
+    def task_finished_text(self, val):
         if val != self._finishedTxt:
             self._finishedTxt = val
             self.lblTasksFinished["text"] = self._finishedTxt
 
-    def _TimerTick(self):
+    def _on_timer_tick(self):
         self._timerSpeed = Statusbar.timerHighSpeed
         def _Tick():
             active_tasks = [t for t in Task.get_tasks() if t.state == TaskState.RUNNING and t.time_since_start is not None and t.time_since_start >= 0.5]
@@ -116,17 +100,17 @@ class Statusbar:
                 self._timerSpeed = Statusbar.timerLowSpeed
 
             if len(finished_task) == 0:
-                self.TaskFinishedText = ""
+                self.task_finished_text = ""
             else:
                 t: Task = finished_task[0]
                 if t.error is not None and self.lblTasksFinished["fg"] != "red":
                     self.lblTasksFinished.config(fg="red")
                 elif self.lblTasksFinished["fg"] != "SystemButtonText":
                     self.lblTasksFinished.config(fg="SystemButtonText")
-                self.TaskFinishedText = str(t)
+                self.task_finished_text = str(t)
 
             if len(active_tasks) == 0:
-                self.ProgressText = ""
+                self.progress_text = ""
                 if str(self.progMain["mode"]) != "determinate":
                     self.progMain.configure(mode="determinate")
                 if self.varProgMain.get() != 0:
@@ -138,7 +122,7 @@ class Statusbar:
                     self.lblProg.config(fg="red")
                 elif self.lblProg["fg"] != "SystemButtonText":
                     self.lblProg.config(fg="SystemButtonText")
-                self.ProgressText = str(t) + (f" and {len(active_tasks)-1} more task{'s' if len(active_tasks) >= 3 else ''}" if len(active_tasks) >= 2 else "")
+                self.progress_text = str(t) + (f" and {len(active_tasks)-1} more task{'s' if len(active_tasks) >= 3 else ''}" if len(active_tasks) >= 2 else "")
                 if t.is_determinate():
                     if str(self.progMain["mode"]) != "determinate":
                         self.progMain.configure(mode="determinate")
@@ -153,9 +137,9 @@ class Statusbar:
         except Exception as ex:
             logger.debug(f"An error happened processing the task loop: {str(ex)}")
         finally:
-            self.root.after(self._timerSpeed, self._TimerTick)
+            self.root.after(self._timerSpeed, self._on_timer_tick)
 
-    def _LowerTimerTick(self):
+    def _on_lower_timer_tick(self):
         process = psutil.Process()
         _size = round(process.memory_info().rss/(1024**2),2)
         _availableRAM = round(psutil.virtual_memory().available/(1024**3), 2)
@@ -167,7 +151,7 @@ class Statusbar:
         else:
             self.lblSystemUsage2.config(fg="SystemButtonText")
         self.lblSystemUsage3["text"] = f" / {_totalRAM} GB)"
-        self.root.after(Statusbar.lowerTimerSpeed, self._LowerTimerTick)
+        self.root.after(Statusbar.lowerTimerSpeed, self._on_lower_timer_tick)
 
 
 class EntryPopup(ttk.Entry):
@@ -218,8 +202,8 @@ class GridSetting:
                  default:int = 0, 
                  min_:int = 0, 
                  max_:int = 1000, 
-                 scaleMin:int = 0, 
-                 scaleMax:int = 100,
+                 scale_min:int = 0, 
+                 scale_max:int = 100,
                  tooltip: str = "",
                  unit:str = "",
                  type_: Literal["Int", "Checkbox"] = "Int"):
@@ -227,7 +211,7 @@ class GridSetting:
         self.parent = parent
         self.row = row
         self.unit = unit
-        self.var = IntStringVar(default)
+        self.var = Intstring_var(default)
         self.type: Literal["Int", "Checkbox"] = type_
 
         self.label = ttk.Label(self.parent, text=text)
@@ -235,27 +219,27 @@ class GridSetting:
             self.toolTip = ToolTip(self.label, msg=tooltip, follow=True, delay=0.1)
         match self.type:
             case "Int":
-                self.scale = ttk.Scale(self.parent, from_=scaleMin, to=scaleMax, variable=self.var.IntVar)
-                self.spinbox = tk.Spinbox(self.parent, from_=min_, to=max_, textvariable=self.var.StringVar, width=6)
+                self.scale = ttk.Scale(self.parent, from_=scale_min, to=scale_max, variable=self.var.int_var)
+                self.spinbox = tk.Spinbox(self.parent, from_=min_, to=max_, textvariable=self.var.string_var, width=6)
                 self.lblUnit = tk.Label(self.parent, text=unit)
             case "Checkbox":
-                self.check = ttk.Checkbutton(self.parent, variable=self.var.IntVar)
+                self.check = ttk.Checkbutton(self.parent, variable=self.var.int_var)
             case _:
                 raise ValueError(f"Invalid type {self.type}")
 
-        self.SetVisibility(True)
+        self.set_visibility(True)
 
-    def Get(self) -> int:
-        return self.var.IntVar.get()
+    def get(self) -> int:
+        return self.var.int_var.get()
     
-    def Set(self, val:int):
-        self.var.IntVar.set(val)
+    def set(self, val:int):
+        self.var.int_var.set(val)
     
-    def SetRange(self, 
+    def set_range(self, 
                  min_:int|None = None, 
                  max_:int|None = None, 
-                 scaleMin:int|None = None, 
-                 scaleMax:int|None = None,
+                 scale_min:int|None = None, 
+                 scale_max:int|None = None,
                  syncScale:bool|None = False):
         min_ = cast(int, self.spinbox.cget("from")) if min_ is None else min_
         max_ = cast(int, self.spinbox.cget("to")) if max_ is None else max_
@@ -263,21 +247,21 @@ class GridSetting:
 
         if syncScale:
             self.scale.configure(from_=min_, to=max_)
-        elif scaleMin is not None or scaleMax is not None:
-            scaleMin = self.spinbox.cget("from") if scaleMin is None else scaleMin
-            scaleMax = self.spinbox.cget("to") if scaleMax is None else scaleMax
+        elif scale_min is not None or scale_max is not None:
+            scale_min = self.spinbox.cget("from") if scale_min is None else scale_min
+            scale_max = self.spinbox.cget("to") if scale_max is None else scale_max
             self.scale.configure(from_=min_, to=max_)
         
         if min_ > max_:
-            self.Set(0)
+            self.set(0)
         
-        if self.Get() < min_:
-            self.Set(min_)
-        elif self.Get() > max_:
-            self.Set(max_)
+        if self.get() < min_:
+            self.set(min_)
+        elif self.get() > max_:
+            self.set(max_)
         
     
-    def SetVisibility(self, visibility:bool):
+    def set_visibility(self, visibility:bool):
         if visibility == self._visible:
             return
         if visibility:
@@ -307,33 +291,33 @@ class GridSetting:
         self._visible = visibility
 
 
-class IntStringVar:
+class Intstring_var:
     def __init__(self, default):
-        self.IntVar = tk.IntVar(value=default)
-        self.StringVar = tk.StringVar(value=default)
-        self.IntVar.trace_add("write", self._IntVarUpdate)
-        self.StringVar.trace_add("write", self._StringVarUpdate)
+        self.int_var = tk.IntVar(value=default)
+        self.string_var = tk.StringVar(value=default)
+        self.int_var.trace_add("write", self._int_var_update)
+        self.string_var.trace_add("write", self._string_var_update)
         self.callback = None
         self.min = None
         self.max = None
 
-    def SetCallback(self, callback):
+    def set_callback(self, callback):
         self.callback = callback
 
-    def SetStringVarBounds(self, min: int, max: int):
+    def set_string_var_bounds(self, min: int, max: int):
         self.min = min
         self.max = max
         return self
 
-    def _IntVarUpdate(self, val1, val2, val3):
-        if (self.StringVar.get() != str(self.IntVar.get())):
-            self.StringVar.set(str(int(self.IntVar.get())))
+    def _int_var_update(self, val1, val2, val3):
+        if (self.string_var.get() != str(self.int_var.get())):
+            self.string_var.set(str(int(self.int_var.get())))
             if self.callback is not None:
                 self.callback()
     
-    def _StringVarUpdate(self, val1, val2, val3):
-        strval = self.StringVar.get()
-        intval = str(self.IntVar.get())
+    def _string_var_update(self, val1, val2, val3):
+        strval = self.string_var.get()
+        intval = str(self.int_var.get())
         if (strval != intval):
             if not strval.lstrip("-").isdigit():
                 return
@@ -341,7 +325,7 @@ class IntStringVar:
                 return
             if self.max is not None and int(strval) > self.max:
                 return
-            self.IntVar.set(int(strval))
+            self.int_var.set(int(strval))
             if self.callback is not None:
                 self.callback()
 

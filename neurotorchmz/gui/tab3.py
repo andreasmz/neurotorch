@@ -75,9 +75,9 @@ class TabROIFinder(Tab):
         self.comboFrame.grid(row=10, column=2, sticky="news")
         tk.Label(self.frameOptions, text="Delta images overlay").grid(row=11, column=0)
         self.setting_plotOverlay = GridSetting(self.frameOptions, row=11, type_="Checkbox", text="Plot raw algorithm output", default=0, tooltip=resources.get_string("tab3/rawAlgorithmOutput"))
-        self.setting_plotOverlay.var.IntVar.trace_add("write", lambda _1,_2,_3: self.invoke_update(TabROIFinder_InvalidateEvent(rois=True)))
+        self.setting_plotOverlay.var.int_var.trace_add("write", lambda _1,_2,_3: self.invoke_update(TabROIFinder_InvalidateEvent(rois=True)))
         self.setting_plotPixels = GridSetting(self.frameOptions, row=12, type_="Checkbox", text="Plot ROI pixels", default=0, tooltip=resources.get_string("tab3/plotROIPixels"))
-        self.setting_plotPixels.var.IntVar.trace_add("write", lambda _1,_2,_3: self.invoke_update(TabROIFinder_InvalidateEvent(rois=True)))
+        self.setting_plotPixels.var.int_var.trace_add("write", lambda _1,_2,_3: self.invoke_update(TabROIFinder_InvalidateEvent(rois=True)))
 
         self.btnDetect = tk.Button(self.frameOptions, text="Detect", command=self.detect)
         self.btnDetect.grid(row=15, column=0)
@@ -268,14 +268,14 @@ class TabROIFinder(Tab):
         # Plotting the overlays
         if self.current_input_image is not None:
             _currentSource = self.current_input_image.img
-            if self.setting_plotPixels.Get() == 1 and _ax1HasImage and _currentSource is not None:
+            if self.setting_plotPixels.get() == 1 and _ax1HasImage and _currentSource is not None:
                 _overlay = np.zeros(shape=_currentSource.shape, dtype=_currentSource.dtype)
                 for synapse in self.detection_result:
                     for roi in synapse.rois:
                         _overlay[roi.get_coordinates(_currentSource.shape)] = 1
                 self.ax1.imshow(_overlay, alpha=_overlay*0.5, cmap="viridis")
 
-            if self.setting_plotOverlay.Get() == 1 and _ax2HasImage:
+            if self.setting_plotOverlay.get() == 1 and _ax2HasImage:
                 _overlays, _patches = self.detectionAlgorithm.get_rawdata_overlay()
                 if _overlays is not None:
                     for _overlay in _overlays:

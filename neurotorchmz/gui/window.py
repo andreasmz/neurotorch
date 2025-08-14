@@ -177,9 +177,9 @@ class Neurotorch_GUI:
             if imgObj is not None and imgObj.img is not None:
                 self.set_window_title(imgObj.name or "")
                 _size = round(sys.getsizeof(imgObj.img)/(1024**2),2)
-                self.statusbar.StatusText = f"Image of shape {imgObj.img.shape} and size {_size} MB"
+                self.statusbar.status_text = f"Image of shape {imgObj.img.shape} and size {_size} MB"
             else:
-                self.statusbar.StatusText = ""
+                self.statusbar.status_text = ""
         for t in self.tabs.values():
             self.invoke_tab_about_update(t, event)
         return self._update_task

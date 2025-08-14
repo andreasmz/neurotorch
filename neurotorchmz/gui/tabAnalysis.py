@@ -63,19 +63,19 @@ class TabAnalysis(Tab):
 
         tk.Label(self.frameDetection, text="Delta images overlay").grid(row=10, column=0)
         self.setting_plotOverlay = GridSetting(self.frameDetection, row=11, type_="Checkbox", text="Plot raw algorithm output", default=0, tooltip=resources.get_string("tab3/rawAlgorithmOutput"))
-        self.setting_plotOverlay.var.IntVar.trace_add("write", lambda _1,_2,_3: self.invalidate_ROIs())
+        self.setting_plotOverlay.var.int_var.trace_add("write", lambda _1,_2,_3: self.invalidate_ROIs())
         self.setting_plotPixels = GridSetting(self.frameDetection, row=12, type_="Checkbox", text="Plot ROIs pixels", default=0, tooltip=resources.get_string("tab3/plotROIPixels"))
-        self.setting_plotPixels.var.IntVar.trace_add("write", lambda _1,_2,_3: self.invalidate_ROIs())
+        self.setting_plotPixels.var.int_var.trace_add("write", lambda _1,_2,_3: self.invalidate_ROIs())
         self.btnDetect = tk.Button(self.frameDetection, text="Detect", command=self.detect)
         self.btnDetect.grid(row=20, column=0)
 
         self.frameDisplay= ttk.LabelFrame(self.frameTools, text="Display Options")
         self.frameDisplay.grid(row=1, column=0, sticky="news")
 
-        self.sliderFrame = GridSetting(self.frameDisplay, row=5, type_="Int", text="Frame", min_=0, max_=0, scaleMin=0, scaleMax=0)
-        self.sliderFrame.var.SetCallback(self.sliderFrame_changed)
-        self.sliderPeak = GridSetting(self.frameDisplay, row=6, type_="Int", text="Peak", min_=0, max_=0, scaleMin=0, scaleMax=0)
-        self.sliderPeak.var.SetCallback(self.sliderPeak_changed)
+        self.sliderFrame = GridSetting(self.frameDisplay, row=5, type_="Int", text="Frame", min_=0, max_=0, scale_min=0, scale_max=0)
+        self.sliderFrame.var.set_callback(self.sliderFrame_changed)
+        self.sliderPeak = GridSetting(self.frameDisplay, row=6, type_="Int", text="Peak", min_=0, max_=0, scale_min=0, scale_max=0)
+        self.sliderPeak.var.set_callback(self.sliderPeak_changed)
         self.btn3DPlot = tk.Button(self.frameDisplay, text="3D Multiframe Plot", command=lambda:self.show_external_plot("3D Multiframe Plot", self.plot_3D_multiframe))
         self.btn3DPlot.grid(row=10, column=1)
 
@@ -174,9 +174,9 @@ class TabAnalysis(Tab):
     def invalidate_stimulation(self):
         signalObj = self.session.active_image_signal
         if signalObj is not None and signalObj.peaks is not None and len(signalObj.peaks) >= 1:
-            self.sliderPeak.SetRange(min_=1, max_=len(signalObj.peaks), syncScale=True)
+            self.sliderPeak.set_range(min_=1, max_=len(signalObj.peaks), syncScale=True)
         else:
-            self.sliderPeak.SetRange(0,0, syncScale=True)
+            self.sliderPeak.set_range(0,0, syncScale=True)
         
 
     def invalidate_image(self):
@@ -193,7 +193,7 @@ class TabAnalysis(Tab):
         self.invalidate_stimulation()
         
         if imgObj is None or imgObj.img is None or imgObj.imgDiff is None:
-            self.sliderFrame.SetRange(0,0, syncScale=True)
+            self.sliderFrame.set_range(0,0, syncScale=True)
             self.invalidate_delta_plot()
             return
         
@@ -201,7 +201,7 @@ class TabAnalysis(Tab):
         self.ax1.set_axis_on()
         self.ax1_colorbar = self.figure1.colorbar(self.ax1Image, ax=self.ax1)
         
-        self.sliderFrame.SetRange(min_=1, max_=imgObj.imgDiff.shape[0], syncScale=True)
+        self.sliderFrame.set_range(min_=1, max_=imgObj.imgDiff.shape[0], syncScale=True)
         self.invalidate_delta_plot()
 
 
@@ -219,7 +219,7 @@ class TabAnalysis(Tab):
         if imgObj is None or imgObj.img is None or imgObj.imgDiff is None:
             self.invalidate_ROIs()
             return
-        frame = self.sliderFrame.Get() - 1
+        frame = self.sliderFrame.get() - 1
         if frame < 0 or frame >= imgObj.imgDiff.shape[0]:
             self.invalidate_ROIs()
             return
@@ -253,7 +253,7 @@ class TabAnalysis(Tab):
         _ax1HasImage = len(self.ax1.get_images()) > 0
         _ax2HasImage = len(self.ax2.get_images()) > 0
 
-        frame = self.sliderFrame.Get() - 1
+        frame = self.sliderFrame.get() - 1
         
         # Plotting the ROIs
 
@@ -334,19 +334,19 @@ class TabAnalysis(Tab):
         return imgObj.imgDiffView(ImageView.SPATIAL).MaxProps
     
     def sliderFrame_changed(self):
-        frame = self.sliderFrame.Get() - 1
+        frame = self.sliderFrame.get() - 1
         signalObj = self.session.active_image_signal
         if signalObj is not None and signalObj.peaks is not None and len(peaks_index := (np.where(np.array(signalObj.peaks) == frame)[0])) == 1:
             peak = signalObj.peaks[peaks_index[0]]
-            self.sliderPeak.Set(peaks_index[0] + 1)
+            self.sliderPeak.set(peaks_index[0] + 1)
             
         self.invalidate_delta_plot()
 
     def sliderPeak_changed(self):
-        peak = self.sliderPeak.Get() - 1
+        peak = self.sliderPeak.get() - 1
         signalObj = self.session.active_image_signal
         if peak != -1 and signalObj.peaks is not None and len(signalObj.peaks) > peak:
-            self.sliderFrame.Set(signalObj.peaks[peak] + 1)
+            self.sliderFrame.set(signalObj.peaks[peak] + 1)
         
 
 

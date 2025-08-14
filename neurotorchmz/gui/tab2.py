@@ -48,22 +48,22 @@ class TabSignal(Tab):
         ToolTip(self.radioAlgo2, msg=resources.get_string("tab2/algorithms/diffStd"), follow=True, delay=0.1)
 
         self.setting_snapFrames = GridSetting(self.frameOptions, row=10, type_="Checkbox", text="Snap frames to peaks", unit="", default=1, tooltip="")
-        self.setting_snapFrames.var.IntVar.trace_add("write", lambda _1,_2,_3: self.invalidate_peaks())
+        self.setting_snapFrames.var.int_var.trace_add("write", lambda _1,_2,_3: self.invalidate_peaks())
         self.setting_normalize = GridSetting(self.frameOptions, row=11, type_="Checkbox", text="Normalize", unit="", default=1, tooltip="")
-        self.setting_normalize.var.IntVar.trace_add("write", lambda _1,_2,_3: self.invalidate_image())
+        self.setting_normalize.var.int_var.trace_add("write", lambda _1,_2,_3: self.invalidate_image())
         self.setting_originalImage = GridSetting(self.frameOptions, row=12, type_="Checkbox", text="Show original image", default=0)
-        self.setting_originalImage.var.IntVar.trace_add("write", lambda _1,_2,_3: self.invalidate_image())
-        self.setting_peakProminence = GridSetting(self.frameOptions, row=13, text="Peak Prominence", unit="%", default=50, min_=1, max_=100, scaleMin=1, scaleMax=100, tooltip=resources.get_string("tab2/peakProminence"))
-        self.setting_peakProminence.var.IntVar.trace_add("write", lambda _1,_2,_3: self.window.invoke_tab_about_update(self, TabSignal_RefindPeaksEvent()))
+        self.setting_originalImage.var.int_var.trace_add("write", lambda _1,_2,_3: self.invalidate_image())
+        self.setting_peakProminence = GridSetting(self.frameOptions, row=13, text="Peak Prominence", unit="%", default=50, min_=1, max_=100, scale_min=1, scale_max=100, tooltip=resources.get_string("tab2/peakProminence"))
+        self.setting_peakProminence.var.int_var.trace_add("write", lambda _1,_2,_3: self.window.invoke_tab_about_update(self, TabSignal_RefindPeaksEvent()))
         self.setting_colorbarUpdate = GridSetting(self.frameOptions, row=14, type_="Checkbox", text="Colorbar Update", unit="", default=1, tooltip=resources.get_string("tab2/checkColorbar"))
         #tk.Button(self.frameOptions, text="Detect", command=self.detect_signal).grid(row=21, column=0)
 
         self.frameSignal = ttk.LabelFrame(self.frameMain, text="Signal")
         self.frameSignal.grid(row=2, column=0, sticky="new")
-        self.setting_peakWidthLeft = GridSetting(self.frameSignal, row=5, text="Peak Width Left", default=SignalObject.PEAK_WIDTH_LEFT, min_=0, max_=50, scaleMin=0, scaleMax=20, tooltip=resources.get_string("tab2/peakWidth"))
-        self.setting_peakWidthRight = GridSetting(self.frameSignal, row=6, text="Peak Width Right", default=SignalObject.PEAK_WIDTH_RIGHT, min_=0, max_=50, scaleMin=0, scaleMax=20, tooltip=resources.get_string("tab2/peakWidth"))
-        self.setting_peakWidthLeft.var.IntVar.trace_add("write", lambda _1,_2,_3: SignalObject.set_settings(peak_width_left=self.setting_peakWidthLeft.Get()))
-        self.setting_peakWidthRight.var.IntVar.trace_add("write", lambda _1,_2,_3: SignalObject.set_settings(peak_width_right=self.setting_peakWidthRight.Get()))
+        self.setting_peakWidthLeft = GridSetting(self.frameSignal, row=5, text="Peak Width Left", default=SignalObject.PEAK_WIDTH_LEFT, min_=0, max_=50, scale_min=0, scale_max=20, tooltip=resources.get_string("tab2/peakWidth"))
+        self.setting_peakWidthRight = GridSetting(self.frameSignal, row=6, text="Peak Width Right", default=SignalObject.PEAK_WIDTH_RIGHT, min_=0, max_=50, scale_min=0, scale_max=20, tooltip=resources.get_string("tab2/peakWidth"))
+        self.setting_peakWidthLeft.var.int_var.trace_add("write", lambda _1,_2,_3: SignalObject.set_settings(peak_width_left=self.setting_peakWidthLeft.get()))
+        self.setting_peakWidthRight.var.int_var.trace_add("write", lambda _1,_2,_3: SignalObject.set_settings(peak_width_right=self.setting_peakWidthRight.get()))
 
         self.frameSignalPlot = tk.Frame(self.frameSignal)
         self.frameSignalPlot.grid(row=10, column=0, columnspan=4, sticky="news")
@@ -110,7 +110,7 @@ class TabSignal(Tab):
         """ Handle the update loop call """
         if isinstance(event, ImageChangedEvent):
             if self.active_image_object is not None:
-                self.active_image_object.signal_obj.prominence_factor = self.setting_peakProminence.Get()/100
+                self.active_image_object.signal_obj.prominence_factor = self.setting_peakProminence.get()/100
             self.invalidate_image()
             self.invalidate_signal()
 
@@ -128,7 +128,7 @@ class TabSignal(Tab):
 
         elif isinstance(event, TabSignal_RefindPeaksEvent):
             if self.active_image_object is not None:
-                self.active_image_object.signal_obj.prominence_factor = self.setting_peakProminence.Get()/100 # Setter is already clearing
+                self.active_image_object.signal_obj.prominence_factor = self.setting_peakProminence.get()/100 # Setter is already clearing
             self.window.invoke_tab_update_event(PeaksChangedEvent())
 
         elif isinstance(event, SignalChangedEvent):
@@ -150,7 +150,7 @@ class TabSignal(Tab):
             self.frameSlider.set_val(0)
             self.invalidate_image_plot()
         else:
-            self.frameSlider.valmin = 0 if (self.setting_originalImage.Get() == 1) else 1
+            self.frameSlider.valmin = 0 if (self.setting_originalImage.get() == 1) else 1
             self.frameSlider.valmax = imgObj.imgDiff.shape[0]
             if isinstance(self.frameSlider.valstep, int): # Only update if not valstep is custom set to peaks
                 self.frameSlider.valstep = 1
@@ -169,7 +169,7 @@ class TabSignal(Tab):
         """ Invalidates the current image plot and replots it """
         imgObj = self.session.active_image_object
         frame = int(self.frameSlider.val)
-        show_original = (self.setting_originalImage.Get() == 1)
+        show_original = (self.setting_originalImage.get() == 1)
 
         _oldnorm = None
         if self.ax1Image is not None and self.ax1Image.colorbar is not None:
@@ -209,7 +209,7 @@ class TabSignal(Tab):
             _cmap = "inferno"
             _title = "Difference Image"
 
-        if (self.setting_normalize.Get() == 0):
+        if (self.setting_normalize.get() == 0):
             _vmin = None
             _vmax = None
         _vmin = float(_vmin) if _vmin is not None else None
@@ -218,7 +218,7 @@ class TabSignal(Tab):
             self.ax1Image = self.ax1.imshow(_img, vmin=_vmin, vmax=_vmax, cmap=_cmap)
             self.ax1.set_title(_title)
             self.colorbar = self.figure1.colorbar(self.ax1Image, ax=self.ax1)
-            if self.setting_colorbarUpdate.Get() == 0:
+            if self.setting_colorbarUpdate.get() == 0:
                 self.ax1Image.set_norm(_oldnorm)
         self.canvas1.draw()
 
@@ -250,7 +250,7 @@ class TabSignal(Tab):
         if imgObj is not None and imgObj.signal_obj.signal is not None and imgObj.signal_obj.peaks is not None and len(imgObj.signal_obj.peaks) > 0:
             peaks = np.array(imgObj.signal_obj.peaks, dtype=int)
             self.axSignal.scatter(peaks+1, imgObj.signal_obj.signal[peaks], c="orange")
-            if self.setting_snapFrames.Get() == 1:
+            if self.setting_snapFrames.get() == 1:
                 _valstep = peaks + 1
         
         self.frameSlider.valstep = _valstep
@@ -269,5 +269,5 @@ class TabSignal(Tab):
             self.frameSlider.set_val(newval)
 
     def update_peak_width_left_setting(self):
-        SignalObject.set_settings(peak_width_left=self.setting_peakWidthLeft.Get())
+        SignalObject.set_settings(peak_width_left=self.setting_peakWidthLeft.get())
         self.invoke_update(PeaksChangedEvent())
