@@ -29,7 +29,7 @@ class TabROIFinder(Tab):
 
     def __init__(self, session: Session, root:tk.Tk, notebook: ttk.Notebook):
         super().__init__(session, root, notebook, _tab_name="Tab ROI Finder")
-        self.detectionAlgorithm: detection.IDetectionAlgorithmIntegration = detection.LocalMax_Integration(self.session)
+        self.detectionAlgorithm = detection.IDetectionAlgorithmIntegration(self.session)
         self.roiPatches = {}
         self.roiPatches2 = {}
         self.treeROIs_entryPopup = None

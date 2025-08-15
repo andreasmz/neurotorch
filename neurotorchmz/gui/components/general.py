@@ -196,7 +196,7 @@ class GridSetting:
     """
     
     def __init__(self, 
-                 parent, 
+                 parent: tk.Widget, 
                  row: int,
                  text:str, 
                  default:int = 0, 
