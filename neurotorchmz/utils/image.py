@@ -11,6 +11,7 @@ import tifffile
 import nd2
 from pathlib import Path
 import gc
+import time
 
 class ImageProperties:
     """
@@ -154,8 +155,9 @@ class AxisImage:
             if self._img is None:
                 self._mean = ImageProperties(None)
             else:
-                logger.debug(f"Calculating mean view for AxisImage '{self._name if self._name is not None else ''}' on axis '{self._axis}'")
+                t0 = time.perf_counter()
                 self._mean = ImageProperties(np.mean(self._img, axis=self._axis, dtype="float32").astype("float64")) # Use float32 for calculations (!) to lower peak memory usage
+                logger.debug(f"Calculated mean view for AxisImage '{self._name if self._name is not None else ''}' on axis '{self._axis}' in {(time.perf_counter() - t0):1.3f} s")
         return self._mean
     
     @property
@@ -173,8 +175,9 @@ class AxisImage:
             if self._img is None:
                 self._median = ImageProperties(None)
             else:
-                logger.debug(f"Calculating median view for AxisImage '{self._name if self._name is not None else ''}' on axis '{self._axis}'")
+                t0 = time.perf_counter()
                 self._median = ImageProperties(np.median(self._img, axis=self._axis))
+                logger.debug(f"Calculated median view for AxisImage '{self._name if self._name is not None else ''}' on axis '{self._axis}' in {(time.perf_counter() - t0):1.3f} s")
         return self._median
     
     @property
@@ -183,8 +186,9 @@ class AxisImage:
             if self._img is None:
                 self._std = ImageProperties(None)
             else:
-                logger.debug(f"Calculating std view for AxisImage '{self._name if self._name is not None else ''}' on axis '{self._axis}'")
+                t0 = time.perf_counter()
                 self._std = ImageProperties(np.std(self._img, axis=self._axis, dtype="float32").astype("float64")) # Use float32 for calculations (!) to lower peak memory usage
+                logger.debug(f"Calculated std view for AxisImage '{self._name if self._name is not None else ''}' on axis '{self._axis}' in {(time.perf_counter() - t0):1.3f} s")
         return self._std
     
     @property
@@ -202,8 +206,9 @@ class AxisImage:
             if self._img is None:
                 self._min = ImageProperties(None)
             else:
-                logger.debug(f"Calculating min view for AxisImage '{self._name if self._name is not None else ''}' on axis '{self._axis}'")
+                t0 = time.perf_counter()
                 self._min = ImageProperties(np.min(self._img, axis=self._axis))
+                logger.debug(f"Calculated minimum view for AxisImage '{self._name if self._name is not None else ''}' on axis '{self._axis}' in {(time.perf_counter() - t0):1.3f} s")
         return self._min
     
     @property
@@ -212,8 +217,9 @@ class AxisImage:
             if self._img is None:
                 self._max = ImageProperties(None)
             else:
-                logger.debug(f"Calculating max view for AxisImage '{self._name if self._name is not None else ''}' on axis '{self._axis}'")
+                t0 = time.perf_counter()
                 self._max = ImageProperties(np.max(self._img, axis=self._axis))
+                logger.debug(f"Calculated maximum view for AxisImage '{self._name if self._name is not None else ''}' on axis '{self._axis}' in {(time.perf_counter() - t0):1.3f} s")
         return self._max
     
     def __del__(self):
@@ -360,7 +366,10 @@ class ImageObject(Serializable):
     @property
     def img_diff_raw(self) -> np.ndarray | None:
         if self._img_diff is None and self.imgS is not None:
+            t0 = time.perf_counter()
             self._img_diff = np.diff(self.imgS, axis=0)
+            t1 = time.perf_counter()
+            logger.debug(f"Calculated the delta video in {(t1-t0):1.3f} s")
         return self._img_diff
     
     @img_diff_raw.setter
@@ -522,6 +531,7 @@ class ImageObject(Serializable):
             raise AlreadyLoadingError()
 
         def _precompute(task: Task):
+            t0 = time.perf_counter()
             _progIni = task._step if task._step is not None else 0
             task.set_step_progress(_progIni, "preparing ImgView (Spatial Mean)")
             self.imgView(ImageView.SPATIAL).Mean
@@ -541,6 +551,7 @@ class ImageObject(Serializable):
             task.set_step_progress(2+_progIni, "preparing ImgDiffView (Temporal Std)")
             self.imgDiffView(ImageView.TEMPORAL).Std
             gc.collect()
+            logger.debug(f"Precomputed image '{self.name}' in {(time.perf_counter()-t0):1.3f} s")
 
         if task_continue:
             _precompute(self._task_open_image)
@@ -593,17 +604,25 @@ class ImageObject(Serializable):
         self.clear()
 
         def _Load(task: Task):
+            t0 = time.perf_counter()
             task.set_step_progress(0, "reading File")
             if path.suffix.lower() in [".tif", ".tiff"]:
                 logger.debug(f"Opening '{path.name}' with tifffile")
                 with tifffile.TiffFile(path) as tif:
                     self.img = tif.asarray()
+                    x = tif.ome_metadata
+                    x = tif.metaseries_metadata
                     self._metdata = tif.metaseries_metadata
+                    tif.ome_metadata
             elif nd2.is_supported_file(path):
                 logger.debug(f"Opening '{path.name}' with nd2")
-                with nd2.ND2File(path) as ndfile:
-                    self.img = ndfile.asarray()
-                    self._metdata = ndfile.unstructured_metadata()
+                with nd2.ND2File(path) as nd2file:
+                    self.img = nd2file.asarray()
+                    self._metdata = nd2file.ome_metadata(include_unstructured=True).model_dump(exclude={"structured_annotations"}, exclude_none=True)
+                    if "images" in self._metdata:
+                        for i in self._metdata["images"]:
+                            if "pixels" in i and "planes" in i["pixels"]:
+                                del i["pixels"]["planes"]
             else:
                 logger.debug(f"Opening '{path.name}' with PIMS")
                 try:
@@ -623,6 +642,9 @@ class ImageObject(Serializable):
             self._path = path
             self.name = path.name
             self.name_without_extension = path.stem
+
+            t1 = time.perf_counter()
+            logger.debug(f"Read file '{path.name}' in {(t1-t0):1.3f} s")
             
             if precompute:
                 self.precompute_image(task_continue=True, run_async=run_async)

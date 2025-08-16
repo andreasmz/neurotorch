@@ -46,12 +46,12 @@ class TabImage(Tab):
         self.treeMetadata.pack(expand=True, fill="y", padx=2, side=tk.LEFT)
         self.treeMetadata.heading('#0', text="Property")
         self.treeMetadata.heading('Value', text='Value')
-        self.treeMetadata.column("#0", minwidth=0, width=200)
-        self.treeMetadata.column("Value", minwidth=0, width=120)
+        self.treeMetadata.column("#0", minwidth=0, width=200, stretch=False)
+        self.treeMetadata.column("Value", minwidth=0, width=120, stretch=False)
         self.scrollTreeMetadata = ttk.Scrollbar(self.frameMetadataTop, orient="vertical", command=self.treeMetadata.yview)
         self.scrollTreeMetadata.pack(side=tk.LEFT, expand=True, fill="y")
         self.scrollXTreeMetadata = ttk.Scrollbar(self.frameMetadata, orient="horizontal", command=self.treeMetadata.xview)
-        self.scrollXTreeMetadata.pack(fill="x")
+        self.scrollXTreeMetadata.pack(side=tk.BOTTOM, fill="x")
         
         self.treeMetadata.configure(yscrollcommand=self.scrollTreeMetadata.set)
         self.treeMetadata.configure(xscrollcommand=self.scrollXTreeMetadata.set)
@@ -100,7 +100,7 @@ class TabImage(Tab):
             self.treeMetadata.delete(*self.treeMetadata.get_children())
             if imgObj is not None:
                 if imgObj.name is not None:
-                    self.treeMetadata.insert('', 'end', text="Name", values=([imgObj.name]))
+                    self.treeMetadata.insert('', 'end', text="Filename", values=([imgObj.name]))
                 if imgObj.path is not None:
                     self.treeMetadata.insert('', 'end', text="Path", values=([imgObj.path]))
                 if imgObj.img is not None and imgObj.imgProps is not None:
@@ -113,7 +113,7 @@ class TabImage(Tab):
                     self.treeMetadata.insert('providedImageData', 'end', text="Minimum", values=([imgObj.imgProps.min]))
                     
                 if imgObj.metadata is not None:
-                    self.treeMetadata.insert('', 'end', iid="metadata", text="ND2 metadata", open=True)
+                    self.treeMetadata.insert('', 'end', iid="metadata", text="Metadata", open=True)
                     self._insert_dict_into_tree(parent_node="metadata", d=imgObj.metadata, max_level_open=2)
                 # if imgObj.pims_metadata is not None:
                 #     self.treeMetadata.insert('', 'end', iid="pims_metadata", text="Metadata", open=False)
@@ -186,12 +186,33 @@ class TabImage(Tab):
             self.colorbar = self.figure3D.colorbar(self.imshow3D, ax=self.ax3D)
         self.canvas3D.draw()
 
-    def _insert_dict_into_tree(self, parent_node: str, d: dict, max_level_open:int, level:int=0):
-        """ Insert a dictionary with strings and (sub-)dictionary as values recursively into the treeView """
-        for k, v in d.items():
+    def _insert_dict_into_tree(self, parent_node: str, d: dict[Any, Any]|list[Any], max_level: int|None = None, max_level_open:int = 3, level:int=0):
+        """ 
+        Insert a dictionary with strings and (sub-)dictionary as values recursively into the treeView.
+        """
+        if isinstance(d, list):
+            d = {i: d for i,d in enumerate(d)}
+        for i, (k, v) in enumerate(d.items()):
+            if i > 100:
+                break
             iid = str(uuid.uuid4())
-            if isinstance(v, dict):
-                self.treeMetadata.insert(parent=parent_node, index='end', iid=iid, text=k, values=([""]), open=(level <= max_level_open))
-                self._insert_dict_into_tree(parent_node=iid, d=v, max_level_open=max_level_open, level=(level+1))
+
+            if v is None or v == "":
+                continue
+
+            if isinstance(v, list) and len(v) == 1:
+                v = v[0]
+
+            if isinstance(v, dict) or isinstance(v, list):
+                if len(v) == 0:
+                    continue  
+                if max_level is not None and level > max_level:
+                    self.treeMetadata.insert(parent=parent_node, index='end', iid=iid, text=k, values=(["..."]), open=(level <= max_level_open))
+                else:
+                    self.treeMetadata.insert(parent=parent_node, index='end', iid=iid, text=k, values=([""]), open=(level <= max_level_open))
+                    self._insert_dict_into_tree(parent_node=iid, d=v, max_level=max_level, max_level_open=max_level_open, level=(level+1))
             else:
                 self.treeMetadata.insert(parent=parent_node, index='end', iid=iid, text=k, values=([str(v)]), open=(level <= max_level_open))
+        else:
+            return
+        self.treeMetadata.insert(parent=parent_node, index='end', iid=str(uuid.uuid4()), text="...", values=([f"{len(d)-i-1} more"]), open=(level <= max_level_open))
