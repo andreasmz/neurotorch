@@ -610,10 +610,7 @@ class ImageObject(Serializable):
                 logger.debug(f"Opening '{path.name}' with tifffile")
                 with tifffile.TiffFile(path) as tif:
                     self.img = tif.asarray()
-                    x = tif.ome_metadata
-                    x = tif.metaseries_metadata
-                    self._metdata = tif.metaseries_metadata
-                    tif.ome_metadata
+                    self._metdata = tif.imagej_metadata # TODO: Better metadata parsing
             elif nd2.is_supported_file(path):
                 logger.debug(f"Opening '{path.name}' with nd2")
                 with nd2.ND2File(path) as nd2file:
