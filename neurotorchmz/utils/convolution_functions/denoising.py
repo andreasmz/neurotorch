@@ -55,7 +55,7 @@ def sliding_cumsum(img: np.ndarray, frames: int, negate: bool = False) -> np.nda
     if negate:
         img = -img
 
-    return convolve(img, c, output=img.dtype)
+    return convolve(img, c, output="float32").astype(img.dtype)
 
 def cumsum(img: np.ndarray, negate: bool = False) -> np.ndarray:
     if negate:

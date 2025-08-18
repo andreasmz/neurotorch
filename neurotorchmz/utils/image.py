@@ -407,9 +407,9 @@ class ImageObject(Serializable):
         
     @property
     def img_diff_raw(self) -> np.ndarray | None:
-        if self._img_diff is None and self.img_signed is not None:
+        if self._img_diff is None and (_img_signed := self.img_signed) is not None:
             t0 = time.perf_counter()
-            self._img_diff = np.diff(self.img_signed, axis=0)
+            self._img_diff = np.diff(_img_signed, axis=0)
             t1 = time.perf_counter()
             logger.debug(f"Calculated the delta video in {(t1-t0):1.3f} s")
         return self._img_diff
@@ -426,12 +426,12 @@ class ImageObject(Serializable):
         if self._img is None or (_max := self.img_props.max) is None:
             return None
         if _max < 2**7:
-            return self._img.view("int8")
+            return self._img.view("int8") if self._img.dtype == np.uint8 else self._img.astype("int8")
         elif _max < 2**15:
-            return self._img.view("int16")
+            return self._img.view("int16") if self._img.dtype == np.uint16 else self._img.astype("int16")
         elif _max < 2**31:
-            return self._img.view("int32")
-        return self._img.view("int64")
+            return self._img.view("int32") if self._img.dtype == np.uint32 else self._img.astype("int32")
+        return self._img.view("int64")  if self._img.dtype == np.uint64 else self._img.astype("int64")
 
     # ImageProperties
     
