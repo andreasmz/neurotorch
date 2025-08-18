@@ -3,7 +3,7 @@
 from ..image import *
 
 import numpy as np
-from scipy.ndimage import gaussian_filter as _gaussian_filter, convolve
+from scipy.ndimage import gaussian_filter as _gaussian_filter
 import torch
 
 # def cumsum_denoise(imgObj: ImageObject) -> np.ndarray:
@@ -52,7 +52,7 @@ def combined_diff_convolution(img_obj: ImageObject, std_norm: bool, xy_kernel_fn
     if xy_kernel_fn is None and t_kernel_fn is None:
         return img_obj.img_diff_raw
     
-    img = img_obj.img_diff_raw.astype(np.float32)
+    img = img_obj.img_diff_raw
     
     if xy_kernel_fn is not None:
         img = xy_kernel_fn(img, **xy_kernel_args)

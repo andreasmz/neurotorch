@@ -145,14 +145,6 @@ class AxisImage:
         return self._img
     
     @property
-    def image_as_float(self) -> np.ndarray|None:
-        if self._img is None:
-            return None
-        if self._img_float is None:
-            self._img_float = self._img.astype("float32")
-        return self._img_float
-    
-    @property
     def image_props(self) -> ImageProperties:
         """ Returns the properties of the original image """
         if self._props is None:
@@ -167,7 +159,7 @@ class AxisImage:
                 self._mean = ImageProperties(None)
             else:
                 t0 = time.perf_counter()
-                self._mean = ImageProperties(np.mean(self.image_as_float, axis=self._axis)
+                self._mean = ImageProperties(np.mean(self._img, axis=self._axis, dtype="float32"))
                 logger.debug(f"Calculated mean view for AxisImage '{self._name if self._name is not None else ''}' on axis '{self._axis}' in {(time.perf_counter() - t0):1.3f} s")
         return self._mean
     
@@ -197,9 +189,8 @@ class AxisImage:
             if self._img is None:
                 self._std = ImageProperties(None)
             else:
-                assert self.mean_image is not None
                 t0 = time.perf_counter()
-                self._std = ImageProperties(np.std(self._img, mean=self.mean_image, axis=self._axis, dtype="float32"))
+                self._std = ImageProperties(np.std(self._img, axis=self._axis, dtype="float32"))
                 logger.debug(f"Calculated std view for AxisImage '{self._name if self._name is not None else ''}' on axis '{self._axis}' in {(time.perf_counter() - t0):1.3f} s")
         return self._std
     
@@ -355,13 +346,13 @@ class ImageObject(Serializable):
                 _max = 255*_max
             
         if _max < 2**8:
-            image = image.astype(np.uint8)
+            image = image.astype(np.uint8) if image.dtype != np.uint8 else image
         elif _max < 2**16:
-            image = image.astype(np.uint16)
+            image = image.astype(np.uint16) if image.dtype != np.uint16 else image
         elif _max < 2**32:
-            image = image.astype(np.uint32)
+            image = image.astype(np.uint32) if image.dtype != np.uint32 else image
         elif _max < 2**63: # Here 2**63 to support also the signed datatype
-            image = image.astype(np.uint64)
+            image = image.astype(np.uint64) if image.dtype != np.uint64 else image
         else:
             raise UnsupportedImageError(f"The image dtype ({image.dtype}) is not supported")
 
@@ -407,8 +398,7 @@ class ImageObject(Serializable):
             image = image.astype(np.int64)
         else:
             raise UnsupportedImageError(f"The image dtype ({image.dtype}) is not supported")
-
-
+        
         self._img_diff = image
         
     @property
