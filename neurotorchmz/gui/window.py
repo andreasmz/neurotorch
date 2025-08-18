@@ -221,8 +221,7 @@ class Neurotorch_GUI:
                     var.set(True)
                 else:
                     var.set(False) 
-
-        logger.debug(f"Syncying menu")         
+            
         img_obj = self.session.active_image_object
 
         if img_obj is None or img_obj._img_diff_conv_func != denoising.combined_diff_convolution or img_obj._img_diff_conv_args is None:
@@ -280,8 +279,9 @@ class Neurotorch_GUI:
             logger.warning(f"[ImageObject OpenFile] Image already loading error")
             messagebox.showerror("Neurotorch", f"Please wait until the current image is loaded")
         elif isinstance(ex, UnsupportedImageError):
-            logger.warning(f"[ImageObject OpenFile] Unsupported image: {str(ex.exception)}")
-            messagebox.showerror("Neurotorch", f"The provided file {ex.file_name} is not supported")
+            msg = f" ({ex.msg})" if ex.msg is not None else ""
+            logger.warning(f"[ImageObject OpenFile] Unsupported image" + msg, exc_info=(ex.exception is not None))
+            messagebox.showerror("Neurotorch", f"The provided file {ex.file_name} is not supported" + msg)
         elif isinstance(ex, ImageShapeError):
             logger.warning(f"[ImageObject OpenFile] Invalid shape {ex.shape}")
             messagebox.showerror("Neurotorch", f"The image has shape {ex.shape}, which is incompatible as it must have (t, y, x)")

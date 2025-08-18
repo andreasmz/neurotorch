@@ -93,6 +93,7 @@ class AxisImage:
 
     def __init__(self, img: np.ndarray|None, axis:tuple, name: str|None = None):
         self._img = img
+        self._img_float = None
         self._axis = axis
         self._name = name
         self._props = None
@@ -144,6 +145,14 @@ class AxisImage:
         return self._img
     
     @property
+    def image_as_float(self) -> np.ndarray|None:
+        if self._img is None:
+            return None
+        if self._img_float is None:
+            self._img_float = self._img.astype("float32")
+        return self._img_float
+    
+    @property
     def image_props(self) -> ImageProperties:
         """ Returns the properties of the original image """
         if self._props is None:
@@ -158,7 +167,7 @@ class AxisImage:
                 self._mean = ImageProperties(None)
             else:
                 t0 = time.perf_counter()
-                self._mean = ImageProperties(np.mean(self._img, axis=self._axis, dtype=self._float_dtype(self._img.dtype)))
+                self._mean = ImageProperties(np.mean(self.image_as_float, axis=self._axis)
                 logger.debug(f"Calculated mean view for AxisImage '{self._name if self._name is not None else ''}' on axis '{self._axis}' in {(time.perf_counter() - t0):1.3f} s")
         return self._mean
     
@@ -188,8 +197,9 @@ class AxisImage:
             if self._img is None:
                 self._std = ImageProperties(None)
             else:
+                assert self.mean_image is not None
                 t0 = time.perf_counter()
-                self._std = ImageProperties(np.std(self._img, axis=self._axis, dtype=self._float_dtype(self._img.dtype)))
+                self._std = ImageProperties(np.std(self._img, mean=self.mean_image, axis=self._axis, dtype="float32"))
                 logger.debug(f"Calculated std view for AxisImage '{self._name if self._name is not None else ''}' on axis '{self._axis}' in {(time.perf_counter() - t0):1.3f} s")
         return self._std
     
@@ -224,13 +234,13 @@ class AxisImage:
                 logger.debug(f"Calculated maximum view for AxisImage '{self._name if self._name is not None else ''}' on axis '{self._axis}' in {(time.perf_counter() - t0):1.3f} s")
         return self._max
     
-    def _float_dtype(self, dtype: np.dtype) -> np.dtype:
-        """ Converts a integer dtype to a integer dtype """
-        match dtype:
-            case np.uint8|np.uint16|np.int8|np.float16:
-                return np.dtype(np.float16)
-            case _:
-                return np.dtype(np.float32)
+    # def _float_dtype(self, dtype: np.dtype) -> np.dtype:
+    #     """ Converts a integer dtype to a integer dtype """
+    #     match dtype:
+    #         case np.uint8|np.uint16|np.int8|np.float16:
+    #             return np.dtype(np.float16)
+    #         case _:
+    #             return np.dtype(np.float32)
     
     def __del__(self):
         del self._img
@@ -336,6 +346,25 @@ class ImageObject(Serializable):
     def img(self, image: np.ndarray):
         if not ImageObject._is_valid_image_stack(image): raise UnsupportedImageError()
         self.clear()
+        _max = np.max(image)
+        if not np.issubdtype(image.dtype, np.integer):
+            raise UnsupportedImageError(f"The image dtype ({image.dtype}) is not supported")
+        elif np.issubdtype(image.dtype, np.floating):
+            if _max <= 1:
+                image = 255*image
+                _max = 255*_max
+            
+        if _max < 2**8:
+            image = image.astype(np.uint8)
+        elif _max < 2**16:
+            image = image.astype(np.uint16)
+        elif _max < 2**32:
+            image = image.astype(np.uint32)
+        elif _max < 2**63: # Here 2**63 to support also the signed datatype
+            image = image.astype(np.uint64)
+        else:
+            raise UnsupportedImageError(f"The image dtype ({image.dtype}) is not supported")
+
         self._img = image
         
     @property
@@ -360,6 +389,26 @@ class ImageObject(Serializable):
     def img_diff(self, image: np.ndarray):
         if not ImageObject._is_valid_image_stack(image): raise UnsupportedImageError()
         self.clear()
+        _max = np.max(image)
+        if not np.issubdtype(image.dtype, np.integer):
+            raise UnsupportedImageError(f"The image dtype ({image.dtype}) is not supported")
+        elif np.issubdtype(image.dtype, np.floating):
+            if _max <= 1:
+                image = 255*image
+                _max = 255*_max
+            
+        if _max < 2**7:
+            image = image.astype(np.int8)
+        elif _max < 2**15:
+            image = image.astype(np.int16)
+        elif _max < 2**31:
+            image = image.astype(np.int32)
+        elif _max < 2**63:
+            image = image.astype(np.int64)
+        else:
+            raise UnsupportedImageError(f"The image dtype ({image.dtype}) is not supported")
+
+
         self._img_diff = image
         
     @property
@@ -380,19 +429,15 @@ class ImageObject(Serializable):
         """
             Returns a numpy view with a signed datatype (e.g. for calculating the diffImage). 
         """
-        if self._img is None:
+        if self._img is None or (_max := self.img_props.max) is None:
             return None
-        match (self._img.dtype):
-            case "uint8":
-                return self._img.view("int8")
-            case "uint16":
-                return self._img.view("int16")
-            case "uint32":
-                return self._img.view("int32")
-            case "uint64":
-                return self._img.view("int64")
-            case _:
-                return self._img
+        if _max < 2**7:
+            return self._img.view("int8")
+        elif _max < 2**15:
+            return self._img.view("int16")
+        elif _max < 2**31:
+            return self._img.view("int32")
+        return self._img.view("int64")
 
     # ImageProperties
     
@@ -629,7 +674,7 @@ class ImageObject(Serializable):
                 except FileNotFoundError:
                     raise FileNotFoundError()
                 except Exception as ex:
-                    raise UnsupportedImageError(path.name, ex)
+                    raise UnsupportedImageError(path.name)
                 if len(_pimsImg.shape) != 3:
                     raise ImageShapeError(_pimsImg.shape)
                 task.set_step_progress(1, "converting")
@@ -716,8 +761,9 @@ class AlreadyLoadingError(ImageObjectError):
 class UnsupportedImageError(ImageObjectError):
     """ The image is unsupported """
     
-    def __init__(self, file_name: str|None = None, exception: Exception|None = None, *args):
+    def __init__(self, msg: str|None = None, file_name: str|None = None, exception: Exception|None = None, *args):
         super().__init__(*args)
+        self.msg = msg
         self.exception = exception
         self.file_name = file_name
 
