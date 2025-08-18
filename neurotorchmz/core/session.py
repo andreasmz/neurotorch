@@ -131,7 +131,7 @@ class SessionAPI:
             :raises ImageShapeError: The image has an invalid shape
         """
         imgObj = ImageObject()
-        task = imgObj.open_file(Path(path), precompute=True, calc_convoluted=False, run_async=run_async)
+        task = imgObj.open_file(Path(path), precompute=True, run_async=run_async)
         task.add_callback(lambda: self.session.set_active_image_object(imgObj))
         if run_async:
             return task

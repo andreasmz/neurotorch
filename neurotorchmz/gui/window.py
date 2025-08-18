@@ -73,7 +73,6 @@ class Neurotorch_GUI:
 
         # File menu
         self.menu_file.add_command(label="Open file", command=self.menu_file_open_click)
-        self.menu_file.add_command(label="Open noisy file", command=lambda: self.menu_file_open_click(noisy=True))
         self.menu_file.add_separator()
         self.menu_file_import = tk.Menu(self.menu_file, tearoff=0)
         self.menu_file.add_cascade(label="Import", menu=self.menu_file_import)
@@ -259,7 +258,7 @@ class Neurotorch_GUI:
         if image_path is None or image_path == "":
             return
         imgObj = ImageObject()
-        task = imgObj.open_file(Path(image_path), precompute=True, calc_convoluted=noisy, run_async=True)
+        task = imgObj.open_file(Path(image_path), precompute=True, run_async=True)
         task.add_callback(lambda: self.session.set_active_image_object(imgObj))
         task.set_error_callback(self._open_image_error_callback)
     

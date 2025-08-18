@@ -58,7 +58,7 @@ class ISynapseROI:
 
     @property
     def location(self) -> tuple[float, float]|None:
-        """ (Estimated or actual) center of the synapse; used for selecting it in the plot and ordering """
+        """ Returns the location of the ROI (Y, X) or None """
         return self._location
     
     @location.setter
@@ -79,13 +79,13 @@ class ISynapseROI:
     def location_x(self) -> float|None:
         if self._location is None:
             return None
-        return self._location[0]
+        return self._location[1]
     
     @property
     def location_y(self) -> float|None:
         if self._location is None:
             return None
-        return self._location[1]
+        return self._location[0]
 
     @property
     def signal_strength(self) -> float|None:
@@ -106,7 +106,7 @@ class ISynapseROI:
     
     @region_props.setter
     def region_props(self, val: RegionProperties|None) -> None:
-        if not (val is None or not isinstance(val, RegionProperties)):
+        if not (val is None or isinstance(val, RegionProperties)):
             raise TypeError(f"Bad type for region_props: '{type(val)}'")
         self._region_props = val
         self.notify()
@@ -138,7 +138,7 @@ class ISynapseROI:
         self.frame = frame
         return self
     
-    def set_location(self, location:tuple[int|float, int|float]|None = None, y:int|float|None = None, x:int|float|None = None) -> Self:
+    def set_location(self, *, location:tuple[int|float, int|float]|None = None, y:int|float|None = None, x:int|float|None = None) -> Self:
         """ 
             Set the location of the synapse by either providing a tuple or Y and X explicitly
             
@@ -146,13 +146,14 @@ class ISynapseROI:
             :param int|float y:
             :param int|float x:
         """
-        # Force the user to explicitly use set_location(y=y, x=x) to prevent mixing up of x and y
         if location is not None and (x is not None or y is not None):
             raise ValueError("set_location requires either a tuple or x/y as seperate argument. You provided both")
         if location is not None:
             self.location = location
+        elif x is not None and y is not None:
+            self.location = (y, x)
         else:
-            self.location = (cast(float, y), cast(float, x))
+            self.location = None
         
         return self
     
@@ -184,13 +185,20 @@ class ISynapseROI:
     # Static functions 
 
     @staticmethod
-    def get_distance(roi1: "ISynapseROI", roi2: "ISynapseROI") -> float:
+    def get_distance_between_rois(roi1: "ISynapseROI", roi2: "ISynapseROI") -> float:
         """ Returns the distance between the locations of the ROIs or np.inf if at least one has no location """
         if roi1.location is None or roi2.location is None: 
             return np.inf
         y1, x1 = roi1.location
         y2, x2 = roi2.location
         return np.sqrt((x2-x1)**2 + (y2 - y1)**2)
+    
+    @staticmethod
+    def get_distance(loc1: tuple[float, float]|None, loc2: tuple[float, float]|None) -> float:
+        """ Returns the distance between two locations (as used in a ISynapseROI) or None if one of the locations is None """
+        if loc1 is None or loc2 is None:
+            return np.inf
+        return np.sqrt((loc1[0]-loc2[0])**2 + (loc1[1]-loc2[1])**2)
 
 class CircularSynapseROI(ISynapseROI):
     """ Implements a circular ROI of a given radius"""
@@ -424,20 +432,20 @@ class ISynapse:
     
     @property
     def location(self) -> tuple[float, float]|None:
-        """ Get the location of the synapse """
+        """ Returns the location of the synapse (Y, X) or None """
         return None
     
     @property
     def location_x(self) -> float|None:
         if self.location is None:
             return None
-        return self.location[0]
+        return self.location[1]
     
     @property
     def location_y(self) -> float|None:
         if self.location is None:
             return None
-        return self.location[1]
+        return self.location[0]
     
     @property
     def location_string(self) -> str:
@@ -516,7 +524,7 @@ class SingleframeSynapse(ISynapse):
 
     def __str__(self) -> str:
         if self.location is not None:
-            return self._format(f"@{self.location}")
+            return self._format(f"@{self.location_string}")
         return self._format("")
     
     def set_roi(self, roi: ISynapseROI|None = None) -> Self:
@@ -527,8 +535,7 @@ class SingleframeSynapse(ISynapse):
         return self
     
     @property
-    def location(self) -> tuple|None:
-        """ Get the location of the synapse accessed from the ROI """
+    def location(self) -> tuple[float, float]|None:
         if len(self.rois) == 0:
             return None
         return self.rois[0].location
@@ -546,20 +553,19 @@ class MultiframeSynapse(ISynapse):
     """
     def __init__(self):
         super().__init__()
-        self._location:tuple|None = None
+        self._location:tuple[float, float]|None = None
 
     @property
-    def location(self) -> tuple|None:
-        """ Get the location of the synapse """
+    def location(self) -> tuple[float, float]|None:
         if self._location is not None:
             return self._location
-        X = [r.location[0] for r in self.rois if r.location is not None]
-        Y = [r.location[1] for r in self.rois if r.location is not None]
+        X = [r.location_x for r in self.rois if r.location_x is not None]
+        Y = [r.location_y for r in self.rois if r.location_y is not None]
         if len(X) != 0 and len(Y) != 0:
             return (int(np.mean(X)), int(np.mean(Y)))
         return None
     
-    def set_location(self, location:tuple[int|float, int|float]|None = None, y:int|float|None = None, x:int|float|None = None) -> Self:
+    def set_location(self, *, location:tuple[float, float]|None = None, y:float|None = None, x:float|None = None) -> Self:
         """ 
             Set the location of the synapse by either providing a tuple or Y and X explicitly
             which is for example used for sorting them. There is no need to provide an exact center 
@@ -573,8 +579,10 @@ class MultiframeSynapse(ISynapse):
             raise ValueError("set_location requires either a tuple or x/y as seperate argument. You provided both")
         if location is not None:
             self._location = location
-        else:
+        elif x is not None and y is not None:
             self._location = (y, x)
+        else:
+            self._location = None
         
         return self
     
@@ -595,7 +603,7 @@ class MultiframeSynapse(ISynapse):
     
     def __str__(self) -> str:
         if self.location is not None:
-            return self._format(f"@{self.location}")
+            return self._format(f"@{self.location_string}")
         return self._format("")
     
 class DetectionResult:

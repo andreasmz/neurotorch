@@ -409,11 +409,10 @@ class TabROIFinder(Tab):
         if (event.inaxes != self.ax1 and event.inaxes != self.ax2):
             return
         x, y = event.xdata, event.ydata
-        rois = [(s, r) for s in self.detection_result for r in s.rois]
+        rois = [(s, r, ISynapseROI.get_distance(r.location, (y, x))) for s in self.detection_result for r in s.rois]
+        rois.sort(key=lambda v: v[2])
         if len(rois) == 0: return
-        rois.sort(key=lambda v: (v[1].location[0]-x)**2+(v[1].location[1]-y)**2 if v[1].location is not None else np.inf)
-        synapse, roi = rois[0]
-        d = ((roi.location[0]-x)**2+(roi.location[1]-y)**2)**0.5 if roi.location is not None else np.inf
+        synapse, roi, d = rois[0]
         if d <= 40:
             self.tvSynapses.select(synapse=synapse, roi=roi)
 

@@ -3,6 +3,7 @@ from ..core.serialize import Serializable, DeserializeError, SerializeError
 from ..core.logs import logger
 
 import collections
+from dataclasses import asdict
 from enum import Enum
 from typing import Callable, Self, Any, cast
 import numpy as np
@@ -230,19 +231,8 @@ class ImageObject(Serializable):
         A class for holding a) the image provided in form an three dimensional numpy array (time, y, x) and b) the derived images and properties, for example
         the difference Image (img_diff). All properties are lazy loaded, i. e. they are calculated on first access
     """
-    
-    # Static Values
-    nd2_relevantMetadata = {
-                            "Microscope": "Microscope",
-                            "Modality": "Modality",
-                            "EmWavelength": "Emission Wavelength", 
-                            "ExWavelength": "Exitation Wavelength", 
-                            "Exposure": "Exposure Time [ms]",
-                            "Zoom": "Zoom",
-                            "m_dXYPositionX0": "X Position",
-                            "m_dXYPositionY0": "Y Position",
-                            "m_dZPosition0": "Z Position",
-                            }
+
+    SUPPORTED_EXPORT_EXTENSIONS = [("Lossless compressed Tiff", ("*.tiff", "*.tif"))] 
     
     def __init__(self, conv_cache_size: int = 1, diff_conv_cache_size: int = 3):
         global SignalObject
@@ -579,7 +569,7 @@ class ImageObject(Serializable):
         return self.precompute_image(run_async=run_async)
 
 
-    def open_file(self, path: Path|str, precompute:bool = False, calc_convoluted:bool = False, run_async:bool = True) -> Task:
+    def open_file(self, path: Path|str, precompute:bool = False, run_async:bool = True) -> Task:
         """ 
             Open an image using a given path.
 
@@ -607,19 +597,22 @@ class ImageObject(Serializable):
             t0 = time.perf_counter()
             task.set_step_progress(0, "reading File")
             if path.suffix.lower() in [".tif", ".tiff"]:
-                logger.debug(f"Opening '{path.name}' with tifffile")
+                logger.debug(f"Opening '{path.name}' with the tifffile lib")
                 with tifffile.TiffFile(path) as tif:
                     self.img = tif.asarray()
-                    self._metdata = tif.imagej_metadata # TODO: Better metadata parsing
+                    if tif.shaped_metadata is not None:      
+                        if len(tif.shaped_metadata) >= 2:
+                            self._metdata = {i: d for i, d in enumerate(tif.shaped_metadata)}
+                        elif len(tif.shaped_metadata) == 1:
+                            self._metdata = tif.shaped_metadata[0]
             elif nd2.is_supported_file(path):
-                logger.debug(f"Opening '{path.name}' with nd2")
+                logger.debug(f"Opening '{path.name}' with the nd2 lib")
                 with nd2.ND2File(path) as nd2file:
                     self.img = nd2file.asarray()
-                    self._metdata = nd2file.ome_metadata(include_unstructured=True).model_dump(exclude={"structured_annotations"}, exclude_none=True)
-                    if "images" in self._metdata:
-                        for i in self._metdata["images"]:
-                            if "pixels" in i and "planes" in i["pixels"]:
-                                del i["pixels"]["planes"]
+                    if isinstance(nd2file.metadata, dict):
+                        self._metdata = nd2file.metadata
+                    else:
+                        self._metdata = asdict(nd2file.metadata)
             else:
                 logger.debug(f"Opening '{path.name}' with PIMS")
                 try:
@@ -651,14 +644,10 @@ class ImageObject(Serializable):
         self._task_open_image.start()
         return self._task_open_image
     
-    SUPPORTED_EXPORT_EXTENSIONS = [("Lossless compressed Tiff", ("*.tiff", "*.tif")), ("Tiff", ("*.tiff", "*.tif"))] # Note: 
-    
     def export_img(self, path: Path) -> None:
         """ Export the current img """
         if self.img is None:
             raise NoImageError()
-        if not path.is_file() or not path.parent.exists():
-            raise ValueError(f"The path '{str(path)}' is invalid")
         match path.suffix.lower():
             case ".tif"|".tiff":
                 tifffile.imwrite(path, data=self.img, metadata=self.metadata, compression="zlib")
@@ -670,8 +659,6 @@ class ImageObject(Serializable):
         """ Export the current img_diff"""    
         if self.img_diff is None:
             raise NoImageError()
-        if not path.parent.exists():
-            raise ValueError(f"The path '{str(path)}' is invalid")
         match path.suffix.lower():
             case ".tif"|".tiff":
                 tifffile.imwrite(path, data=self.img_diff, metadata=self.metadata, compression="zlib")

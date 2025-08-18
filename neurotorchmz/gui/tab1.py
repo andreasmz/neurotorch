@@ -200,8 +200,8 @@ class TabImage(Tab):
             if v is None or v == "":
                 continue
 
-            if isinstance(v, list) and len(v) == 1:
-                v = v[0]
+            # if isinstance(v, list) and len(v) == 1:
+            #     v = v[0]
 
             if isinstance(v, dict) or isinstance(v, list):
                 if len(v) == 0:
