@@ -246,7 +246,6 @@ class LocalMax_Integration(LocalMax, IDetectionAlgorithmIntegration):
         self.setting_radius.set_visibility(not self.setting_polygonal_ROIS.get())
         self.setting_lowerTh = GridSetting(self.optionsFrame, row=12, text="Lower threshold", unit="", default=50, min_=0, max_=2**15-1, scale_min=1, scale_max=400, tooltip=resources.get_string("algorithms/localMax/params/lowerThreshold"))
         self.setting_upperTh = GridSetting(self.optionsFrame, row=13, text="Upper threshold", unit="", default=70, min_=0, max_=2**15-1, scale_min=1, scale_max=400, tooltip=resources.get_string("algorithms/localMax/params/upperThreshold"))
-        self.setting_sortBySignal = GridSetting(self.optionsFrame, row=14, text="Sort by signal strength", type_="Checkbox", default=1, min_=0, tooltip=resources.get_string("algorithms/localMax/params/sortBySignal"))
         
         tk.Label(self.optionsFrame, text="Advanced settings").grid(row=20, column=0, columnspan=4, sticky="nw")
         self.setting_maxPeakCount = GridSetting(self.optionsFrame, row=21, text="Max. Peak Count", unit="", default=0, min_=0, max_=200, scale_min=0, scale_max=100, tooltip=resources.get_string("algorithms/localMax/params/maxPeakCount"))
@@ -306,7 +305,6 @@ class LocalMax_Integration(LocalMax, IDetectionAlgorithmIntegration):
         minSignal = self.setting_minSignal.get()
         minSignal = minSignal if minSignal != 0 else None
         radius = None if self.setting_polygonal_ROIS.get() == 1 else self.setting_radius.get()
-        sort_by = "Strength" if self.setting_sortBySignal.get() == 1 else "Location"
         rois = self.detect(img=self.image_prop.img,
                            lowerThreshold=lowerThreshold, 
                            upperThreshold=upperThreshold, 
@@ -314,7 +312,7 @@ class LocalMax_Integration(LocalMax, IDetectionAlgorithmIntegration):
                            minArea=minArea,
                            minDistance=minDistance, 
                            radius=radius)
-        return self.filter_rois(rois=rois, sort=sort_by, min_signal=minSignal, max_peaks=maxPeakCount)
+        return self.filter_rois(rois=rois, sort="Location", min_signal=minSignal, max_peaks=maxPeakCount)
             
     def get_rawdata_overlay(self) -> tuple[tuple[np.ndarray, np.ndarray]|None, list[patches.Patch]|None]:
         if self.maxima is None or self.labeledImage is None or self.region_props is None or self.maxima_labeled_expanded is None:
