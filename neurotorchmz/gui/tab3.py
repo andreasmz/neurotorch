@@ -250,8 +250,8 @@ class TabROIFinder(Tab):
         for synapse in self.detection_result:
             for roi in synapse.rois:
                 if isinstance(roi, detection.CircularSynapseROI) and roi.location is not None and roi.radius is not None:
-                    c = patches.Circle(roi.location, roi.radius+0.5, color="red", fill=False)
-                    c2 = patches.Circle(roi.location, roi.radius+0.5, color="green", fill=False)
+                    c = patches.Circle((cast(float, roi.location_x), cast(float, roi.location_y)), roi.radius+0.5, color="red", fill=False)
+                    c2 = patches.Circle((cast(float, roi.location_x), cast(float, roi.location_y)), roi.radius+0.5, color="green", fill=False)
                 elif isinstance(roi, detection.PolygonalSynapseROI) and roi.polygon is not None:
                     c = patches.Polygon(roi.polygon, color="red", fill=False)
                     c2 = patches.Polygon(roi.polygon, color="green", fill=False)

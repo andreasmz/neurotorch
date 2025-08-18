@@ -262,8 +262,8 @@ class TabAnalysis(Tab):
                 if roi.location is None:
                     continue
                 if isinstance(roi, detection.CircularSynapseROI):
-                    c = patches.Circle(roi.location, roi.radius+0.5, color="red", fill=False)
-                    c2 = patches.Circle(roi.location, roi.radius+0.5, color="green", fill=False)
+                    c = patches.Circle((cast(float, roi.location_x), cast(float, roi.location_y)), roi.radius+0.5, color="red", fill=False)
+                    c2 = patches.Circle((cast(float, roi.location_x), cast(float, roi.location_y)), roi.radius+0.5, color="green", fill=False)
                 elif isinstance(roi, detection.PolygonalSynapseROI):
                     c = patches.Polygon(roi.polygon, color="red", fill=False)
                     c2 = patches.Polygon(roi.polygon, color="green", fill=False)
