@@ -210,7 +210,7 @@ class TabROIFinder(Tab):
                 axImg.remove()
             ax.set_axis_off()
         
-        if imgObj is None or imgObj.img is None or imgObj.imgDiff is None or (_img := imgObj.imgView(ImageView.SPATIAL).Mean) is None:
+        if imgObj is None or imgObj.img is None or imgObj.img_diff is None or (_img := imgObj.img_view(ImageView.SPATIAL).mean_image) is None:
             #self.invoke_update(TabROIFinder_InvalidateEvent(rois=True))
             return
         
@@ -297,9 +297,9 @@ class TabROIFinder(Tab):
         self.ax3.set_xlabel("frame")
         self.ax3.set_axis_off()
         self.ax4.clear()
-        self.ax4.set_title("Detection Signal (from imgDiff)")
+        self.ax4.set_title("Detection Signal (from delta video)")
         self.ax4.set_ylabel("mean brightness increase")
-        self.ax4.set_xlabel("imgDiff frame")
+        self.ax4.set_xlabel("delta video frame")
         self.ax4.set_axis_off()
 
         if synapse is not None and roi is None:
@@ -319,13 +319,13 @@ class TabROIFinder(Tab):
             else:
                 patch.set_color("green")
     
-        if synapse is not None and len(synapse.rois) == 1 and imgObj is not None and imgObj.img is not None and imgObj.imgDiff is not None:
+        if synapse is not None and len(synapse.rois) == 1 and imgObj is not None and imgObj.img is not None and imgObj.img_diff is not None:
             self.ax3.set_axis_on()
             self.ax4.set_axis_on()
 
             roi = synapse.rois[0]
             signal = roi.get_signal_from_image(imgObj.img)
-            signalDiff = roi.get_signal_from_image(imgObj.imgDiff)
+            signalDiff = roi.get_signal_from_image(imgObj.img_diff)
             if signal.shape[0] > 0:
                 self.ax3.plot(np.mean(signal, axis=1))
             if signalDiff.shape[0] > 0:
@@ -343,7 +343,7 @@ class TabROIFinder(Tab):
         """ Return the current input image as a ImageProperties object which caches statistics about the image """
         imgObj = self.session.active_image_object
         self._current_input_description_str = "NO IMAGE" # Stores a string describing the current input image 
-        if imgObj is None or imgObj.imgDiff is None:
+        if imgObj is None or imgObj.img_diff is None:
             return ImageProperties(None)
         
         match(self.varImage.get()):
@@ -352,17 +352,17 @@ class TabROIFinder(Tab):
                     self._current_input_description_str = "INVALID FRAME"
                     return ImageProperties(None)
                 _frame = int(v) - 1 if (v := self.varImageFrame.get()).isdigit() else -1
-                if _frame < 0 or _frame >= imgObj.imgDiff.shape[0]:
+                if _frame < 0 or _frame >= imgObj.img_diff.shape[0]:
                     self._current_input_description_str = "INVALID FRAME"
                     return ImageProperties(None)
                 self._current_input_description_str = f"Delta (Frame {_frame + 1})"
-                return imgObj.imgDiff_FrameProps(_frame)
+                return imgObj.img_diff_frame_props(_frame)
             case "Delta (maximum)":
                 self._current_input_description_str = "Delta (maximum)"
-                return imgObj.imgDiffView(ImageView.SPATIAL).MaxProps
+                return imgObj.img_diff_view(ImageView.SPATIAL).max_props
             case "Delta (std.)":
                 self._current_input_description_str = "Delta (std.)"
-                return imgObj.imgDiffView(ImageView.SPATIAL).StdNormedProps
+                return imgObj.img_diff_view(ImageView.SPATIAL).std_normed_props
             case "Delta (max.), signal removed":
                 if imgObj.signal_obj.signal is None:
                     self._current_input_description_str = "SIGNAL MISSING"
@@ -371,7 +371,7 @@ class TabROIFinder(Tab):
                     self._current_input_description_str = "NO IMAGE"
                     return ImageProperties(None)
                 self._current_input_description_str = "Delta (max.), signal removed"
-                return imgObj.signal_obj.img_diff_without_signal_view(ImageView.SPATIAL).MaxProps
+                return imgObj.signal_obj.img_diff_without_signal_view(ImageView.SPATIAL).max_props
             case _:
                 return ImageProperties(None)
         

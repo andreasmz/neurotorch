@@ -4,34 +4,32 @@ from ..image import *
 
 import numpy as np
 from scipy.ndimage import gaussian_filter as _gaussian_filter, convolve
+import torch
 
-def cumsum_denoise(imgObj: ImageObject) -> np.ndarray:
-    if imgObj.imgView(ImageView.SPATIAL).Median is None or imgObj.img_diff_raw is None:
-        raise RuntimeError("Can not denoise an ImageObject without image")
-    return imgObj.imgView(ImageView.SPATIAL).Median + np.cumsum(imgObj.img_diff_raw, axis=0)
-
-def gaussian_xy(imgObj: ImageObject, sigma: float) -> np.ndarray:
-    return _gaussian_filter(imgObj.img_diff_raw, sigma=sigma, axes=(1,2))
+# def cumsum_denoise(imgObj: ImageObject) -> np.ndarray:
+#     if imgObj.img_view(ImageView.SPATIAL).median_image is None or imgObj.img_diff_raw is None:
+#         raise RuntimeError("Can not denoise an ImageObject without image")
+#     return imgObj.img_view(ImageView.SPATIAL).median_image + np.cumsum(imgObj.img_diff_raw, axis=0)
 
 # def mean_diff(self, img:np.ndarray, img_mean: np.ndarray, img_signed: np.ndarray) -> np.ndarray:
 #     return (img_signed - img_mean).astype(img_signed.dtype)
 
-def gaussian_xy_kernel(sigma: float) -> np.ndarray:
-    ax = np.arange(-(3*sigma) // 2, (3*sigma) // 2 + 1)
-    xx, yy = np.meshgrid(ax, ax)
-    kernel = np.exp(-(xx**2 + yy**2) / (2 * sigma**2))
-    return kernel / kernel.sum()
+def gaussian_xy_kernel(img: np.ndarray, sigma: float) -> np.ndarray:
+    t0 = time.perf_counter()
+    r = _gaussian_filter(img, sigma=sigma, axes=(1,2))
+    logger.debug(f"Calculated gaussian xy kernel in {(time.perf_counter()-t0):1.3f} s")
+    return r
 
-def gaussian_t_kernel(sigma: float, negate: bool = False) -> np.ndarray:
-    ax = np.arange(-(3*sigma) // 2, (3*sigma) // 2 + 1)
-    kernel = np.exp(-(ax**2) / (2 * sigma**2))
-    kernel /= kernel.sum()
+def gaussian_t_kernel(img: np.ndarray, sigma: float, negate: bool = False) -> np.ndarray:
+    t0 = time.perf_counter()
     if negate:
-        kernel = -kernel
-    return kernel
+        img = -img
+    r = _gaussian_filter(img, sigma=sigma, axes=(0))
+    logger.debug(f"Calculated gaussian t kernel in {(time.perf_counter()-t0):1.3f} s")
+    return r
 
 
-def leap_gaussian_t_kernel(sigma: float, negate: bool = False) -> np.ndarray:
+def leap_gaussian_t_kernel(img: np.ndarray, sigma: float, negate: bool = False) -> np.ndarray:
     ax = np.arange(-(3*sigma) // 2, (3*sigma) // 2 + 1)
     kernel = int(ax > 0)*np.exp(-(ax**2) / (2 * sigma**2))
     kernel /= kernel.sum()
@@ -39,36 +37,34 @@ def leap_gaussian_t_kernel(sigma: float, negate: bool = False) -> np.ndarray:
         kernel = -kernel
     return kernel
 
-def drop_t_kernel() -> np.ndarray:
-    return np.array([-1])
+
+def reverse_t_kernel(img: np.ndarray) -> np.ndarray:
+    return -img
 
 def cumsum(frames: int, negate: bool = False) -> np.ndarray:
     a1 = np.full(shape=(frames), fill_value=((-1/frames) if negate else (1/frames)))
     a2 = np.full(shape=(frames), fill_value=0)
     return np.concatenate([a2, np.array([0.0]), a1])
 
-def combined_diff_convolution(img_obj: ImageObject, std_norm: bool, xy_kernel_fn: Callable|None, t_kernel_fn: Callable|None, xy_kernel_args: dict = {}, t_kernel_args: dict = {}) -> np.ndarray|None:
+def combined_diff_convolution(img_obj: ImageObject, std_norm: bool, xy_kernel_fn: Callable[..., np.ndarray]|None, t_kernel_fn: Callable[..., np.ndarray]|None, xy_kernel_args: dict = {}, t_kernel_args: dict = {}) -> np.ndarray|None:
     if img_obj.img_diff_raw is None:
         return None
     if xy_kernel_fn is None and t_kernel_fn is None:
         return img_obj.img_diff_raw
     
-    if xy_kernel_fn is None:
-        xy_kernel = np.array([[1]])
-    else:
-        xy_kernel = xy_kernel_fn(**xy_kernel_args)
+    img = img_obj.img_diff_raw.astype(np.float32)
+    
+    if xy_kernel_fn is not None:
+        img = xy_kernel_fn(img, **xy_kernel_args)
 
-    if t_kernel_fn is None:
-        t_kernel = np.array([1])
-    else:
-        t_kernel = t_kernel_fn(**t_kernel_args)
+    if t_kernel_fn is not None:
+        img = t_kernel_fn(img, **t_kernel_args)
 
-    kernel = t_kernel[:, None, None] * xy_kernel[None, :, :]
-    c = convolve(img_obj.img_diff_raw.astype(np.float32), kernel, mode="reflect")
+    img: np.ndarray = (img * (np.max(img_obj.img_diff_raw) / np.max(img))).astype(img_obj.img_diff_raw.dtype)
+    
     if std_norm:
-        std_img =  img_obj.imgDiffView(ImageView.TEMPORAL, "default").Std
+        std_img =  img_obj.img_diff_view(ImageView.TEMPORAL, "default").std_image
         if std_img is None:
             return None
-        c = c / std_img[:, None, None]
-    return c
-    #return (255 * c / np.max(c)).astype(img_obj.img_diff_raw.dtype)
+        img = img / std_img[:, None, None]
+    return img

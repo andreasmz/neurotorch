@@ -72,9 +72,9 @@ class IDetectionAlgorithmIntegration:
         :param min_signal: If not None, return only peaks exceeding the given signal strength
         :param max_peaks: If not None, return only the n strongest peaks
         """
-        if self.image_obj is not None and self.image_obj.imgDiff is not None:
+        if self.image_obj is not None and self.image_obj.img_diff is not None:
             for roi in rois:
-                roi.signal_strength = np.max(np.mean(roi.get_signal_from_image(self.image_obj.imgDiff), axis=1))
+                roi.signal_strength = np.max(np.mean(roi.get_signal_from_image(self.image_obj.img_diff), axis=1))
         if min_signal is not None:
             rois = [r for r in rois if r.signal_strength is not None and r.signal_strength > min_signal] 
         if sort == "Strength" or max_peaks is not None:

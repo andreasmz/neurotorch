@@ -216,8 +216,8 @@ class ImageJHandler:
         javaImg = self.ij.py.to_imageplus(xImg)
         if asCopy:
             javaImg = self.IJ_Plugin_Duplicator().run(javaImg) # type: ignore
-        min = imgObj.imgProps.minClipped
-        max = imgObj.imgProps.max
+        min = imgObj.img_props.minClipped
+        max = imgObj.img_props.max
         if not self.headless:
             self.ij.ui().show(javaImg)  
             self.ij.py.run_macro(f"setMinAndMax({min}, {max});")
@@ -231,17 +231,17 @@ class ImageJHandler:
                 messagebox.showerror("Neurotorch", "Fiji/ImageJ must first be started before it can be used")
             return None
         imgObj = self.session.active_image_object
-        if imgObj is None or imgObj.imgDiff is None:
+        if imgObj is None or imgObj.img_diff is None:
             if self.root is not None:
                 self.root.bell()
             return
-        xDiffImg = xarray.DataArray(np.clip(imgObj.imgDiff, a_min=0, a_max=None).astype("uint16"), name=f"{imgObj.name} (diff)", dims=("pln", "row", "col"))
+        xDiffImg = xarray.DataArray(np.clip(imgObj.img_diff, a_min=0, a_max=None).astype("uint16"), name=f"{imgObj.name} (diff)", dims=("pln", "row", "col"))
         javaDiffImg = self.ij.py.to_imageplus(xDiffImg)
         if asCopy:
             javaDiffImg = self.IJ_Plugin_Duplicator().run(javaDiffImg) # type: ignore
         
-        min = imgObj.imgDiffProps.minClipped
-        max = imgObj.imgDiffProps.max
+        min = imgObj.img_diff_props.minClipped
+        max = imgObj.img_diff_props.max
         if not self.headless:
             self.ij.ui().show(javaDiffImg)
             self.ij.py.run_macro(f"setMinAndMax({min}, {max});")

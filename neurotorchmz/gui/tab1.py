@@ -103,14 +103,14 @@ class TabImage(Tab):
                     self.treeMetadata.insert('', 'end', text="Filename", values=([imgObj.name]))
                 if imgObj.path is not None:
                     self.treeMetadata.insert('', 'end', text="Path", values=([imgObj.path]))
-                if imgObj.img is not None and imgObj.imgProps is not None:
+                if imgObj.img is not None and imgObj.img_props is not None:
                     self.treeMetadata.insert('', 'end', iid="providedImageData", text="Image Properties", open=True)
                     self.treeMetadata.insert('providedImageData', 'end', text="Frames", values=([imgObj.img.shape[0]]))
                     self.treeMetadata.insert('providedImageData', 'end', text="Width [px]", values=([imgObj.img.shape[2]]))
                     self.treeMetadata.insert('providedImageData', 'end', text="Height [px]", values=([imgObj.img.shape[1]]))
                     self.treeMetadata.insert('providedImageData', 'end', text="Numpy dtype", values=([imgObj.img.dtype]))
-                    self.treeMetadata.insert('providedImageData', 'end', text="Maximum", values=([imgObj.imgProps.max]))
-                    self.treeMetadata.insert('providedImageData', 'end', text="Minimum", values=([imgObj.imgProps.min]))
+                    self.treeMetadata.insert('providedImageData', 'end', text="Maximum", values=([imgObj.img_props.max]))
+                    self.treeMetadata.insert('providedImageData', 'end', text="Minimum", values=([imgObj.img_props.min]))
                     
                 if imgObj.metadata is not None:
                     self.treeMetadata.insert('', 'end', iid="metadata", text="Metadata", open=True)
@@ -133,25 +133,25 @@ class TabImage(Tab):
             self.imshow3D.remove()
             self.imshow3D = None
         
-        if imgObj is None or imgObj.img is None or imgObj.imgDiff is None:
+        if imgObj is None or imgObj.img is None or imgObj.img_diff is None:
             self.canvas2D.draw()
             self.canvas3D.draw()
             return
         match (_selected):
             case "imgMean":
                 self.ax2D.set_axis_on()
-                self.imshow2D = self.ax2D.imshow(imgObj.imgView(ImageView.SPATIAL).Mean, cmap="Greys_r") # type: ignore (imgView() is never None)
+                self.imshow2D = self.ax2D.imshow(imgObj.img_view(ImageView.SPATIAL).mean_image, cmap="Greys_r") # type: ignore (img_view() is never None)
             case "imgStd":
                 self.ax2D.set_axis_on()
-                self.imshow2D = self.ax2D.imshow(imgObj.imgView(ImageView.SPATIAL).Std, cmap="Greys_r") # type: ignore (imgView() is never None)
+                self.imshow2D = self.ax2D.imshow(imgObj.img_view(ImageView.SPATIAL).std_image, cmap="Greys_r") # type: ignore (img_view() is never None)
             case "diffMax":
                 self.ax2D.set_axis_on()
-                self.imshow2D = self.ax2D.imshow(imgObj.imgDiffView(ImageView.SPATIAL).Max, cmap="inferno") # type: ignore (imgView() is never None)
+                self.imshow2D = self.ax2D.imshow(imgObj.img_diff_view(ImageView.SPATIAL).max_image, cmap="inferno") # type: ignore (img_view() is never None)
             case "diffStd":
                 self.ax2D.set_axis_on()
-                self.imshow2D = self.ax2D.imshow(imgObj.imgDiffView(ImageView.SPATIAL).Std, cmap="inferno") # type: ignore (imgView() is never None)
+                self.imshow2D = self.ax2D.imshow(imgObj.img_diff_view(ImageView.SPATIAL).std_image, cmap="inferno") # type: ignore (img_view() is never None)
             case "diffMaxWithoutSignal":
-                if (_img_diff_no_signal := imgObj.signal_obj.img_diff_without_signal_view(ImageView.SPATIAL).Max) is not None:
+                if (_img_diff_no_signal := imgObj.signal_obj.img_diff_without_signal_view(ImageView.SPATIAL).max_image) is not None:
                     self.ax2D.set_axis_on()
                     self.imshow2D = self.ax2D.imshow(_img_diff_no_signal, cmap="inferno")  
                     self.ax2D.set_axis_off()
@@ -165,20 +165,20 @@ class TabImage(Tab):
         if self.notebookPlots.tab(self.notebookPlots.select(), "text") != "3D":
             print("Assertion Error: The tabMain value is not 2D or 3D")
 
-        X = np.arange(0,imgObj.imgDiff.shape[2])
-        Y = np.arange(0,imgObj.imgDiff.shape[1])
+        X = np.arange(0,imgObj.img_diff.shape[2])
+        Y = np.arange(0,imgObj.img_diff.shape[1])
         X, Y = np.meshgrid(X, Y)
         match (_selected):
             case "imgMean":
-                self.imshow3D = self.ax3D.plot_surface(X,Y, imgObj.imgView(ImageView.SPATIAL).Mean, cmap="Greys_r" ) # type: ignore (imgView() is never None)
+                self.imshow3D = self.ax3D.plot_surface(X,Y, imgObj.img_view(ImageView.SPATIAL).mean_image, cmap="Greys_r" ) # type: ignore (img_view() is never None)
             case "imgStd":
-                self.imshow3D = self.ax3D.plot_surface(X,Y, imgObj.imgView(ImageView.SPATIAL).Std, cmap="Greys_r") # type: ignore (imgView() is never None)
+                self.imshow3D = self.ax3D.plot_surface(X,Y, imgObj.img_view(ImageView.SPATIAL).std_image, cmap="Greys_r") # type: ignore (img_view() is never None)
             case "diffMax":
-                self.imshow3D = self.ax3D.plot_surface(X,Y, imgObj.imgDiffView(ImageView.SPATIAL).Max, cmap="inferno") # type: ignore (imgView() is never None)
+                self.imshow3D = self.ax3D.plot_surface(X,Y, imgObj.img_diff_view(ImageView.SPATIAL).max_image, cmap="inferno") # type: ignore (img_view() is never None)
             case "diffStd":
-                self.imshow3D = self.ax3D.plot_surface(X,Y, imgObj.imgDiffView(ImageView.SPATIAL).Std, cmap="inferno") # type: ignore (imgView() is never None)
+                self.imshow3D = self.ax3D.plot_surface(X,Y, imgObj.img_diff_view(ImageView.SPATIAL).std_image, cmap="inferno") # type: ignore (img_view() is never None)
             case "diffMaxWithoutSignal":
-                if (_img_diff_no_signal := imgObj.signal_obj.img_diff_without_signal_view(ImageView.SPATIAL).Max) is not None:
+                if (_img_diff_no_signal := imgObj.signal_obj.img_diff_without_signal_view(ImageView.SPATIAL).max_image) is not None:
                     self.imshow3D = self.ax3D.plot_surface(X,Y, _img_diff_no_signal, cmap="inferno")
             case _:
                 pass

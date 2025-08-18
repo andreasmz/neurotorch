@@ -110,7 +110,7 @@ class Neurotorch_GUI:
         self.menu_trigger = tk.Menu(self.menu_edit, tearoff=0)
         self.menu_edit.add_cascade(label="Trigger", menu=self.menu_trigger)
         self.menu_trigger.add_command(label="Transient peak", command=lambda: self.set_img_diff_convolution_t(None))
-        self.menu_trigger.add_command(label="Transient drop", command=lambda: self.set_img_diff_convolution_t(denoising.drop_t_kernel))
+        self.menu_trigger.add_command(label="Transient drop", command=lambda: self.set_img_diff_convolution_t(denoising.reverse_t_kernel))
         self.menu_trigger.add_command(label="Fast peak", command=lambda: self.set_img_diff_convolution_t(denoising.cumsum, {"frames": 3}))
         self.menu_trigger.add_command(label="Fast drop", command=lambda: self.set_img_diff_convolution_t(denoising.cumsum, {"frames": 3, "negate": True}))
         self.menu_trigger.add_command(label="Fast gaussian peak", command=lambda: self.set_img_diff_convolution_t(denoising.gaussian_t_kernel, {"sigma": 3}))
@@ -176,10 +176,11 @@ class Neurotorch_GUI:
             imgObj =  self.session.active_image_object
             if imgObj is not None and imgObj.img is not None:
                 self.set_window_title(imgObj.name or "")
-                _size = round(sys.getsizeof(imgObj.img)/(1024**2),2)
+                _size = round(sys.getsizeof(imgObj.img_raw)/(1024**2),2)
                 self.statusbar.status_text = f"Image of shape {imgObj.img.shape} and size {_size} MB"
             else:
                 self.statusbar.status_text = ""
+            self.update_menu()
         for t in self.tabs.values():
             self.invoke_tab_about_update(t, event)
         return self._update_task
@@ -204,6 +205,14 @@ class Neurotorch_GUI:
             task.set_message(" %s %s" % (tab.tab_name, f'({num_pending_updates} more updates queued)' if num_pending_updates > 0 else ''))
             tab.update_tab(event)
             #update_index += 1
+
+    def update_menu(self):
+        if self.session.active_image_object is None:
+            return
+
+        if self.session.active_image_object._img_diff_conv_func != denoising.combined_diff_convolution:
+            return
+        
 
 
     # General GUI functions
@@ -264,7 +273,7 @@ class Neurotorch_GUI:
         if what == "img" and self.session.active_image_object.img is None:
             messagebox.showwarning("Neurotorch", "You must open a file before you can export the video")
             return
-        elif what == "img_diff" and self.session.active_image_object.imgDiff is None:
+        elif what == "img_diff" and self.session.active_image_object.img_diff is None:
             messagebox.showwarning("Neurotorch", "You must open a file before you can export the video")
             return
         elif what == "img_only_signal" and self.session.active_image_object.signal_obj.img_props_only_signal.img is None:
@@ -307,7 +316,7 @@ class Neurotorch_GUI:
 
     def set_img_diff_convolution_xy(self, func: Callable|None, args: dict = {}):
         imgObj = self.session.active_image_object
-        if imgObj is None or imgObj.imgDiff is None:
+        if imgObj is None or imgObj.img_diff is None:
             self.root.bell()
             return
         
@@ -322,7 +331,7 @@ class Neurotorch_GUI:
 
     def set_img_diff_convolution_t(self, func: Callable|None, args: dict = {}):
         imgObj = self.session.active_image_object
-        if imgObj is None or imgObj.imgDiff is None:
+        if imgObj is None or imgObj.img_diff is None:
             self.root.bell()
             return
         
@@ -337,7 +346,7 @@ class Neurotorch_GUI:
 
     def set_img_diff_std_norm(self, std_norm: bool) -> None:
         imgObj = self.session.active_image_object
-        if imgObj is None or imgObj.imgDiff is None:
+        if imgObj is None or imgObj.img_diff is None:
             self.root.bell()
             return
         
@@ -361,11 +370,12 @@ class Neurotorch_GUI:
         if self.session.active_image_object is None:
             self.root.bell()
             return
-        if self.session.active_image_object._img_conv_func is None:
-            self.session.active_image_object.set_conv_func(denoising.cumsum_denoise, func_args=None)
-        else:
-            self.session.active_image_object.set_conv_func(None, None)
-        self.session.active_image_object.precompute_image().add_callback(lambda: self.invoke_tab_update_event(ImageChangedEvent()))
+        self.root.bell()
+        # if self.session.active_image_object._img_conv_func is None:
+        #     self.session.active_image_object.set_conv_func(denoising.cumsum_denoise, func_args=None)
+        # else:
+        #     self.session.active_image_object.set_conv_func(None, None)
+        # self.session.active_image_object.precompute_image().add_callback(lambda: self.invoke_tab_update_event(ImageChangedEvent()))
 
     def menu_neurotorch_about_click(self):
         messagebox.showinfo("Neurotorch", f"© Andreas Brilka 2025\nYou are running Neurotorch {__version__}")

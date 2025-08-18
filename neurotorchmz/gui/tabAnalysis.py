@@ -192,16 +192,16 @@ class TabAnalysis(Tab):
 
         self.invalidate_stimulation()
         
-        if imgObj is None or imgObj.img is None or imgObj.imgDiff is None:
+        if imgObj is None or imgObj.img is None or imgObj.img_diff is None:
             self.sliderFrame.set_range(0,0, syncScale=True)
             self.invalidate_delta_plot()
             return
         
-        self.ax1Image = self.ax1.imshow(imgObj.imgView(ImageView.SPATIAL).Mean, cmap="Greys_r") 
+        self.ax1Image = self.ax1.imshow(imgObj.img_view(ImageView.SPATIAL).mean_image, cmap="Greys_r") 
         self.ax1.set_axis_on()
         self.ax1_colorbar = self.figure1.colorbar(self.ax1Image, ax=self.ax1)
         
-        self.sliderFrame.set_range(min_=1, max_=imgObj.imgDiff.shape[0], syncScale=True)
+        self.sliderFrame.set_range(min_=1, max_=imgObj.img_diff.shape[0], syncScale=True)
         self.invalidate_delta_plot()
 
 
@@ -216,16 +216,16 @@ class TabAnalysis(Tab):
             axImg.remove()
         self.ax2.set_axis_off()
             
-        if imgObj is None or imgObj.img is None or imgObj.imgDiff is None:
+        if imgObj is None or imgObj.img is None or imgObj.img_diff is None:
             self.invalidate_ROIs()
             return
         frame = self.sliderFrame.get() - 1
-        if frame < 0 or frame >= imgObj.imgDiff.shape[0]:
+        if frame < 0 or frame >= imgObj.img_diff.shape[0]:
             self.invalidate_ROIs()
             return
         
-        vmin, vmax = 0, imgObj.imgDiffProps.max
-        self.ax2Image = self.ax2.imshow(imgObj.imgDiff[frame], cmap="inferno", vmin=vmin, vmax=vmax)
+        vmin, vmax = 0, imgObj.img_diff_props.max
+        self.ax2Image = self.ax2.imshow(imgObj.img_diff[frame], cmap="inferno", vmin=vmin, vmax=vmax)
         self.ax2_colorbar = self.figure1.colorbar(self.ax2Image, ax=self.ax2)
         self.ax2.set_axis_on()
 
@@ -303,7 +303,7 @@ class TabAnalysis(Tab):
     def detect(self) -> Task:
         imgObj = self.session.active_image_object
         signalObj = self.session.active_image_signal
-        if self.detectionAlgorithm is None or imgObj is None or imgObj.img is None or imgObj.imgDiff is None:
+        if self.detectionAlgorithm is None or imgObj is None or imgObj.img is None or imgObj.img_diff is None:
             self.root.bell()
             return
 
@@ -313,7 +313,7 @@ class TabAnalysis(Tab):
             rois: list[ISynapseROI] = []
             for i, p in enumerate(signalObj.peaks):
                 task.set_step_progress(i, f"detecting ROIs in frame {p}")
-                rois.extend([r.set_frame(p) for r in self.detectionAlgorithm.DetectAutoParams(imgObj.imgDiff_FrameProps(p))])
+                rois.extend([r.set_frame(p) for r in self.detectionAlgorithm.DetectAutoParams(imgObj.img_diff_frame_props(p))])
             synapses = SimpleCusteringcluster(rois)
             self.detection_result.synapses = synapses
             self.tvSynapses.SyncSynapses()
@@ -329,9 +329,9 @@ class TabAnalysis(Tab):
     @property
     def current_input_image(self) -> ImageProperties|None:
         imgObj = self.session.active_image_object
-        if imgObj is None or imgObj.img is None or imgObj.imgDiff is None:
+        if imgObj is None or imgObj.img is None or imgObj.img_diff is None:
             return None
-        return imgObj.imgDiffView(ImageView.SPATIAL).MaxProps
+        return imgObj.img_diff_view(ImageView.SPATIAL).max_props
     
     def sliderFrame_changed(self):
         frame = self.sliderFrame.get() - 1
@@ -384,7 +384,7 @@ class TabAnalysis(Tab):
                     cov = roi.region_props.equivalent_diameter_area/2 if roi.region_props is not None else 6
                 img += multivariate_normal.pdf(x=pos, mean=roi.location, cov=cov)
 
-        #overlay_img_props = self._gui.ImageObject.imgView(ImgObj.SPATIAL).MeanProps
+        #overlay_img_props = self._gui.ImageObject.img_view(ImgObj.SPATIAL).mean_props
         #norm = cm_colors.Normalize(vmin=overlay_img_props.min, vmax=overlay_img_props.max)
         #cmap = cm.get_cmap("Greys_r")
         #img_plot = ax.plot_surface(mesh_X, mesh_Y, img, rcount=100, ccount=100, facecolors = cmap(norm(overlay_img_props.img)))

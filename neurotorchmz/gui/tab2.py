@@ -140,8 +140,8 @@ class TabSignal(Tab):
     def invalidate_image(self):
         """ Invalidate the image and therefore adjust the slider range"""
         imgObj = self.session.active_image_object
-        # Note: This function shows the range if imgDiff is present but not img itself. This must be catched in invalidate_image_plot
-        if imgObj is None or imgObj.imgDiff is None: 
+        # Note: This function shows the range if img_diff is present but not img itself. This must be catched in invalidate_image_plot
+        if imgObj is None or imgObj.img_diff is None: 
             self.frameSlider.valmin = 0
             self.frameSlider.valmax = 0.1
             self.frameSlider.valstep = 1
@@ -151,7 +151,7 @@ class TabSignal(Tab):
             self.invalidate_image_plot()
         else:
             self.frameSlider.valmin = 0 if (self.setting_originalImage.get() == 1) else 1
-            self.frameSlider.valmax = imgObj.imgDiff.shape[0]
+            self.frameSlider.valmax = imgObj.img_diff.shape[0]
             if isinstance(self.frameSlider.valstep, int): # Only update if not valstep is custom set to peaks
                 self.frameSlider.valstep = 1
             self.ax1_slider1.set_xlim(self.frameSlider.valmin,self.frameSlider.valmax)
@@ -181,12 +181,12 @@ class TabSignal(Tab):
         for axImg in self.ax1.get_images(): 
             axImg.remove()
 
-        if imgObj is None or imgObj.imgDiff is None or (show_original and imgObj.img is None):
+        if imgObj is None or imgObj.img_diff is None or (show_original and imgObj.img is None):
             self.frameSlider.valtext.set_text("")
             self.canvas1.draw()
             return
         else:
-            self.frameSlider.valtext.set_text(f"{frame} / {imgObj.imgDiff.shape[0]}")
+            self.frameSlider.valtext.set_text(f"{frame} / {imgObj.img_diff.shape[0]}")
 
         if show_original:
             assert imgObj.img is not None # Assert is fullfilled by previous if query
@@ -194,18 +194,18 @@ class TabSignal(Tab):
                 _img = None
             else:
                 _img = imgObj.img[frame,:,:]
-            _vmin = imgObj.imgProps.min
-            _vmax = imgObj.imgProps.max
+            _vmin = imgObj.img_props.min
+            _vmax = imgObj.img_props.max
             _cmap = "Greys_r"
             _title = ""
         else:
             frame -= 1
-            if frame < 0 or frame >= imgObj.imgDiff.shape[0]:
+            if frame < 0 or frame >= imgObj.img_diff.shape[0]:
                 _img = None
             else:
-                _img = imgObj.imgDiff[frame,:,:]
-            _vmin = imgObj.imgDiffProps.minClipped
-            _vmax = imgObj.imgDiffProps.max
+                _img = imgObj.img_diff[frame,:,:]
+            _vmin = imgObj.img_diff_props.minClipped
+            _vmax = imgObj.img_diff_props.max
             _cmap = "inferno"
             _title = "Difference Image"
 

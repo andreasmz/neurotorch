@@ -104,53 +104,53 @@ class AxisImage:
         self._max = None
 
     @property
-    def Mean(self) -> np.ndarray|None:
+    def mean_image(self) -> np.ndarray|None:
         """ Mean image over the specified axis """
-        return self.MeanProps.img
+        return self.mean_props.img
 
     @property
-    def MeanNormed(self) -> np.ndarray|None:
+    def mean_normed_image(self) -> np.ndarray|None:
         """ Normalized Mean image (max value is garanter to be 255 or 0) over the specified axis """
-        return self.MeanNormedProps.img
+        return self.mean_normed_props.img
     
     @property
-    def Median(self) -> np.ndarray|None:
+    def median_image(self) -> np.ndarray|None:
         """ Median image over the specified axis """
-        return self.MedianProps.img
+        return self.median_props.img
     
     @property
-    def Std(self) -> np.ndarray|None:
+    def std_image(self) -> np.ndarray|None:
         """ Std image over the specified axis """
-        return self.StdProps.img
+        return self.std_props.img
     
     @property
-    def StdNormed(self) -> np.ndarray|None:
+    def std_normed_image(self) -> np.ndarray|None:
         """ Normalized Std image (max value is garanter to be 255 or 0) over the specified axis """
-        return self.StdNormedProps.img
+        return self.std_normed_props.img
     
     @property
-    def Min(self) -> np.ndarray|None:
+    def min_image(self) -> np.ndarray|None:
         """ Minimum image over the specified axis """
-        return self.MinProps.img
+        return self.min_props.img
     
     @property
-    def Max(self) -> np.ndarray|None:
+    def max_image(self) -> np.ndarray|None:
         """ Maximum image over the specified axis """
-        return self.MaxProps.img
+        return self.max_props.img
     
     @property
     def image(self) -> np.ndarray|None:
         return self._img
     
     @property
-    def ImageProps(self) -> ImageProperties:
+    def image_props(self) -> ImageProperties:
         """ Returns the properties of the original image """
         if self._props is None:
             self._props = ImageProperties(self._img)
         return self._props
 
     @property
-    def MeanProps(self) -> ImageProperties:
+    def mean_props(self) -> ImageProperties:
         if self._mean is None:
             if self._img is None:
                 self._mean = ImageProperties(None)
@@ -161,16 +161,16 @@ class AxisImage:
         return self._mean
     
     @property
-    def MeanNormedProps(self) -> ImageProperties:
+    def mean_normed_props(self) -> ImageProperties:
         if self._mean_normed is None:
-            if self._img is None or self.Mean is None:
+            if self._img is None or self.mean_image is None:
                 self._mean_normed = ImageProperties(None)
             else:
-                self._mean_normed = ImageProperties((self.Mean*255/self.MeanProps.max).astype(self._img.dtype))
+                self._mean_normed = ImageProperties((self.mean_image*255/self.mean_props.max).astype(self._img.dtype))
         return self._mean_normed
     
     @property
-    def MedianProps(self) -> ImageProperties:
+    def median_props(self) -> ImageProperties:
         if self._median is None:
             if self._img is None:
                 self._median = ImageProperties(None)
@@ -181,7 +181,7 @@ class AxisImage:
         return self._median
     
     @property
-    def StdProps(self) -> ImageProperties:
+    def std_props(self) -> ImageProperties:
         if self._std is None:
             if self._img is None:
                 self._std = ImageProperties(None)
@@ -192,16 +192,16 @@ class AxisImage:
         return self._std
     
     @property
-    def StdNormedProps(self) -> ImageProperties:
+    def std_normed_props(self) -> ImageProperties:
         if self._std_normed is None:
-            if self._img is None or self.Std is None:
+            if self._img is None or self.std_image is None:
                 self._std_normed = ImageProperties(None)
             else:
-                self._std_normed = ImageProperties((self.Std*255/self.StdProps.max).astype(self._img.dtype))
+                self._std_normed = ImageProperties((self.std_image*255/self.std_props.max).astype(self._img.dtype))
         return self._std_normed
     
     @property
-    def MinProps(self) -> ImageProperties:
+    def min_props(self) -> ImageProperties:
         if self._min is None:
             if self._img is None:
                 self._min = ImageProperties(None)
@@ -212,7 +212,7 @@ class AxisImage:
         return self._min
     
     @property
-    def MaxProps(self) -> ImageProperties:
+    def max_props(self) -> ImageProperties:
         if self._max is None:
             if self._img is None:
                 self._max = ImageProperties(None)
@@ -228,7 +228,7 @@ class AxisImage:
 class ImageObject(Serializable):
     """
         A class for holding a) the image provided in form an three dimensional numpy array (time, y, x) and b) the derived images and properties, for example
-        the difference Image (imgDiff). All properties are lazy loaded, i. e. they are calculated on first access
+        the difference Image (img_diff). All properties are lazy loaded, i. e. they are calculated on first access
     """
     
     # Static Values
@@ -331,7 +331,7 @@ class ImageObject(Serializable):
 
             :raises UnsupportedImageError: The image is not a valid image stack
         """
-        return self.imgView(ImageView.DEFAULT).image
+        return self.img_view(ImageView.DEFAULT).image
     
     @img.setter
     def img(self, image: np.ndarray):
@@ -349,25 +349,25 @@ class ImageObject(Serializable):
         self.img = image
     
     @property
-    def imgDiff(self) -> np.ndarray | None:
+    def img_diff(self) -> np.ndarray | None:
         """ 
             Get or set the diff image. Note that setting to a new value will remove the old image
 
             :raises UnsupportedImageError: The image is not a valid image stack
         """
-        return self.imgDiffView(ImageView.DEFAULT).image
+        return self.img_diff_view(ImageView.DEFAULT).image
 
-    @imgDiff.setter
-    def imgDiff(self, image: np.ndarray):
+    @img_diff.setter
+    def img_diff(self, image: np.ndarray):
         if not ImageObject._is_valid_image_stack(image): raise UnsupportedImageError()
         self.clear()
         self._img_diff = image
         
     @property
     def img_diff_raw(self) -> np.ndarray | None:
-        if self._img_diff is None and self.imgS is not None:
+        if self._img_diff is None and self.img_signed is not None:
             t0 = time.perf_counter()
-            self._img_diff = np.diff(self.imgS, axis=0)
+            self._img_diff = np.diff(self.img_signed, axis=0)
             t1 = time.perf_counter()
             logger.debug(f"Calculated the delta video in {(t1-t0):1.3f} s")
         return self._img_diff
@@ -377,7 +377,7 @@ class ImageObject(Serializable):
         self.img_diff = image
 
     @property
-    def imgS(self) -> np.ndarray | None:
+    def img_signed(self) -> np.ndarray | None:
         """
             Returns a numpy view with a signed datatype (e.g. for calculating the diffImage). 
         """
@@ -398,32 +398,32 @@ class ImageObject(Serializable):
     # ImageProperties
     
     @property
-    def imgProps(self) -> ImageProperties:
+    def img_props(self) -> ImageProperties:
         """ Returns the image properties (e.g. median, mean or maximum) """
-        return self.imgView(ImageView.DEFAULT).ImageProps
+        return self.img_view(ImageView.DEFAULT).image_props
     
     @property
-    def imgDiffProps(self) -> ImageProperties:
+    def img_diff_props(self) -> ImageProperties:
         """ Returns the diff image properties (e.g. median, mean or maximum) """
-        return self.imgDiffView(ImageView.DEFAULT).ImageProps
+        return self.img_diff_view(ImageView.DEFAULT).image_props
     
-    def img_FrameProps(self, frame:int) -> ImageProperties:
+    def img_frame_props(self, frame:int) -> ImageProperties:
         """ Returns the image properties for a given frame """
         # Edge case, do not use caching
         if self.img is None or frame < 0 or frame >= self.img.shape[0]:
             return ImageProperties(None)
         return ImageProperties(self.img[frame])
     
-    def imgDiff_FrameProps(self, frame:int) -> ImageProperties:
+    def img_diff_frame_props(self, frame:int) -> ImageProperties:
         """ Returns the image diff properties for a given frame """
         # Edge case, do not use caching
-        if self.imgDiff is None or frame < 0 or frame >= self.imgDiff.shape[0]:
+        if self.img_diff is None or frame < 0 or frame >= self.img_diff.shape[0]:
             return ImageProperties(None)
-        return ImageProperties(self.imgDiff[frame])
+        return ImageProperties(self.img_diff[frame])
     
     # Image View
 
-    def imgView(self, mode: "ImageView") -> AxisImage:
+    def img_view(self, mode: "ImageView") -> AxisImage:
         """ Returns a view of the current image given an ImageView mode """
         if ImageView.DEFAULT not in self._img_views["default"].keys():
             self._img_views["default"][ImageView.DEFAULT] = AxisImage(self.img_raw, axis=ImageView.DEFAULT.value, name=f"{self.name}-img")
@@ -440,7 +440,7 @@ class ImageObject(Serializable):
         
         return self._img_views[self._conv_func_identifier][mode]
     
-    def imgDiffView(self, mode: "ImageView", conv_func_identifier: str|None = None) -> AxisImage:
+    def img_diff_view(self, mode: "ImageView", conv_func_identifier: str|None = None) -> AxisImage:
         """ Returns a view of the current diff image given an ImageView mode """
         if conv_func_identifier is None:
             conv_func_identifier = self._diff_conv_func_identifier
@@ -534,22 +534,22 @@ class ImageObject(Serializable):
             t0 = time.perf_counter()
             _progIni = task._step if task._step is not None else 0
             task.set_step_progress(_progIni, "preparing ImgView (Spatial Mean)")
-            self.imgView(ImageView.SPATIAL).Mean
+            self.img_view(ImageView.SPATIAL).mean_image
             task.set_step_progress(_progIni, "preparing ImgView (Spatial Std)")
-            self.imgView(ImageView.SPATIAL).Std
+            self.img_view(ImageView.SPATIAL).std_image
             gc.collect()
-            task.set_step_progress(1+_progIni, "preparing imgDiff")
-            self.imgDiff
+            task.set_step_progress(1+_progIni, "preparing delta video")
+            self.img_diff
             gc.collect()
             task.set_step_progress(2+_progIni, "preparing ImgDiffView (Spatial Max)")
-            self.imgDiffView(ImageView.SPATIAL).Max
+            self.img_diff_view(ImageView.SPATIAL).max_image
             task.set_step_progress(2+_progIni, "preparing ImgDiffView (Spatial Std)")
-            self.imgDiffView(ImageView.SPATIAL).StdNormed
+            self.img_diff_view(ImageView.SPATIAL).std_normed_image
             gc.collect()
             task.set_step_progress(2+_progIni, "preparing ImgDiffView (Temporal Max)")
-            self.imgDiffView(ImageView.TEMPORAL).Max
+            self.img_diff_view(ImageView.TEMPORAL).max_image
             task.set_step_progress(2+_progIni, "preparing ImgDiffView (Temporal Std)")
-            self.imgDiffView(ImageView.TEMPORAL).Std
+            self.img_diff_view(ImageView.TEMPORAL).std_image
             gc.collect()
             logger.debug(f"Precomputed image '{self.name}' in {(time.perf_counter()-t0):1.3f} s")
 
@@ -668,13 +668,13 @@ class ImageObject(Serializable):
 
     def export_img_diff(self, path: Path) -> None:
         """ Export the current img_diff"""    
-        if self.imgDiff is None:
+        if self.img_diff is None:
             raise NoImageError()
-        if not path.is_file() or not path.parent.exists():
+        if not path.parent.exists():
             raise ValueError(f"The path '{str(path)}' is invalid")
         match path.suffix.lower():
             case ".tif"|".tiff":
-                tifffile.imwrite(path, data=self.imgDiff, metadata=self.metadata, compression="zlib")
+                tifffile.imwrite(path, data=self.img_diff, metadata=self.metadata, compression="zlib")
             case _:
                 raise UnsupportedExtensionError(f"The extension '{path.suffix}' is not supported for exporting")
         logger.info(f"Exported the delta video as '{path.name}'")

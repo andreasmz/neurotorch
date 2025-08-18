@@ -84,19 +84,19 @@ class SignalObject:
     
     @property
     def img_props_only_signal(self) -> ImageProperties:
-        return self.get_view("img", "only_signal", mode=ImageView.DEFAULT).ImageProps
+        return self.get_view("img", "only_signal", mode=ImageView.DEFAULT).image_props
     
     @property
     def img_props_without_signal(self) -> ImageProperties:
-        return self.get_view("img", "without_signal", mode=ImageView.DEFAULT).ImageProps
+        return self.get_view("img", "without_signal", mode=ImageView.DEFAULT).image_props
     
     @property
     def img_diff_props_only_signal(self) -> ImageProperties:
-        return self.get_view("img_diff", "only_signal", mode=ImageView.DEFAULT).ImageProps
+        return self.get_view("img_diff", "only_signal", mode=ImageView.DEFAULT).image_props
     
     @property
     def img_diff_props_without_signal(self) -> ImageProperties:
-        return self.get_view("img_diff", "without_signal", mode=ImageView.DEFAULT).ImageProps
+        return self.get_view("img_diff", "without_signal", mode=ImageView.DEFAULT).image_props
     
     def img_only_signal_view(self, mode: ImageView) -> AxisImage:
         return self.get_view("img", "only_signal", mode)
@@ -125,7 +125,7 @@ class SignalObject:
                     case _:
                         raise ValueError(f"Invalid value '{slice_type}' for parameter slice_type")
             case "img_diff":
-                _img = self.imgObj.imgDiff
+                _img = self.imgObj.img_diff
                 p_offset = 0
                 match slice_type:
                     case "only_signal":
@@ -181,8 +181,6 @@ class SignalObject:
         """ Export the current img """
         if self.img_props_without_signal.img is None:
             raise NoImageError()
-        if not path.is_file() or not path.parent.exists():
-            raise ValueError(f"The path '{str(path)}' is invalid")
         match path.suffix.lower():
             case ".tif"|".tiff":
                 tifffile.imwrite(path, data=self.img_props_without_signal.img, metadata=self.imgObj.metadata, compression="zlib")
@@ -208,9 +206,9 @@ SignalObject.load_settings()
 class SigDetect_DiffMax(ISignalDetectionAlgorithm):
 
     def get_signal(self, imgObj: ImageObject) -> np.ndarray|None:
-        return imgObj.imgDiffView(ImageView.TEMPORAL).Max
+        return imgObj.img_diff_view(ImageView.TEMPORAL).max_image
     
 class SigDetect_DiffStd(ISignalDetectionAlgorithm):
 
     def get_signal(self, imgObj: ImageObject) -> np.ndarray|None:
-        return imgObj.imgDiffView(ImageView.TEMPORAL).Std
+        return imgObj.img_diff_view(ImageView.TEMPORAL).std_image
