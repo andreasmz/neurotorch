@@ -152,12 +152,13 @@ class AxisImage:
 
     @property
     def mean_props(self) -> ImageProperties:
+        """ Returns the mean image properties as float image """
         if self._mean is None:
             if self._img is None:
                 self._mean = ImageProperties(None)
             else:
                 t0 = time.perf_counter()
-                self._mean = ImageProperties(np.mean(self._img, axis=self._axis, dtype="float32").astype("float64")) # Use float32 for calculations (!) to lower peak memory usage
+                self._mean = ImageProperties(np.mean(self._img, axis=self._axis, dtype=self._float_dtype(self._img.dtype)))
                 logger.debug(f"Calculated mean view for AxisImage '{self._name if self._name is not None else ''}' on axis '{self._axis}' in {(time.perf_counter() - t0):1.3f} s")
         return self._mean
     
@@ -188,7 +189,7 @@ class AxisImage:
                 self._std = ImageProperties(None)
             else:
                 t0 = time.perf_counter()
-                self._std = ImageProperties(np.std(self._img, axis=self._axis, dtype="float32").astype("float64")) # Use float32 for calculations (!) to lower peak memory usage
+                self._std = ImageProperties(np.std(self._img, axis=self._axis, dtype=self._float_dtype(self._img.dtype)))
                 logger.debug(f"Calculated std view for AxisImage '{self._name if self._name is not None else ''}' on axis '{self._axis}' in {(time.perf_counter() - t0):1.3f} s")
         return self._std
     
@@ -222,6 +223,14 @@ class AxisImage:
                 self._max = ImageProperties(np.max(self._img, axis=self._axis))
                 logger.debug(f"Calculated maximum view for AxisImage '{self._name if self._name is not None else ''}' on axis '{self._axis}' in {(time.perf_counter() - t0):1.3f} s")
         return self._max
+    
+    def _float_dtype(self, dtype: np.dtype) -> np.dtype:
+        """ Converts a integer dtype to a integer dtype """
+        match dtype:
+            case np.uint8|np.uint16|np.int8|np.float16:
+                return np.dtype(np.float16)
+            case _:
+                return np.dtype(np.float32)
     
     def __del__(self):
         del self._img
