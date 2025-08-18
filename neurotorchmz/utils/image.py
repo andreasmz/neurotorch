@@ -13,6 +13,7 @@ import nd2
 from pathlib import Path
 import gc
 import time
+import sys
 
 class ImageProperties:
     """
@@ -269,6 +270,8 @@ class ImageObject(Serializable):
         self._img_diff_conv_func: Callable[..., np.ndarray|None]|None = None
         self._img_diff_conv_args: dict[str, Any]|None = None
 
+        self.img_size: int|None = None
+
         self._signal_obj: SignalObject = SignalObject(self)
 
     def serialize(self, **kwargs) -> dict:
@@ -357,6 +360,7 @@ class ImageObject(Serializable):
             raise UnsupportedImageError(f"The image dtype ({image.dtype}) is not supported")
 
         self._img = image
+        self.img_size = self._img.nbytes
         
     @property
     def img_raw(self) -> np.ndarray|None:

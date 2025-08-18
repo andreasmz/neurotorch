@@ -153,6 +153,10 @@ class Statusbar:
         self.lblSystemUsage3["text"] = f" / {_totalRAM} GB)"
         self.root.after(Statusbar.lowerTimerSpeed, self._on_lower_timer_tick)
 
+    @staticmethod
+    def get_free_ram_in_gb() -> float:
+        return psutil.virtual_memory().available/(1024**3)
+
 
 class EntryPopup(ttk.Entry):
     """

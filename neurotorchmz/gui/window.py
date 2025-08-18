@@ -116,11 +116,15 @@ class Neurotorch_GUI:
 
         self.denoise_t_vars: dict[str, tuple[tk.BooleanVar, Callable|None, dict]] = {lbl: (tk.BooleanVar(value=False), fn, args) for lbl, fn, args in [
             ("Transient peak (default)", None, {}),
-            ("Transient drop", denoising.reverse_t_kernel, {"frames": 3}),
-            ("Fast peak", denoising.cumsum, {"frames": 3, "negate": True}),
-            ("Fast drop", denoising.cumsum, {}),
-            ("Fast gaussian peak", denoising.gaussian_t_kernel , {"sigma": 3}),
-            ("Fast gaussian drop", denoising.gaussian_t_kernel , {"sigma": 3, "negate": True}),
+            ("Transient drop", denoising.reverse_t_kernel, {}),
+            ("Fast peak", denoising.sliding_cumsum, {"frames": 3, "negate": False}),
+            ("Fast drop", denoising.sliding_cumsum, {"frames": 3, "negate": True}),
+            ("Slow peak", denoising.sliding_cumsum, {"frames": 6, "negate": False}),
+            ("Slow drop", denoising.sliding_cumsum, {"frames": 6, "negate": True}),
+            ("Very slow peak", denoising.sliding_cumsum, {"frames": 9, "negate": False}),
+            ("Very slow drop", denoising.sliding_cumsum, {"frames": 9, "negate": True}),
+            ("Cumulative peaks", denoising.cumsum, {"negate": False}),
+            ("Cumulative drops", denoising.cumsum, {"negate": True}),
         ]}
 
         for lbl, (var, fn, args) in self.denoise_xy_vars.items():
@@ -244,7 +248,7 @@ class Neurotorch_GUI:
             var.set(False)
 
         for var, fn, args in self.denoise_t_vars.values():
-            if "t_kernel_fn" == fn:
+            if conv_args["t_kernel_fn"] == fn:
                 for k,v in args.items():
                     if k not in conv_args["t_kernel_args"] or conv_args["t_kernel_args"][k] != v:
                         break
@@ -292,11 +296,38 @@ class Neurotorch_GUI:
     
     # Menu Buttons Click
 
+    def ask_ram_warning(self, factor: float) -> bool:
+        imgObj = self.session.active_image_object
+        if imgObj is None or imgObj.img_size is None or imgObj.img_raw is None:
+            return False
+        
+        match imgObj.img_raw.dtype:
+            case np.uint8|np.int8:
+                peak_size = imgObj.img_size/(1024**3)*factor
+            case np.uint16|np.int16:
+                peak_size = imgObj.img_size/(1024**3)*factor/2
+            case np.uint32|np.int32:
+                peak_size = imgObj.img_size/(1024**3)*factor/4
+            case _:
+                peak_size = imgObj.img_size/(1024**3)*factor/8
+
+        free_ram = Statusbar.get_free_ram_in_gb()
+
+        if (free_ram - peak_size) >= 5:
+            return True
+        elif (free_ram - peak_size) > 2:
+            return messagebox.askyesno(f"Neurotorch", f"Continuing may require up to {peak_size:1.2f} GB of RAM, but you only have {free_ram:1.2f} GB free. Do you wish to continue?", icon="info")
+        elif (free_ram - peak_size) > 0:
+            return messagebox.askyesno(f"Neurotorch", f"Continuing may require up to {peak_size:1.2f} GB of RAM, but you only have {free_ram:1.2f} GB free. Do you wish to continue?", icon="warning")
+        else:
+            return messagebox.askyesno(f"Neurotorch", f"Continuing may require up to {peak_size:1.2f} GB of RAM, but you only have {free_ram:1.2f} GB free. Are you sure you want to continue?", icon="warning")
+
     def menu_file_open_click(self, noisy:bool=False):
         image_path = filedialog.askopenfilename(parent=self.root, title="Open a Image File", 
                 filetypes=(("All files", "*.*"), ("TIF File", "*.tif *.tiff"), ("ND2 Files (NIS Elements)", "*.nd2")) )
         if image_path is None or image_path == "":
             return
+        self.session.set_active_image_object(None)
         imgObj = ImageObject()
         task = imgObj.open_file(Path(image_path), precompute=True, run_async=True)
         task.add_callback(lambda: self.session.set_active_image_object(imgObj))
@@ -360,13 +391,22 @@ class Neurotorch_GUI:
             self.root.bell()
             return
         
+        if not self.ask_ram_warning(8):
+            self.update_menu()
+            return
+        
         if imgObj._img_diff_conv_func != denoising.combined_diff_convolution:
             imgObj.set_diff_conv_func(denoising.combined_diff_convolution, 
                                       func_args={"xy_kernel_fn": None, "xy_kernel_args": {}, 
                                                  "t_kernel_fn": None, "t_kernel_args": {},
-                                                 "std_norm": True})
-
+                                                 "norm": False})
+            
         imgObj.update_diff_conv_args(xy_kernel_fn = func, xy_kernel_args = args)
+
+        assert imgObj._img_diff_conv_args is not None
+        if imgObj._img_diff_conv_args["xy_kernel_fn"] is None and imgObj._img_diff_conv_args["t_kernel_fn"] is None:
+            imgObj.set_diff_conv_func(None, None)
+
         self.update_menu()
         imgObj.precompute_image().add_callback(lambda: self.invoke_tab_update_event(ImageChangedEvent()))
 
@@ -377,13 +417,22 @@ class Neurotorch_GUI:
             self.root.bell()
             return
         
+        if not self.ask_ram_warning(8):
+            self.update_menu()
+            return
+        
         if imgObj._img_diff_conv_func != denoising.combined_diff_convolution:
             imgObj.set_diff_conv_func(denoising.combined_diff_convolution, 
                                       func_args={"xy_kernel_fn": None, "xy_kernel_args": {}, 
                                                  "t_kernel_fn": None, "t_kernel_args": {},
-                                                 "std_norm": False})
+                                                 "norm": False})
+            
+        imgObj.update_diff_conv_args(t_kernel_fn = func, t_kernel_args = args)    
+            
+        assert imgObj._img_diff_conv_args is not None
+        if imgObj._img_diff_conv_args["xy_kernel_fn"] is None and imgObj._img_diff_conv_args["t_kernel_fn"] is None:
+            imgObj.set_diff_conv_func(None, None)
 
-        imgObj.update_diff_conv_args(t_kernel_fn = func, t_kernel_args = args)
         self.update_menu()
         imgObj.precompute_image().add_callback(lambda: self.invoke_tab_update_event(ImageChangedEvent()))
 
@@ -394,13 +443,22 @@ class Neurotorch_GUI:
             self.root.bell()
             return
         
+        if not self.ask_ram_warning(8):
+            self.update_menu()
+            return
+        
         if imgObj._img_diff_conv_func != denoising.combined_diff_convolution:
             imgObj.set_diff_conv_func(denoising.combined_diff_convolution, 
                                       func_args={"xy_kernel_fn": None, "xy_kernel_args": {}, 
                                                  "t_kernel_fn": None, "t_kernel_args": {},
-                                                 "std_norm": False})
+                                                 "norm": False})
 
         imgObj.update_diff_conv_args(std_norm= std_norm)
+
+        assert imgObj._img_diff_conv_args is not None
+        if imgObj._img_diff_conv_args["xy_kernel_fn"] is None and imgObj._img_diff_conv_args["t_kernel_fn"] is None:
+            imgObj.set_diff_conv_func(None, None)
+
         self.update_menu()
         imgObj.precompute_image().add_callback(lambda: self.invoke_tab_update_event(ImageChangedEvent()))
 
