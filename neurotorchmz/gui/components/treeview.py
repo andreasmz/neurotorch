@@ -346,7 +346,7 @@ class SynapseTreeview(ttk.Treeview):
             self.insert(_ruuid, 'end', iid=f"{_ruuid}_CircularSynapseROI.Frame", text="Frame", values=[roi.frame + 1])
 
         if roi.signal_strength is not None:
-            self.insert(_ruuid, 'end', iid=f"{_ruuid}_CircularSynapseROI.SignalStrength", text="Signal Strength", values=[roi.signal_strength])
+            self.insert(_ruuid, 'end', iid=f"{_ruuid}_CircularSynapseROI.SignalStrength", text="Signal Strength", values=[f"{roi.signal_strength:1.3f}"])
         
         if type(roi) == CircularSynapseROI:
             type_ = "Circular ROI"

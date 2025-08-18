@@ -675,7 +675,7 @@ class DetectionResult:
         return self._synapses
     
     def clear(self) -> None:
-        self.clear_where(lambda s: False)
+        self.clear_where(lambda s: True)
 
     def clear_where(self, fn: Callable[[ISynapse], bool]) -> None:
         deleted = []
