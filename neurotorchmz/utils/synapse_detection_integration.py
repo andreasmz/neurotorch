@@ -248,7 +248,7 @@ class LocalMax_Integration(LocalMax, IDetectionAlgorithmIntegration):
         self.setting_upperTh = GridSetting(self.optionsFrame, row=13, text="Upper threshold", unit="", default=70, min_=0, max_=2**15-1, scale_min=1, scale_max=400, tooltip=resources.get_string("algorithms/localMax/params/upperThreshold"))
         
         tk.Label(self.optionsFrame, text="Advanced settings").grid(row=20, column=0, columnspan=4, sticky="nw")
-        self.setting_maxPeakCount = GridSetting(self.optionsFrame, row=21, text="Max. Peak Count", unit="", default=0, min_=0, max_=200, scale_min=0, scale_max=100, tooltip=resources.get_string("algorithms/localMax/params/maxPeakCount"))
+        self.setting_maxPeakCount = GridSetting(self.optionsFrame, row=21, text="Max. Peak Count", unit="", default=100, min_=0, max_=200, scale_min=0, scale_max=100, tooltip=resources.get_string("algorithms/localMax/params/maxPeakCount"))
         self.setting_minDistance = GridSetting(self.optionsFrame, row=22, text="Min. Distance", unit="px", default=20, min_=1, max_=1000, scale_min=1, scale_max=100, tooltip=resources.get_string("algorithms/localMax/params/minDistance"))
         self.setting_expandSize = GridSetting(self.optionsFrame, row=23, text="Expand size", unit="px", default=6, min_=0, max_=200, scale_min=0, scale_max=50, tooltip=resources.get_string("algorithms/localMax/params/expandSize"))
         self.setting_minSignal = GridSetting(self.optionsFrame, row=24, text="Minimum Signal", unit="", default=0, min_=0, max_=2**15-1, scale_min=0, scale_max=400, tooltip=resources.get_string("algorithms/localMax/params/minSignal"))
