@@ -8,7 +8,6 @@ from tktooltip import ToolTip
 import pickle
 import matplotlib
 matplotlib.use('TkAgg')
-
 from pathlib import Path
 import subprocess
 import os
@@ -62,24 +61,24 @@ class Neurotorch_GUI:
         self.menu_plugins = tk.Menu(self.menubar, tearoff=0)
         self.menu_debug = tk.Menu(self.menubar, tearoff=0)
         self.menu_about = tk.Menu(self.menubar, tearoff=0)
-        self.menubar.add_cascade(label="File",menu=self.menu_file)
-        self.menubar.add_cascade(label="Edit",menu=self.menu_edit)
-        self.menubar.add_cascade(label="Run",menu=self.menu_run)
-        self.menubar.add_cascade(label="Settings",menu=self.menu_settings)
-        self.menubar.add_cascade(label="Plugins",menu=self.menu_plugins)
+        self.menubar.add_cascade(label="File",menu=self.menu_file,underline=0)
+        self.menubar.add_cascade(label="Edit",menu=self.menu_edit,underline=0)
+        self.menubar.add_cascade(label="Run",menu=self.menu_run,underline=0)
+        self.menubar.add_cascade(label="Settings",menu=self.menu_settings,underline=0)
+        self.menubar.add_cascade(label="Plugins",menu=self.menu_plugins,underline=0)
         if self.edition == Edition.NEUROTORCH_DEBUG:
-            self.menubar.add_cascade(label="Debug",menu=self.menu_debug)
-        self.menubar.add_cascade(label="Neurotorch",menu=self.menu_about)
+            self.menubar.add_cascade(label="Debug",menu=self.menu_debug,underline=0)
+        self.menubar.add_cascade(label="Neurotorch",menu=self.menu_about,underline=0)
 
         # File menu
-        self.menu_file.add_command(label="Open file", command=self.menu_file_open_click)
+        self.menu_file.add_command(label="Open file", command=self.menu_file_open_click,underline=0)
         self.menu_file.add_separator()
         self.menu_file_import = tk.Menu(self.menu_file, tearoff=0)
-        self.menu_file.add_cascade(label="Import", menu=self.menu_file_import)
+        self.menu_file.add_cascade(label="Import", menu=self.menu_file_import,underline=0)
         self.menu_file_export = tk.Menu(self.menu_file, tearoff=0)
-        self.menu_file.add_cascade(label="Export", menu=self.menu_file_export)
+        self.menu_file.add_cascade(label="Export", menu=self.menu_file_export,underline=0)
         self.menu_file.add_separator()
-        self.menu_file.add_command(label="Close file", command=self.menu_file_close_click)
+        self.menu_file.add_command(label="Close file", command=self.menu_file_close_click,underline=0)
 
         self.menu_file_export_file = tk.Menu(self.menu_file_export, tearoff=0)
         self.menu_file_export.add_cascade(label="As file (video)", menu=self.menu_file_export_file)
@@ -542,10 +541,7 @@ class Neurotorch_GUI:
         logs.start_debugging()
 
     def menu_debug_test(self):
-        def test(self):
-            print(1/0)
-        t = threading.Thread(target=test)
-        t.start()
+        print("Test")
 
 
 class Tab:

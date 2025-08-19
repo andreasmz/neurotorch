@@ -1,11 +1,13 @@
+from neurotorchmz.core.session import *
+from neurotorchmz.gui import events as window_events
+
 import tkinter as tk
-from tkinter import messagebox, filedialog
+from tkinter import messagebox
 import subprocess
 import pathlib
 import threading
 import importlib.util
 
-from neurotorchmz.core.session import *
 
 class TraceSelectorBridge:
 
@@ -21,11 +23,13 @@ class TraceSelectorBridge:
         assert e.session.window is not None
         self.menu_settings = tk.Menu(e.session.window.menu_settings, tearoff=0)
         self.menu_plugin = e.menu_plugins(plugin_manager.get_module())
-        #e.session.window.menu_settings.add_cascade(label="TraceSelector", menu=self.menu_settings)
 
         e.session.window.menu_run.add_command(label="Start TraceSelector", command=self.ask_for_start)
-        self.menu_plugin.add_command(label="Install dependencies", command=self.ask_for_installation)
-        self.menu_plugin.add_command(label="Terminate TraceSelector", command=self.kill_trace_selector)
+        self.menu_plugin.add_command(label="Test installation", command=self.menu_test_installation_click)
+        self.menu_plugin.add_command(label="Install dependencies", command=self.menu_install_click)
+        self.menu_plugin.add_command(label="Kill TraceSelector task", command=self.kill_trace_selector)
+
+        e.session.window.menu_file_export.add_cascade(label=f"Export ROIs to TraceSelector", command=lambda:self.export_roifinder_traces(self.session.roifinder_detection_result))
 
     def on_tv_context_menu_created(self, e: "window_events.SynapseTreeviewContextMenuEvent") -> None:
         e.export_context_menu.add_command(label="Open in TraceSelector", command=lambda:self.export_roifinder_traces(e.detection_result))
@@ -42,7 +46,6 @@ class TraceSelectorBridge:
             TraceSelectorBridge.proc = None
             return False
         return True
-
 
     def start_trace_selector(self):
         """ Attempts to start TraceSelector """
@@ -82,10 +85,6 @@ class TraceSelectorBridge:
 
     def install_trace_selector(self) -> None:
         """ Tries to install TraceSelector via pip and subprocess """
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "trace_selector", "--dry-run"])
-
-    def ask_for_installation(self) -> bool:
-        """ Asks the user to install TraceSelector. Returns True if it is already installed and False otherwise """
         def _callback():
             if self.test_installation():
                 logger.info(f"Installed TraceSelector via pip into the current environment")
@@ -98,10 +97,18 @@ class TraceSelectorBridge:
             logger.warning(f"Failed to install TraceSelector via pip", exc_info=True)
             messagebox.showwarning(f"Neurotorch TraceSelector bridge", "Failed to install TraceSelector. See the logs for more details and try to install it manually via pip (see documentation)")
             
+        def _task(task: Task):
+            logger.info(f"Installing TraceSelector into the current environment")
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "trace_selector", "--upgrade"], text=True)
+        Task(_task, name="Installing TraceSelector", run_async=True).set_indeterminate().add_callback(_callback).set_error_callback(_error_callback).start()
+
+    def ask_for_installation(self) -> bool:
+        """ Asks the user to install TraceSelector. Returns True if it is already installed and False otherwise """
+        
         if self.test_installation():
             return True
         if messagebox.askyesno(f"Neurotorch TraceSelector bridge", f"TraceSelector must be installed first. Do you want to install it now?"):
-            Task(self.install_trace_selector, name="Installing TraceSelector", run_async=True).set_indeterminate().add_callback(_callback).set_error_callback(_error_callback).start()
+            self.install_trace_selector()
         return False
 
     def ask_for_start(self) -> bool:
@@ -125,7 +132,8 @@ class TraceSelectorBridge:
         """ Exports the traces in the tab ROIFinder to TraceSelector """
         if not self.ask_for_start():
             return
-        assert TraceSelectorBridge.proc is not None and TraceSelectorBridge.proc.stdin is not None
+        if TraceSelectorBridge.proc is None or TraceSelectorBridge.proc.stdin is None:
+            return
         if (imgObj := self.session.active_image_object) is None:
             if self.session.root is not None:
                 self.session.root.bell()
@@ -141,6 +149,20 @@ class TraceSelectorBridge:
 
         TraceSelectorBridge.proc.stdin.write(f"open\t{str(path)}\n")
         TraceSelectorBridge.proc.stdin.flush()
+
+    def menu_test_installation_click(self) -> None:
+        if self.test_installation():
+            messagebox.showinfo(f"Neurotorch TraceSelector bridge", "TraceSelector is installed and ready")
+        else:
+            if messagebox.askyesno(f"Neurotorch TraceSelector bridge", "TraceSelector is not installed. Do you want to install it now?"):
+                self.install_trace_selector()
+
+    def menu_install_click(self) -> None:
+        if self.ask_for_installation():
+            if messagebox.askyesno(f"Neurotorch TraceSelector bridge", "TraceSelector is already installed. Do you want to update it?"):
+                self.install_trace_selector()
+
+            
 
 @SessionCreateEvent.hook
 def on_session_created(e: SessionCreateEvent):

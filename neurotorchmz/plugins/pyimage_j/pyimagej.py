@@ -1,4 +1,5 @@
 from neurotorchmz.core.session import *
+from neurotorchmz.gui import events as window_events
 
 import numpy as np
 import xarray
