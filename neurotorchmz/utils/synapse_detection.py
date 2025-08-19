@@ -242,7 +242,7 @@ class PolygonalSynapseROI(ISynapseROI):
     def __init__(self):
         super().__init__()
         self._coords: list[tuple[int, int]]|None = None
-        self._polygon: list[tuple[int, int]]|None = None
+        self._polygon: np.ndarray|None = None
 
     @property
     def coords(self) -> list[tuple[int, int]]|None:
@@ -255,20 +255,20 @@ class PolygonalSynapseROI(ISynapseROI):
         self.notify()
 
     @property
-    def polygon(self) -> list[tuple[int, int]]|None:
+    def polygon(self) -> np.ndarray|None:
         """ List of polygon points in the format [(Y, X), (Y, X), ..] """
         return self._polygon
     
     @polygon.setter
-    def polygon(self, val: list[tuple[int, int]]|None) -> None:
+    def polygon(self, val: np.ndarray|None) -> None:
         self._polygon = val
         self.notify()
 
-    def set_polygon(self, polygon: list[tuple[int, int]], coords: list[tuple[int, int]]|None = None, region_props: RegionProperties|None = None):
+    def set_polygon(self, polygon: np.ndarray, coords: list[tuple[int, int]]|None = None, region_props: RegionProperties|None = None):
         """
             Set the polygon by providing the coordinate tuples and either a) the pixel coords or b) a RegionProperties object (from which the coords are derived)
 
-            :param list[tuple[int, int]] polygon: The contour of the polygon in the format [(Y, X), (Y, X), ..]
+            :param np.ndarray[(int, 2), Any] polygon: The contour of the polygon in the format [(Y, X), (Y, X), ..]
             :param list[tuple[int, int]] coords: The pixel coordinates of the polygon in the format [(Y, X), (Y, X), ..]. Either it or a RegionProperties object must be given
             :param RegionPropertiers region_props: A region_props object. Either it or the coords must be given
         """
@@ -701,6 +701,7 @@ class DetectionResult:
         if df is None:
             return False
         df.to_csv(path_or_buf=path, lineterminator="\n", mode="w", index=(include_index))
+        logger.debug(f"Exported {len(df)} traces to '{path.name}'")
         return True
         
     def extend(self, synapses: Iterable[ISynapse], /) -> None:
@@ -840,7 +841,7 @@ class Thresholding(IDetectionAlgorithm):
         if not isinstance(imgLabeled, np.ndarray):
             raise RuntimeError(f"skimage.measure.label returned an unexpected result of type '{type(imgLabeled)}'")
         self.imgLabeled = imgLabeled
-        self.imgRegProps = measure.regionprops(self.imgLabeled)
+        self.imgRegProps = measure.regionprops(self.imgLabeled, intensity_image=img)
         synapses = []
         for i in range(len(self.imgRegProps)):
             props = self.imgRegProps[i]
@@ -893,12 +894,11 @@ class HysteresisTh(IDetectionAlgorithm):
                 if len(contours) != 1:
                     print(f"Error while Detecting using Advanced Polygonal Detection in label {i+1}; len(contour) = {len(contours)}, lowerThreshold = {lowerThreshold}, upperThreshold = {upperThreshold}, minArea = {minArea}")
                     raise DetectionError("While detecting ROIs, an unkown error happened (region with contour length greater than 1). Please refer to the log for help and provide the current image")
-                contour = contours[0][:, ::-1] # contours has shape ((Y, X), (Y, X), ...). Switch it to ((X, Y),...) 
+                contour = contours[0] # contours has shape ((Y, X), (Y, X), ...)
                 startX = region.bbox[1] - 1 #bbox has shape (Y1, X1, Y2, X2)
                 startY = region.bbox[0] - 1 # -1 As correction for the padding
-                contour[:, 0] = contour[:, 0] + startX
-                contour[:, 1] = contour[:, 1] + startY
-                contour = [(yx[0], yx[1]) for yx in contour]
+                contour[:, 0] = contour[:, 0] + startY
+                contour[:, 1] = contour[:, 1] + startX
                 synapse = PolygonalSynapseROI().set_polygon(polygon=contour, region_props=region)
                 rois.append(synapse)
 
@@ -997,17 +997,14 @@ class LocalMax(IDetectionAlgorithm):
             if radius is None:
                 assert region.image_filled is not None
                 contours = measure.find_contours(np.pad(region.image_filled, 1, constant_values=0), 0.9)
-                contour = contours[0]
+                contour = contours[0] # contours has shape ((Y, X), (Y, X), ...)
                 for c in contours: # Find the biggest contour and assume its the one wanted
                     if c.shape[0] > contour.shape[0]:
                         contour = c
-
-                contour = contour[:, ::-1] # contours has shape ((Y, X), (Y, X), ...). Switch it to ((X, Y),...) 
                 startX = region.bbox[1] - 1 #bbox has shape (Y1, X1, Y2, X2)
                 startY = region.bbox[0] - 1 # -1 As correction for the padding
                 contour[:, 0] = contour[:, 0] + startX
                 contour[:, 1] = contour[:, 1] + startY
-                contour = [(yx[0], yx[1]) for yx in contour]
                 synapse = PolygonalSynapseROI().set_polygon(polygon=contour, region_props=region)
             else:
                 y, x = region.centroid_weighted

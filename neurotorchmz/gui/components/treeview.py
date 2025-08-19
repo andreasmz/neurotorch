@@ -87,7 +87,7 @@ class SynapseTreeview(ttk.Treeview):
         self.detection_result.register_callback(lambda _1, _2, _3: self.sync_synapses())
 
         self._entryPopup = None
-        self._sync_task = Task(function=self._sync_synapses_task, name="syncing synapse treeview", run_async=True, keep_alive=True).set_indeterminate()
+        self._sync_task = Task(function=self._sync_synapses_task, name="syncing synapse treeview", run_async=True, keep_alive=True)
         self._not_in_sync: bool = False
         self.sync_synapses()
 
@@ -100,6 +100,7 @@ class SynapseTreeview(ttk.Treeview):
         self._sync_task.start()
 
     def _sync_synapses_task(self, task:Task):
+        task.set_indeterminate()
         while self._not_in_sync:
             self._not_in_sync = False
             synapses = dict(sorted(self.detection_result.as_dict().items(), key=lambda v: (not v[1].staged, v[1].location_y if v[1].location_y is not None else 0, v[1].location_x if v[1].location_x is not None else 0)))
@@ -456,12 +457,13 @@ class SynapseTreeview(ttk.Treeview):
             self.session.root.bell()
             return
         path = filedialog.asksaveasfilename(title=f"Neurotorch: Select a path to export the multi measure", filetypes=(("CSV", "*.csv"), ("All files", "*.*")), defaultextension="*.csv")
-        if path is None or path == "" or not (path := Path(path)).exists():
+        if path is None or path == "" or not (path := Path(path)).parent.exists():
             self.session.root.bell()
             return
         if not self.detection_result.export_traces(path, imgObj):
             logger.warning(f"Failed to export the traces to TraceSelector")
             messagebox.showwarning(f"Neurotorch", "Failed to export the traces to TraceSelector")
+        messagebox.showinfo("Neurotorch", f"Exported the traces to '{str(path.resolve())}'")
 
     def clear_synapses(self, target: Literal['staged', 'non_staged', 'all']):
         match(target):

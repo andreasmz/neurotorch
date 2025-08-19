@@ -211,7 +211,7 @@ class TabROIFinder(Tab):
             ax.set_axis_off()
         
         if imgObj is None or imgObj.img is None or imgObj.img_diff is None or (_img := imgObj.img_view(ImageView.SPATIAL).mean_image) is None:
-            #self.invoke_update(TabROIFinder_InvalidateEvent(rois=True))
+            self.invalidate_ROIs()
             return
         
         self.ax1Image = self.ax1.imshow(_img, cmap="Greys_r") 
@@ -225,7 +225,7 @@ class TabROIFinder(Tab):
             self.ax2_colorbar = self.figure1.colorbar(self.ax2Image, ax=self.ax2)
             self.ax2.set_axis_on()
 
-        #self.invoke_update(TabROIFinder_InvalidateEvent(rois=True))
+        self.invalidate_ROIs()
 
 
     def invalidate_ROIs(self):
@@ -253,8 +253,8 @@ class TabROIFinder(Tab):
                     c = patches.Circle((cast(float, roi.location_x), cast(float, roi.location_y)), roi.radius+0.5, color="red", fill=False)
                     c2 = patches.Circle((cast(float, roi.location_x), cast(float, roi.location_y)), roi.radius+0.5, color="green", fill=False)
                 elif isinstance(roi, detection.PolygonalSynapseROI) and roi.polygon is not None:
-                    c = patches.Polygon(roi.polygon, color="red", fill=False)
-                    c2 = patches.Polygon(roi.polygon, color="green", fill=False)
+                    c = patches.Polygon(roi.polygon[:, ::-1], color="red", fill=False)
+                    c2 = patches.Polygon(roi.polygon[:, ::-1], color="green", fill=False)
                 else:
                     continue
                 if _ax1HasImage:

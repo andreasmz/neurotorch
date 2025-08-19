@@ -297,7 +297,8 @@ class ImageJHandler:
                 roi_count += 1
             elif isinstance(roi, PolygonalSynapseROI):
                 if roi.polygon is None: continue
-                roi = ImageJHandler.PolygonRoi(roi.polygon[:, 0]+0.5, roi.polygon[:, 1]+0.5, ImageJHandler.Roi.POLYGON) # type: ignore
+                roi.polygon
+                roi = roi = ImageJHandler.PolygonRoi(roi.polygon[:, 1]+0.5, roi.polygon[:, 0]+0.5, ImageJHandler.Roi.POLYGON) # type: ignore
                 roi.setName(name)
                 ImageJHandler.RM.addRoi(roi) # type: ignore
                 roi_count += 1

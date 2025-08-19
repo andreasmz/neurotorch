@@ -143,7 +143,14 @@ class Neurotorch_GUI:
             if not p.__package__:
                 logger.error(f"It seems like '{p.__plugin_name__}' is not a package")
             self.plugin_menus[p] = plugin_menu
-            ToolTip(plugin_menu, msg=p.__plugin_desc__, follow=True, delay=0.5)
+
+            menu_about = tk.Menu(plugin_menu,tearoff=0)
+            plugin_menu.add_cascade(label="About", menu=menu_about)
+            menu_about.add_command(label=f"Author: {p.__author__}")
+            menu_about.add_command(label=f"Version: {p.__version__}")
+            menu_about.add_command(label=f"Description: {p.__plugin_desc__}")
+            
+
 
         # About menu
         self.menu_about.add_command(label="About", command=self.menu_neurotorch_about_click)
