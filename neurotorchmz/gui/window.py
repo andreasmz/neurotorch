@@ -168,7 +168,7 @@ class Neurotorch_GUI:
         self.tabs[TabImage] = TabImage(self.session, self.root, self.tabMain)
         self.tabs[TabSignal] = TabSignal(self.session, self.root, self.tabMain)
         self.tabs[TabROIFinder] = TabROIFinder(self.session, self.root, self.tabMain)
-        #self.tabs[TabAnalysis] = TabAnalysis(self.session, self.root, self.tabMain)
+        self.tabs[TabAnalysis] = TabAnalysis(self.session, self.root, self.tabMain)
         for t in self.tabs.values(): t.init()
         self.tabMain.select(self.tabs[TabImage].tab)
         self.root.protocol("WM_DELETE_WINDOW", self._on_closing)
@@ -598,4 +598,4 @@ from ..gui.tabWelcome import TabWelcome
 from neurotorchmz.gui.tab1 import TabImage
 from neurotorchmz.gui.tab2 import TabSignal
 from neurotorchmz.gui.tab3 import TabROIFinder
-# from neurotorchmz.gui.tabAnalysis import TabAnalysis
+from neurotorchmz.gui.tabAnalysis import TabAnalysis

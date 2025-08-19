@@ -190,10 +190,7 @@ class TabROIFinder(Tab):
 
     def invalidate_image(self):
         imgObj = self.active_image_object
-
-        if self.detectionAlgorithm is None:
-            return
-
+        
         self.detectionAlgorithm.update(image_prop=self.current_input_image)
 
         self.ax2.set_title("Delta Video")
