@@ -35,7 +35,7 @@ class ImageJHandler:
     
     # Event hooks
 
-    def on_window_loaded(self, e: window_events.WindowLoadedEvent) -> None:
+    def on_window_loaded(self, e: "window_events.WindowLoadedEvent") -> None:
         """ Creates the GUI elements for this plugin. Is only called from WindowLoadedEvent in GUI mode """
         global tk, messagebox, filedialog, window, TabROIFinder_InvalidateEvent
         global plugin_module
@@ -361,7 +361,7 @@ class ImageJHandler:
 
     # Synapse Treeview
 
-    def on_synapse_tv_context_menu_create(self, e: window_events.SynapseTreeviewContextMenuEvent):
+    def on_synapse_tv_context_menu_create(self, e: "window_events.SynapseTreeviewContextMenuEvent"):
         e.import_context_menu.add_command(label="Import from Fiji/ImageJ", command=self.import_rois_into_roifinder)
         e.export_context_menu.add_command(label="Export to Fiji/ImageJ", command=self.export_rois_from_roifinder)
 

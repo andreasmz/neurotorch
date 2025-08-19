@@ -17,7 +17,7 @@ class TraceSelectorBridge:
         window_events.WindowLoadedEvent.register(self.on_window_loaded)
         window_events.SynapseTreeviewContextMenuEvent.register(self.on_tv_context_menu_created)
 
-    def on_window_loaded(self, e: window_events.WindowLoadedEvent) -> None:
+    def on_window_loaded(self, e: "window_events.WindowLoadedEvent") -> None:
         assert e.session.window is not None
         self.menu_settings = tk.Menu(e.session.window.menu_settings, tearoff=0)
         self.menu_plugin = e.menu_plugins(plugin_manager.get_module())
@@ -27,7 +27,7 @@ class TraceSelectorBridge:
         self.menu_plugin.add_command(label="Install dependencies", command=self.ask_for_installation)
         self.menu_plugin.add_command(label="Terminate TraceSelector", command=self.kill_trace_selector)
 
-    def on_tv_context_menu_created(self, e: window_events.SynapseTreeviewContextMenuEvent) -> None:
+    def on_tv_context_menu_created(self, e: "window_events.SynapseTreeviewContextMenuEvent") -> None:
         e.export_context_menu.add_command(label="Open in TraceSelector", command=lambda:self.export_roifinder_traces(e.detection_result))
 
     def test_installation(self) -> bool:
