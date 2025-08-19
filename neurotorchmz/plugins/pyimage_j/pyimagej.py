@@ -15,21 +15,17 @@ class ImageJHandler:
         Provides a connection between Neurotorch and Fiji/ImageJ using pyimageJ
     """
 
+    ij = None
+    OvalRoi = None # jimport('ij.gui.OvalRoi')
+    PolygonRoi = None # jimport('ij.gui.PolygonRoi')
+    Roi = None # ImageJHandler.Roi = jimport('ij.gui.Roi')
+    RM = None # Roi Manager
+    IJ_Plugin_Duplicator = None
+    headless: bool = False
+    ij_start_task: Task|None = None
+
     def __init__(self, session: Session):
-        self.ij = None
-        self.headless: bool = False
         self.session = session
-        self.task: Task|None = None
-
-        # Java imports from ImageJ
-        self.OvalRoi = None # jimport('ij.gui.OvalRoi')
-        self.PolygonRoi = None # jimport('ij.gui.PolygonRoi')
-        self.Roi = None # self.Roi = jimport('ij.gui.Roi')
-        self.IJ_Plugin_Duplicator = None
-
-        # Image J Objects
-        self.RM = None # Roi Manager
-
         gui_events.WindowLoadedEvent.register(self.on_window_loaded)
         gui_events.SynapseTreeviewContextMenuEvent.register(self.on_synapse_tv_context_menu_create)
 
@@ -79,6 +75,12 @@ class ImageJHandler:
 
     def start_imageJ(self, headless: bool = False):
         """ Starts pyImageJ and connects to the local installation. Before start, the installation is rudimentary checked"""
+        if ImageJHandler.ij is not None:
+            logger.warning(f"Failed to start Fiji/ImageJ: An instance is already runnin")
+            if self.root is not None:
+                messagebox.showwarning("Neurotorch: Fiji/ImageJ bridge", "Failed to start Fiji/ImageJ: An instance is already running")
+            return
+    
         if not self.validate_imagej_path() and self.root is not None:
             self.ask_for_imagej_path()
         if not self.validate_imagej_path():
@@ -93,12 +95,6 @@ class ImageJHandler:
         if not maven_installed:
             missing_components.append("apache-maven")
 
-        if self.ij is not None:
-            logger.warning(f"Failed to start Fiji/ImageJ: An instance is already runnin")
-            if self.root is not None:
-                messagebox.showwarning("Neurotorch: Fiji/ImageJ bridge", "Failed to start Fiji/ImageJ: An instance is already running")
-            return
-
         if len(missing_components) > 0:
             for mc in missing_components:
                 logger.warning(f"Failed to locate '{mc}'. Check if the binaries are included in PATH")
@@ -110,34 +106,25 @@ class ImageJHandler:
                                        + "For more details, refer to the documentation " + settings.documentation_url)
             return
         
-        # try:
-        #     from scyjava import jimport
-        #     import imagej
-        # except ModuleNotFoundError as ex:
-        #     logger.error("Failed to start the Fiji/ImageJ bridge: pyimagej seems to be not installed", exc_info=True)
-        #     if self.root is not None:
-        #         messagebox.showerror("Neurotorch: Fiji/ImageJ bridge", "It seems that pyimagej is not installed")
-        #     return
-        
-        if self.task is not None:
+        if ImageJHandler.ij_start_task is not None:
             logger.warning("Failed to start the Fiji/ImageJ bridge: An instance is already running")
             if self.root is not None:
                 messagebox.showinfo("Neurotorch: Fiji/ImageJ bridge", "Failed to start Fiji/ImageJ: An instance is already running")
             return
         
-        self.headless = headless
+        ImageJHandler.headless = headless
 
         def _start_imageJ_Thread(task: Task, path_imagej: Path):
             try:
-                self.ij = imagej.init(path_imagej, mode=(imagej.Mode.HEADLESS if headless else imagej.Mode.INTERACTIVE), add_legacy=False)
-                if not self.ij:
+                ImageJHandler.ij = imagej.init(path_imagej, mode=(imagej.Mode.HEADLESS if headless else imagej.Mode.INTERACTIVE), add_legacy=False)
+                if not ImageJHandler.ij:
                     return
-                self.OvalRoi = jimport('ij.gui.OvalRoi')
-                self.PolygonRoi = jimport('ij.gui.PolygonRoi')
-                self.Roi = jimport('ij.gui.Roi')
-                self.IJ_Plugin_Duplicator = jimport('ij.plugin.Duplicator')
+                ImageJHandler.OvalRoi = jimport('ij.gui.OvalRoi')
+                ImageJHandler.PolygonRoi = jimport('ij.gui.PolygonRoi')
+                ImageJHandler.Roi = jimport('ij.gui.Roi')
+                ImageJHandler.IJ_Plugin_Duplicator = jimport('ij.plugin.Duplicator')
                 if not headless:
-                    self.ij.ui().showUI() # type: ignore
+                    ImageJHandler.ij.ui().showUI() # type: ignore
             except Exception as ex:
                 logger.error("Failed to start Fiji/ImageJ:", exc_info=True)
                 task.error = Exception("Failed to start Fiji/ImageJ")
@@ -149,8 +136,8 @@ class ImageJHandler:
 
         if self.session.window is not None:
             self.session.window.menu_run.entryconfig("Start Fiji/ImageJ", state="disabled")
-        self.task = Task(_start_imageJ_Thread, "starting Fiji/ImageJ").set_indeterminate().set_error_callback(self._loading_error_callback)
-        self.task.start(path_imagej=settings.UserSettings.IMAGEJ.imagej_path.get())
+        ImageJHandler.ij_start_task = Task(_start_imageJ_Thread, "starting Fiji/ImageJ").set_indeterminate().set_error_callback(self._loading_error_callback)
+        ImageJHandler.ij_start_task.start(path_imagej=settings.UserSettings.IMAGEJ.imagej_path.get())
 
     def validate_imagej_path(self) -> bool:
         path = settings.UserSettings.IMAGEJ.imagej_path.get()
@@ -174,13 +161,13 @@ class ImageJHandler:
 
     def import_image(self) -> Task|None:
         """ Load an image from ImageJ into Neurotorch """
-        if self.ij is None:
+        if ImageJHandler.ij is None:
             logger.warning(f"Attempted to import from Fiji/ImageJ before it was initialized. Run start_imageJ() first")
             if self.root is not None:
                 messagebox.showerror("Neurotorch", "Fiji/ImageJ must first be started before it can be used")
             return None
-        _img = self.ij.py.active_xarray()
-        _imgIP = self.ij.py.active_imageplus()
+        _img = ImageJHandler.ij.py.active_xarray()
+        _imgIP = ImageJHandler.ij.py.active_imageplus()
         if _img is None or _imgIP is None:
             if self.root is not None:
                 self.root.bell()
@@ -202,7 +189,7 @@ class ImageJHandler:
 
     def export_img(self, asCopy = False) -> None:
         """ Export the active image to ImageJ """
-        if self.ij is None:
+        if ImageJHandler.ij is None:
             logger.warning(f"Attempted to export to Fiji/ImageJ before it was initialized. Run start_imageJ() first")
             if self.root is not None:
                 messagebox.showerror("Neurotorch", "Fiji/ImageJ must first be started before it can be used")
@@ -213,19 +200,19 @@ class ImageJHandler:
                 self.root.bell()
             return
         xImg = xarray.DataArray(imgObj.img, name=f"{imgObj.name}", dims=("pln", "row", "col"))
-        javaImg = self.ij.py.to_imageplus(xImg)
+        javaImg = ImageJHandler.ij.py.to_imageplus(xImg)
         if asCopy:
-            javaImg = self.IJ_Plugin_Duplicator().run(javaImg) # type: ignore
+            javaImg = ImageJHandler.IJ_Plugin_Duplicator().run(javaImg) # type: ignore
         min = imgObj.img_props.minClipped
         max = imgObj.img_props.max
-        if not self.headless:
-            self.ij.ui().show(javaImg)  
-            self.ij.py.run_macro(f"setMinAndMax({min}, {max});")
+        if not ImageJHandler.headless:
+            ImageJHandler.ij.ui().show(javaImg)  
+            ImageJHandler.ij.py.run_macro(f"setMinAndMax({min}, {max});")
         logger.info(f"Exported image '{imgObj.name}' to Fiji/ImageJ")
 
     def export_img_diff(self, asCopy = False) -> None:
         """ Export the active imageDiff to ImageJ"""
-        if self.ij is None:
+        if ImageJHandler.ij is None:
             logger.warning(f"Attempted to export to Fiji/ImageJ before it was initialized. Run start_imageJ() first")
             if self.root is not None:
                 messagebox.showerror("Neurotorch", "Fiji/ImageJ must first be started before it can be used")
@@ -236,28 +223,28 @@ class ImageJHandler:
                 self.root.bell()
             return
         xDiffImg = xarray.DataArray(np.clip(imgObj.img_diff, a_min=0, a_max=None).astype("uint16"), name=f"{imgObj.name} (diff)", dims=("pln", "row", "col"))
-        javaDiffImg = self.ij.py.to_imageplus(xDiffImg)
+        javaDiffImg = ImageJHandler.ij.py.to_imageplus(xDiffImg)
         if asCopy:
-            javaDiffImg = self.IJ_Plugin_Duplicator().run(javaDiffImg) # type: ignore
+            javaDiffImg = ImageJHandler.IJ_Plugin_Duplicator().run(javaDiffImg) # type: ignore
         
         min = imgObj.img_diff_props.minClipped
         max = imgObj.img_diff_props.max
-        if not self.headless:
-            self.ij.ui().show(javaDiffImg)
-            self.ij.py.run_macro(f"setMinAndMax({min}, {max});")
+        if not ImageJHandler.headless:
+            ImageJHandler.ij.ui().show(javaDiffImg)
+            ImageJHandler.ij.py.run_macro(f"setMinAndMax({min}, {max});")
         logger.info(f"Exported img_diff '{imgObj.name}' to Fiji/ImageJ")
 
     def import_rois(self) -> list[tuple[ISynapseROI, str]]|None:
         """ Import ROIs from ImageJ """
-        if self.ij is None:
+        if ImageJHandler.ij is None:
             raise RuntimeError("Attempted to import ROIs from Fiji/ImageJ before it was initialized. Run start_imageJ() first")
         self.open_roi_manager()
         _warningFlags = []
-        ij_rois = self.RM.getRoisAsArray()  # type: ignore
+        ij_rois = ImageJHandler.RM.getRoisAsArray()  # type: ignore
         rois: list[tuple[ISynapseROI, str]] = []
         for roi in ij_rois:
             name = str(roi.getName())
-            if not isinstance(roi, self.OvalRoi): # type: ignore
+            if not isinstance(roi, ImageJHandler.OvalRoi): # type: ignore
                 _warningFlags.append(f"{name}: Can't import non oval shapes and therefore skipped this ROIs")
                 continue
             if (roi.getFloatHeight() - roi.getFloatWidth()) > 1e-6:
@@ -278,14 +265,10 @@ class ImageJHandler:
         logger.info(f"Imported {len(rois)} from ImageJ")
         return rois
 
-    def export_rois(self, synapses: list[ISynapse]):
+    def export_synapses(self, synapses: list[ISynapse]):
         """ Export ISynapses (and their ROIs) to ImageJ """
-        if self.ij is None:
+        if ImageJHandler.ij is None:
             raise RuntimeError("Attempted to import ROIs from Fiji/ImageJ before it was initialized. Run start_imageJ() first")
-        if synapses is None or len(synapses) == 0:
-            if self.root is not None:
-                self.root.bell()
-            return
         self.open_roi_manager()
 
         if len([s for s in synapses if len(s.rois) > 1]) != 0:
@@ -308,15 +291,15 @@ class ImageJHandler:
             
             if isinstance(roi, CircularSynapseROI):
                 if roi.radius is None: continue
-                roi = self.OvalRoi(roi.location[0]-roi.radius, roi.location[1]-roi.radius, 2*roi.radius+1, 2*roi.radius+1) # type: ignore
+                roi = ImageJHandler.OvalRoi(roi.location[0]-roi.radius, roi.location[1]-roi.radius, 2*roi.radius+1, 2*roi.radius+1) # type: ignore
                 roi.setName(name)
-                self.RM.addRoi(roi) # type: ignore
+                ImageJHandler.RM.addRoi(roi) # type: ignore
                 roi_count += 1
             elif isinstance(roi, PolygonalSynapseROI):
                 if roi.polygon is None: continue
-                roi = self.PolygonRoi(roi.polygon[:, 0]+0.5, roi.polygon[:, 1]+0.5, self.Roi.POLYGON) # type: ignore
+                roi = ImageJHandler.PolygonRoi(roi.polygon[:, 0]+0.5, roi.polygon[:, 1]+0.5, ImageJHandler.Roi.POLYGON) # type: ignore
                 roi.setName(name)
-                self.RM.addRoi(roi) # type: ignore
+                ImageJHandler.RM.addRoi(roi) # type: ignore
                 roi_count += 1
             else:
                 continue
@@ -333,18 +316,18 @@ class ImageJHandler:
 
     def export_rois_from_roifinder(self) -> None:
         synapses = self.session.roifinder_detection_result.to_list()
-        self.export_rois(synapses)
+        self.export_synapses(synapses)
 
     def open_roi_manager(self) -> None:
         """ Opens the ROI Manager """
-        if self.ij is None:
+        if ImageJHandler.ij is None:
             logger.warning(f"Fiji/ImageJ bridge: Attempted to open the ROI manager before ij was initialized. Run start_imageJ() first")
             if self.root is not None:
                 messagebox.showerror("Neurotorch", "Fiji/ImageJ must first be started before it can be used")
             return None
-        if not self.headless:
-            self.ij.py.run_macro("roiManager('show all');")
-        self.RM = self.ij.RoiManager.getRoiManager()
+        if not ImageJHandler.headless:
+            ImageJHandler.ij.py.run_macro("roiManager('show all');")
+        ImageJHandler.RM = ImageJHandler.ij.RoiManager.getRoiManager()
 
     # GUI functions
 
@@ -383,36 +366,13 @@ class ImageJHandler:
         e.import_context_menu.add_command(label="Import from Fiji/ImageJ", command=self.import_rois_into_roifinder)
         e.export_context_menu.add_command(label="Export to Fiji/ImageJ", command=self.export_rois_from_roifinder)
 
-    # def ImportROIsImageJ(self):
-    #     if self.session.ijH is None or self.session.ijH.ij is None:
-    #         messagebox.showerror("Neurotorch", "You must first start Fiji/ImageJ")
-    #         return
-    #     res = self.session.ijH.import_rois()
-    #     if res is None:
-    #         self.root.bell()
-    #         return
-    #     rois, names = res[0], res[1]
-    #     if len(rois) == 0:
-    #         self.root.bell()
-    #         return
-    #     synapses = self.detection_result.synapses_dict
-    #     for i in range(len(rois)):
-    #         s = SingleframeSynapse(rois[i]).set_name(names[i])
-    #         synapses[s.uuid] = s
-    #     self.SyncSynapses()
-    #     self._updateCallback()
-
-    # def ExportROIsImageJ(self):
-    #     if self.session.ijH is None or self.session.ijH.ij is None:
-    #         messagebox.showerror("Neurotorch", "You must first start Fiji/ImageJ")
-    #         return
-    #     self.session.ijH.export_ROIS(list(self.detection_result.synapses_dict.values()))
-
     # Callbacks
 
     def _imageJ_ready(self):
         """ Internal callback triggered when ImageJ is successfully loaded """
-        assert self.session.window is not None
+        ImageJHandler.ij_start_task = None
+        if self.session.window is None:
+            return
         self.session.window.menu_file_import.entryconfig("From Fiji/ImageJ (video)", state="normal")
         self.session.window.menu_file_import.entryconfig("From Fiji/ImageJ (ROIs)", state="normal")
         self.session.window.menu_file_export.entryconfig("To Fiji/ImageJ (video)", state="normal")
@@ -424,7 +384,7 @@ class ImageJHandler:
         """ Internal callback on an error when loading ImageJ to reset the start Button"""
         if self.session.window is not None:
             self.session.window.menu_run.entryconfig("Start Fiji/ImageJ", state="normal")
-        self.task = None
+        ImageJHandler.ij_start_task = None
 
 @SessionCreateEvent.hook
 def on_session_created(e: SessionCreateEvent):
