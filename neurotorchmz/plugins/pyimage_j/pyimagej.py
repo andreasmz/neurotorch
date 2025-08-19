@@ -247,15 +247,14 @@ class ImageJHandler:
             self.ij.py.run_macro(f"setMinAndMax({min}, {max});")
         logger.info(f"Exported img_diff '{imgObj.name}' to Fiji/ImageJ")
 
-    def import_rois(self) -> tuple[list[ISynapseROI], list[str]]|None:
+    def import_rois(self) -> list[tuple[ISynapseROI, str]]|None:
         """ Import ROIs from ImageJ """
         if self.ij is None:
             raise RuntimeError("Attempted to import ROIs from Fiji/ImageJ before it was initialized. Run start_imageJ() first")
         self.open_roi_manager()
         _warningFlags = []
         ij_rois = self.RM.getRoisAsArray()  # type: ignore
-        rois = []
-        names = []
+        rois: list[tuple[ISynapseROI, str]] = []
         for roi in ij_rois:
             name = str(roi.getName())
             if not isinstance(roi, self.OvalRoi): # type: ignore
@@ -268,8 +267,7 @@ class ImageJHandler:
             r = int((h+w)/4-1/2)
             center = (x + (w-1)/2, y + (h-1)/2)
             _cr =  CircularSynapseROI().set_location(x=int(round(center[0],0)), y=int(round(center[1], 0))).set_radius(r)
-            rois.append(_cr)
-            names.append(name)
+            rois.append((_cr, name))
         if len(_warningFlags) > 0:
             flag_str = '\n'.join(['- ' + x for x in _warningFlags])
             if self.root is not None:
@@ -278,7 +276,7 @@ class ImageJHandler:
             else:
                 logger.warning(f"Importing ROIs from ImageJ raised the following warnings:\n{flag_str}")
         logger.info(f"Imported {len(rois)} from ImageJ")
-        return (rois, names)
+        return rois
 
     def export_rois(self, synapses: list[ISynapse]):
         """ Export ISynapses (and their ROIs) to ImageJ """
@@ -325,26 +323,16 @@ class ImageJHandler:
         logger.info(f"Exported {roi_count} ROIs to Fiji/ImageJ")
 
     def import_rois_into_roifinder(self):
-        res = self.import_rois()
-        if res is None:
+        rois = self.import_rois()
+        if rois is None or len(rois) == 0:
             if self.root is not None:
                 self.root.bell()
             return
-        rois, names = res[0], res[1]
-        if len(rois) == 0:
-            if self.root is not None:
-                self.root.bell()
-            return
-        synapses = self.session.roifinder_detection_result.synapses_dict
-        for i in range(len(rois)):
-            s = SingleframeSynapse(rois[i]).set_name(names[i])
-            synapses[s.uuid] = s
-        if self.session.window is not None:
-            self.session.window.invoke_tab_update_event(window.UpdateRoiFinderDetectionResultEvent())
-            self.session.window.invoke_tab_update_event(TabROIFinder_InvalidateEvent(rois=True))
+        synapses = [SingleframeSynapse(r).set_name(name) for r,name in rois]
+        self.session.roifinder_detection_result.extend(synapses)
 
     def export_rois_from_roifinder(self) -> None:
-        synapses = list(self.session.roifinder_detection_result.synapses_dict.values())
+        synapses = self.session.roifinder_detection_result.to_list()
         self.export_rois(synapses)
 
     def open_roi_manager(self) -> None:
