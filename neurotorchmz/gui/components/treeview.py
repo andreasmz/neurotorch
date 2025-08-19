@@ -87,7 +87,8 @@ class SynapseTreeview(ttk.Treeview):
         self.detection_result.register_callback(lambda _1, _2, _3: self.sync_synapses())
 
         self._entryPopup = None
-        self._sync_task = Task(function=self._sync_synapses_task, name="syncing synapse treeview", run_async=True, keep_alive=True)
+        self._sync_task = Task(function=self._sync_synapses_task, name="syncing synapse treeview", run_async=True, keep_alive=True).set_indeterminate()
+        self._not_in_sync: bool = False
         self.sync_synapses()
 
     def pack(self, **kwargs):
@@ -95,47 +96,47 @@ class SynapseTreeview(ttk.Treeview):
 
     def sync_synapses(self):
         """ Display the given list of ISynapse in the treeview. Updates existing values to keep the scrolling position. """
+        self._not_in_sync = True
         self._sync_task.start()
 
     def _sync_synapses_task(self, task:Task):
-        task.set_indeterminate()
-        if self._entryPopup is not None:
-            self._entryPopup.destroy()   
-            self._entryPopup = None
-        synapses = dict(sorted(self.detection_result.as_dict().items(), key=lambda v: (not v[1].staged, v[1].location_y if v[1].location_y is not None else 0, v[1].location_x if v[1].location_x is not None else 0)))
+        while self._not_in_sync:
+            self._not_in_sync = False
+            synapses = dict(sorted(self.detection_result.as_dict().items(), key=lambda v: (not v[1].staged, v[1].location_y if v[1].location_y is not None else 0, v[1].location_x if v[1].location_x is not None else 0)))
 
-        for _uuid in ((uuidsOld := set(self.get_children(''))) - (uuidsNew := set(synapses.keys()))):
-            self.delete(_uuid) # Delete removed entries
-        for _uuid in (uuidsNew - uuidsOld):
-            isSingleframe = isinstance(synapses[_uuid], SingleframeSynapse)
-            self.insert('', 'end', iid=_uuid, text='', open=(not isSingleframe)) # Create template node for newly added entries
-        synapse_index = 1 # Index to label synapses without a name
-        for i, (_uuid, s) in enumerate(synapses.items()):
-            if self.index(_uuid) != i: # Keep the order the same as in the list
-                self.move(_uuid, '', i)
-            name = s.name
-            if name is None:
-                name = f"Synapse {synapse_index}"
-                synapse_index += 1
-            isSingleframe = isinstance(s, SingleframeSynapse)
-            self.item(_uuid, text=name)
-            self.item(_uuid, values=[s.get_roi_description()])
-            self.item(_uuid, tags=(("staged_synapse",) if s.staged else ()))
+            for _uuid in ((uuidsOld := set(self.get_children(''))) - (uuidsNew := set(synapses.keys()))):
+                self.delete(_uuid) # Delete removed entries
+            for _uuid in (uuidsNew - uuidsOld):
+                isSingleframe = isinstance(synapses[_uuid], SingleframeSynapse)
+                self.insert('', 'end', iid=_uuid, text='', open=(not isSingleframe)) # Create template node for newly added entries
+            synapse_index = 1 # Index to label synapses without a name
+            for i, (_uuid, s) in enumerate(synapses.items()):
+                if self.index(_uuid) != i: # Keep the order the same as in the list
+                    self.move(_uuid, '', i)
+                name = s.name
+                if name is None:
+                    name = f"Synapse {synapse_index}"
+                    synapse_index += 1
+                isSingleframe = isinstance(s, SingleframeSynapse)
+                self.item(_uuid, text=name)
+                self.item(_uuid, values=[s.get_roi_description()])
+                self.item(_uuid, tags=(("staged_synapse",) if s.staged else ()))
 
-            # Now the same procedure for the ISynapseROIs
-            rois = dict(sorted(s.rois.as_dict().items(), key=lambda item: item[1].frame if item[1].frame is not None else -1))
-            for _ruuid in ((uuidsOld := set(self.get_children(_uuid))) - (uuidsNew := set(rois.keys()))):
-                self.delete(_ruuid)
-            for _ruuid in (uuidsNew - uuidsOld):
-                self.insert(_uuid, 'end', iid=_ruuid, text='', open=isSingleframe)
+                # Now the same procedure for the ISynapseROIs
+                rois = dict(sorted(s.rois.as_dict().items(), key=lambda item: item[1].frame if item[1].frame is not None else -1))
+                for _ruuid in ((uuidsOld := set(self.get_children(_uuid))) - (uuidsNew := set(rois.keys()))):
+                    self.delete(_ruuid)
+                for _ruuid in (uuidsNew - uuidsOld):
+                    self.insert(_uuid, 'end', iid=_ruuid, text='', open=isSingleframe)
 
-            for si, (_ruuid, r) in enumerate(rois.items()):
-                if self.index(_ruuid) != si:
-                    self.move(_ruuid, _uuid, si)
-                self._update_ISynapseROI(r)
-        if len(self.get_children('')) == 0:
-            self.btnRemove.config(state="disabled")
-            self.btnStage.config(state="disabled")
+                for si, (_ruuid, r) in enumerate(rois.items()):
+                    if self.index(_ruuid) != si:
+                        self.move(_ruuid, _uuid, si)
+                    self._update_ISynapseROI(r)
+            if len(self.get_children('')) == 0:
+                self.btnRemove.config(state="disabled")
+                self.btnStage.config(state="disabled")
+
 
     def get_synapse_by_row_id(self, rowid: str) -> tuple[ISynapse|None, ISynapseROI|None]:
         """ 
@@ -214,6 +215,7 @@ class SynapseTreeview(ttk.Treeview):
         try: 
             if self._entryPopup is not None:
                 self._entryPopup.destroy()
+                self._entryPopup = None
         except AttributeError:
             pass    
         rowid = self.identify_row(event.y)

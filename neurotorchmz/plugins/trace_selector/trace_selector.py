@@ -24,7 +24,7 @@ class TraceSelectorBridge:
         self.menu_settings = tk.Menu(e.session.window.menu_settings, tearoff=0)
         self.menu_plugin = e.menu_plugins(plugin_manager.get_module())
 
-        e.session.window.menu_run.add_command(label="Start TraceSelector", command=self.ask_for_start)
+        e.session.window.menu_run.add_command(label="Start TraceSelector", command=self.start_trace_selector)
         self.menu_plugin.add_command(label="Test installation", command=self.menu_test_installation_click)
         self.menu_plugin.add_command(label="Install dependencies", command=self.menu_install_click)
         self.menu_plugin.add_command(label="Kill TraceSelector task", command=self.kill_trace_selector)
@@ -70,6 +70,8 @@ class TraceSelectorBridge:
 
     def kill_trace_selector(self):
         if TraceSelectorBridge.proc is None or not self.is_trace_selector_running():
+            if self.session.root is not None:
+                self.session.root.bell()
             return
         TraceSelectorBridge.proc.terminate()
         TraceSelectorBridge.proc = None
@@ -125,7 +127,7 @@ class TraceSelectorBridge:
             return False
         
         if messagebox.askyesno(f"Neurotorch TraceSelector bridge", f"You must first start TraceSelector. Do you want to start it now?"):
-            Task(self.start_trace_selector, name="Starting TraceSelector", run_async=True).set_indeterminate().set_error_callback(_error_callback).start()
+            Task(lambda t: self.start_trace_selector(), name="Starting TraceSelector", run_async=True).set_indeterminate().set_error_callback(_error_callback).start()
         return False
 
     def export_roifinder_traces(self, detection_result: DetectionResult):
@@ -142,9 +144,20 @@ class TraceSelectorBridge:
         name = imgObj.name if imgObj.name != "" else "Neurotorch_Export" 
         path = pathlib.Path(settings.tmp_path) / f"{name}.csv"
 
+        if len(detection_result) == 0:
+            if self.session.root is not None:
+                messagebox.showinfo(f"Neurotorch TraceSelector bridge", "There are no ROIs to export")
+            return
+        
+        if imgObj.img is None:
+            if self.session.root is not None:
+                messagebox.showinfo(f"Neurotorch TraceSelector bridge", "Can not export traces without an open image")
+            return
+
         if not detection_result.export_traces(path, imgObj):
             logger.warning(f"Failed to export the traces to TraceSelector")
-            messagebox.showwarning(f"Neurotorch", "Failed to export the traces to TraceSelector")
+            if self.session.root is not None:
+                messagebox.showwarning(f"Neurotorch TraceSelector bridge", "Failed to export the traces to TraceSelector")
             return
 
         TraceSelectorBridge.proc.stdin.write(f"open\t{str(path)}\n")
