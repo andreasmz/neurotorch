@@ -1003,8 +1003,8 @@ class LocalMax(IDetectionAlgorithm):
                         contour = c
                 startX = region.bbox[1] - 1 #bbox has shape (Y1, X1, Y2, X2)
                 startY = region.bbox[0] - 1 # -1 As correction for the padding
-                contour[:, 0] = contour[:, 0] + startX
-                contour[:, 1] = contour[:, 1] + startY
+                contour[:, 0] = contour[:, 0] + startY
+                contour[:, 1] = contour[:, 1] + startX
                 synapse = PolygonalSynapseROI().set_polygon(polygon=contour, region_props=region)
             else:
                 y, x = region.centroid_weighted
