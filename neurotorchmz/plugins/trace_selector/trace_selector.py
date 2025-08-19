@@ -3,63 +3,49 @@ from tkinter import messagebox, filedialog
 import subprocess
 import pathlib
 import threading
+import importlib.util
 
 from neurotorchmz.core.session import *
-from neurotorchmz.gui.tab3 import TabROIFinder
-
-
-@window_events.WindowLoadedEvent.hook
-def on_window_loaded(e: window_events.WindowLoadedEvent) -> None:
-    assert e.session.window is not None
-    menu_settings = tk.Menu(e.session.window.menu_settings, tearoff=0)
-    menu_plugin = e.menu_plugins(plugin_manager.get_module())
-    e.session.window.menu_settings.add_cascade(label="TraceSelector", menu=menu_settings)
-
-    e.session.window.menu_run.add_command(label="Start TraceSelector")
-    menu_plugin.add_command(label="Terminate TraceSelector")
-    menu_settings.add_command(label="Locate environment", command=lambda: None)
-
-
-
-
-
 
 class TraceSelector:
-    def __init__(self, gui: Neurotorch_GUI):
-        self.gui = gui
 
-        self.proc: subprocess.Popen = None
-        self.pipeThread: threading.Thread = None
+    proc: subprocess.Popen|None = None
+    pipeThread: threading.Thread|None = None
+    
+    def __init__(self, session: Session) -> None:
+        self.session = session
+        window_events.WindowLoadedEvent.register(self.on_window_loaded)
 
-        self.menuTC = tk.Menu(self.gui.root, tearoff=0)
-        self.gui.menuPlugins.add_cascade(label="Trace Selector", menu=self.menuTC)
-        self.menuTC.add_command(label="Locate Environment", command=self.Locate)
-        self.menuTC.add_command(label="Start", command=self.StartTrace_Selector)
-        self.menuTC.add_command(label="Terminate", command=self.TerminateTrace_Selector)
-        self.menuTC.add_separator()
-        self.menuTC.add_command(label="Open CSV in Trace Selector", command=self.Open)
+    def on_window_loaded(self, e: window_events.WindowLoadedEvent) -> None:
+        assert e.session.window is not None
+        self.menu_settings = tk.Menu(e.session.window.menu_settings, tearoff=0)
+        self.menu_plugin = e.menu_plugins(plugin_manager.get_module())
+        e.session.window.menu_settings.add_cascade(label="TraceSelector", menu=self.menu_settings)
 
-        self.tab3: TabROIFinder = self.gui.tabs[TabROIFinder]
+        e.session.window.menu_run.add_command(label="Start TraceSelector")
+        self.menu_plugin.add_command(label="Terminate TraceSelector")
 
-        SynapseTreeview.API_rightClickHooks.append(self.AddExportCommandSynapseTreeview)
 
-    def AddExportCommandSynapseTreeview(self, contextMenu: tk.Menu, importMenu: tk.Menu, exportMenu: tk.Menu):
-        exportMenu.add_command(label="Open in Trace Selector", command=self.Open)
+    @window_events.SynapseTreeviewContextMenuEvent.hook
+    def on_tv_context_menu_created(e: window_events.SynapseTreeviewContextMenuEvent) -> None:
+        e.export_context_menu.add_command(label="Open in TraceSelector", command=open)
 
-    def Locate(self):
-        path = filedialog.askopenfilename(parent=self.gui.root, title="Neurotorch - Please select the python interpeter installed with Trace Selector", 
-                filetypes=(("Python EXE with Trace Selector installed", "*.*"),) )
-        if path is not None and path != "":
-            Settings.SetSetting("traceselectorPythonPath", path)
+    def test_installation() -> bool:
+        """ Returns True if TraceSelector is installed in the current environment """
+        return importlib.util.find_spec("trace_selector") is not None
+
+    def menu_run_click() -> None:
+        if 
+
 
     def StartTrace_Selector(self):
-        if self.proc is not None:
+        if TraceSelector.proc is not None:
             self.gui.root.bell()
             if messagebox.askyesnocancel("Neurotorch", "Trace Selector is already running. Do you want to terminate it?"):
-                self.proc.terminate()
+                TraceSelector.proc.terminate()
             else:
                 return
-        if self.pipeThread is not None and self.pipeThread.is_alive():
+        if TraceSelector.pipe_thread is not None and TraceSelector.pipe_thread.is_alive():
             self.gui.root.bell()
             messagebox.showerror("Neurotorch", "Trace Selector is still running and can't be terminated")
 
@@ -69,29 +55,30 @@ class TraceSelector:
             messagebox.showerror("Neurotorch", "You didn't specified the path to Trace Selector in the AppData config file (on Windows: AppData/Local/AndreasB/Neurotorch/neurtorch_config.ini you must set traceselectorPythonPath and traceselectorScriptPath)")
 
         args = [pythonpath, "-m", "trace_selector"]
-        self.proc = subprocess.Popen(args, stdout=subprocess.PIPE, stdin=subprocess.PIPE, text=True)
-        self.pipeThread = threading.Thread(target=self.PipeThread)
-        self.pipeThread.start()
+        TraceSelector.proc = subprocess.Popen(args, stdout=subprocess.PIPE, stdin=subprocess.PIPE, text=True)
+        TraceSelector.pipe_thread = threading.Thread(target=self.PipeThread)
+        TraceSelector.pipe_thread.start()
         print("Started Trace Selector")
 
     def TerminateTrace_Selector(self):
-        if self.proc is None:
+        if TraceSelector.proc is None:
             self.gui.root.bell()
             messagebox.showwarning("Neurotorch", "Trace Selector is not running")
             return
-        self.proc.terminate()
-        self.proc = None
+        TraceSelector.proc.terminate()
+        TraceSelector.proc = None
         messagebox.showinfo("Neurotorch", "Terminated Trace Selector")
 
     def PipeThread(self):
-        if self.proc is None or self.proc.stdout is None:
+        if TraceSelector.proc is None or TraceSelector.proc.stdout is None:
             return
-        while (line := self.proc.stdout.readline().strip("\n")) != "":
+        while (line := TraceSelector.proc.stdout.readline().strip("\n")) != "":
             print("[Trace Selector]", line)
         print("Trace Selector stopped")
 
-    def Open(self):
-        if self.proc is None:
+    def start_trace_selector(self):
+        """ Attempts to start TraceSelector """
+        if TraceSelector.proc is None:
             self.gui.root.bell()
             messagebox.showwarning("Neurotorch", "Trace Selector is not running")
             return
@@ -106,5 +93,9 @@ class TraceSelector:
         if self.tab3.tvSynapses.ExportCSVMultiM(path=path, dropFrame=True) != True:
             messagebox.showerror("Neurotorch", "With this command you export the multi measure data from the tab 'Synapse ROI Finder'. Please first create data there")
 
-        self.proc.stdin.write(f"open\t{str(path)}\n")
-        self.proc.stdin.flush()
+        TraceSelector.proc.stdin.write(f"open\t{str(path)}\n")
+        TraceSelector.proc.stdin.flush()
+
+@SessionCreateEvent.hook
+def on_session_created(e: SessionCreateEvent):
+    TraceSelector(e.session)

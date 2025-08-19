@@ -5,7 +5,6 @@ from ..image import *
 import numpy as np
 from scipy.ndimage import gaussian_filter as _gaussian_filter, convolve
 
-
 # def cumsum_denoise(imgObj: ImageObject) -> np.ndarray:
 #     if imgObj.img_view(ImageView.SPATIAL).median_image is None or imgObj.img_diff_raw is None:
 #         raise RuntimeError("Can not denoise an ImageObject without image")
