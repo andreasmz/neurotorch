@@ -1,5 +1,5 @@
 from ..core.events import Event
-from ..core.session import Session
+from ..core.session import Session, DetectionResult
 from ..core.plugin_manager import plugins
 import tkinter as tk
 from types import ModuleType
@@ -42,6 +42,7 @@ class WindowTKReadyEvent(WindowLoadedEvent):
 class SynapseTreeviewContextMenuEvent(Event):
     """ This event is called when a SynapseTreeview is generating its context menu. As the menu is recreated on every click, a hook into the WindowLoadedEvent is not working """
 
-    def __init__(self, import_context_menu: tk.Menu, export_context_menu: tk.Menu) -> None:
+    def __init__(self, import_context_menu: tk.Menu, export_context_menu: tk.Menu, detection_result: DetectionResult) -> None:
         self.import_context_menu = import_context_menu
         self.export_context_menu = export_context_menu
+        self.detection_result = detection_result

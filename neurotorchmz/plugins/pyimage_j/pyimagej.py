@@ -1,5 +1,4 @@
 from neurotorchmz.core.session import *
-from neurotorchmz.gui import events as gui_events
 
 import numpy as np
 import xarray
@@ -26,8 +25,8 @@ class ImageJHandler:
 
     def __init__(self, session: Session):
         self.session = session
-        gui_events.WindowLoadedEvent.register(self.on_window_loaded)
-        gui_events.SynapseTreeviewContextMenuEvent.register(self.on_synapse_tv_context_menu_create)
+        window_events.WindowLoadedEvent.register(self.on_window_loaded)
+        window_events.SynapseTreeviewContextMenuEvent.register(self.on_synapse_tv_context_menu_create)
 
     # Convinience functions
     @property
@@ -36,7 +35,7 @@ class ImageJHandler:
     
     # Event hooks
 
-    def on_window_loaded(self, e: gui_events.WindowLoadedEvent) -> None:
+    def on_window_loaded(self, e: window_events.WindowLoadedEvent) -> None:
         """ Creates the GUI elements for this plugin. Is only called from WindowLoadedEvent in GUI mode """
         global tk, messagebox, filedialog, window, TabROIFinder_InvalidateEvent
         global plugin_module
@@ -76,7 +75,7 @@ class ImageJHandler:
     def start_imageJ(self, headless: bool = False):
         """ Starts pyImageJ and connects to the local installation. Before start, the installation is rudimentary checked"""
         if ImageJHandler.ij is not None:
-            logger.warning(f"Failed to start Fiji/ImageJ: An instance is already runnin")
+            logger.warning(f"Failed to start Fiji/ImageJ: An instance is already running")
             if self.root is not None:
                 messagebox.showwarning("Neurotorch: Fiji/ImageJ bridge", "Failed to start Fiji/ImageJ: An instance is already running")
             return
@@ -362,7 +361,7 @@ class ImageJHandler:
 
     # Synapse Treeview
 
-    def on_synapse_tv_context_menu_create(self, e: gui_events.SynapseTreeviewContextMenuEvent):
+    def on_synapse_tv_context_menu_create(self, e: window_events.SynapseTreeviewContextMenuEvent):
         e.import_context_menu.add_command(label="Import from Fiji/ImageJ", command=self.import_rois_into_roifinder)
         e.export_context_menu.add_command(label="Export to Fiji/ImageJ", command=self.export_rois_from_roifinder)
 

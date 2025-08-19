@@ -265,7 +265,8 @@ class SynapseTreeview(ttk.Treeview):
         contextMenu.add_cascade(menu=importMenu, label="Import")
 
         exportMenu = tk.Menu(contextMenu, tearoff=0)
-        exportMenu.add_command(label="Export as file", command=self.export_csv_multi_measure)
+        self.detection_result
+        exportMenu.add_command(label="Export as file", command=self._on_context_menu_export)
         contextMenu.add_cascade(menu=exportMenu, label="Export")
 
         if synapse is not None or roi is not None:
@@ -285,7 +286,7 @@ class SynapseTreeview(ttk.Treeview):
         if roi is not None and isinstance(synapse, MultiframeSynapse):
             clearMenu.insert_command(index=0, label="Remove ROI", command = lambda: self._on_context_menu_remove(synapse=synapse, roi=roi))
 
-        window_events.SynapseTreeviewContextMenuEvent(import_context_menu=importMenu, export_context_menu=exportMenu)
+        window_events.SynapseTreeviewContextMenuEvent(import_context_menu=importMenu, export_context_menu=exportMenu, detection_result=self.detection_result)
 
         contextMenu.post(event.x_root, event.y_root)  
         
@@ -446,46 +447,19 @@ class SynapseTreeview(ttk.Treeview):
         synapse.name = None
         self.sync_synapses()
 
-    def to_pandas(self) -> pd.DataFrame|None:
-        synapses = self.detection_result.to_list()
-        if len(synapses) == 0 or self.session.active_image_object is None or self.session.active_image_object.img is None:
-            self.master.bell()
-            return None
-        data = pd.DataFrame()
-        i_synapse = 1
-        for synapse in synapses:
-            name = synapse.name
-            if name is None:
-                name = f"Synapse {i_synapse}"
-                i_synapse += 1
-            for i, roi in enumerate(synapse.rois):
-                name2 = name
-                if len(synapse.rois) >= 2:
-                    name2 += f" ROI {i} "
-                name2 += "(" + roi.location_string.replace(",","|").replace(" ","") + ")"
-                if name2 in list(data.columns.values):
-                    for i in range(2, 10):
-                        if f"{name2} ({i})" not in list(data.columns.values):
-                            name2 = f"{name2} ({i})"
-                            break
-                signal = roi.get_signal_from_image(self.session.active_image_object.img)
-                if signal.shape[0] == 0:
-                    continue
-                data[name2] = np.mean(signal, axis=1)
-        data = data.round(4)
-        data.index += 1
-        return data
-
-    def export_csv_multi_measure(self, path:str|None = None, dropFrame=False) -> bool:
-        df = self.to_pandas()
-        if df is None:
-            return False
-        if path is None:
-            path = filedialog.asksaveasfilename(title="Save Multi Measure", filetypes=(("CSV", "*.csv"), ("All files", "*.*")), defaultextension=".csv")
-        if path is None or path == "":
-            return False
-        df.to_csv(path_or_buf=path, lineterminator="\n", mode="w", index=(not dropFrame))
-        return True
+    def _on_context_menu_export(self) -> None:
+        assert self.session.root is not None
+        imgObj = self.session.active_image_object
+        if imgObj is None or imgObj.img is None:
+            self.session.root.bell()
+            return
+        path = filedialog.asksaveasfilename(title=f"Neurotorch: Select a path to export the multi measure", filetypes=(("CSV", "*.csv"), ("All files", "*.*")), defaultextension="*.csv")
+        if path is None or path == "" or not (path := Path(path)).exists():
+            self.session.root.bell()
+            return
+        if not self.detection_result.export_traces(path, imgObj):
+            logger.warning(f"Failed to export the traces to TraceSelector")
+            messagebox.showwarning(f"Neurotorch", "Failed to export the traces to TraceSelector")
 
     def clear_synapses(self, target: Literal['staged', 'non_staged', 'all']):
         match(target):
@@ -499,7 +473,6 @@ class SynapseTreeview(ttk.Treeview):
                 return
         self.modified = False
         self.sync_synapses()
-
 
 
 class EntryPopup(ttk.Entry):

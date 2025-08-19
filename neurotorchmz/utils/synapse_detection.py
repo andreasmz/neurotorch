@@ -11,6 +11,7 @@ from collections.abc import Iterator
 from scipy.spatial.distance import pdist
 from scipy.cluster.hierarchy import fcluster, ward
 import numbers
+import pandas as pd
 
 from ..utils.image import *
 
@@ -686,6 +687,21 @@ class DetectionResult:
                 del self._synapses_callbacks[s.uuid]
                 del self._synapses[s.uuid]
         self.notify(removed=deleted)
+
+    def export_traces(self, path:Path, imgObj: ImageObject, include_index=False) -> bool:
+        """ 
+            Exports the detection result traces as csv file given an ImageObject
+
+            :param Path path: The path to export to
+            :param ImageObject imgObj: The ImageObject used to extract the traces
+            :param bool include_index: If True, the traces are exported with an index column
+            :return bool: True if the data was exported, False otherwise
+        """
+        df = self.to_pandas(imgObj)
+        if df is None:
+            return False
+        df.to_csv(path_or_buf=path, lineterminator="\n", mode="w", index=(include_index))
+        return True
         
     def extend(self, synapses: Iterable[ISynapse], /) -> None:
         if not isinstance(synapses, Iterable):
@@ -708,6 +724,36 @@ class DetectionResult:
 
     def to_list(self) -> list[ISynapse]:
         return list(self._synapses.values())
+    
+    def to_pandas(self, imgObj: ImageObject) -> pd.DataFrame|None:
+        """ Returns a pandas dataframe of the traces given the ImageObject. Returns None if the ImageObject has no valid image"""
+        synapses = self.to_list()
+        if len(synapses) == 0 or imgObj.img is None:
+            return None
+        data = pd.DataFrame()
+        i_synapse = 1
+        for synapse in synapses:
+            name = synapse.name
+            if name is None:
+                name = f"Synapse {i_synapse}"
+                i_synapse += 1
+            for i, roi in enumerate(synapse.rois):
+                name2 = name
+                if len(synapse.rois) >= 2:
+                    name2 += f" ROI {i} "
+                name2 += "(" + roi.location_string.replace(",","|").replace(" ","") + ")"
+                if name2 in list(data.columns.values):
+                    for i in range(2, 10):
+                        if f"{name2} ({i})" not in list(data.columns.values):
+                            name2 = f"{name2} ({i})"
+                            break
+                signal = roi.get_signal_from_image(imgObj.img)
+                if signal.shape[0] == 0:
+                    continue
+                data[name2] = np.mean(signal, axis=1)
+        data = data.round(4)
+        data.index += 1
+        return data
     
     def register_callback(self, callback: Callable[[list[ISynapse], list[ISynapse], list[ISynapse]], None]) -> None:
         """
