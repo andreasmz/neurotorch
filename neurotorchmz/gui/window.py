@@ -90,47 +90,43 @@ class Neurotorch_GUI:
         
 
         # Edit menu
-        self.menu_denoise = tk.Menu(self.menu_edit,tearoff=0)
+        self.menu_delta_filter = tk.Menu(self.menu_edit,tearoff=0)
         self.menu_trigger = tk.Menu(self.menu_edit, tearoff=0)
-        self.menu_edit.add_cascade(label="Denoise delta video", menu=self.menu_denoise)
+        self.menu_edit.add_cascade(label="Delta video filter", menu=self.menu_delta_filter)
         self.menu_edit.add_cascade(label="Trigger", menu=self.menu_trigger)
         self.menu_edit.add_separator()
         self.menu_edit.add_command(label="Disable all filters", command=self.menu_image_diable_all_filters_click)
         self.menu_edit.add_command(label="Clear cache", command=self.menu_image_clear_cache_click)
 
-        self.denoise_xy_vars: dict[str, tuple[tk.BooleanVar, Callable|None, dict]] = {lbl.replace("%SIGMA%", f"{sigma}"): (tk.BooleanVar(value=False), fn, {"sigma": sigma}) for lbl, fn, sigma in [
-            ("Disable denoising", None, None),
-            ("Gaussian kernel (σ=%SIGMA%)", denoising.gaussian_xy_kernel, 0.5),
-            ("Gaussian kernel (σ=%SIGMA%)", denoising.gaussian_xy_kernel, 0.8),
-            ("Gaussian kernel (σ=%SIGMA%)", denoising.gaussian_xy_kernel, 1),
-            ("Gaussian kernel (σ=%SIGMA%)", denoising.gaussian_xy_kernel, 1.5),
-            ("Gaussian kernel (σ=%SIGMA%, recommended)", denoising.gaussian_xy_kernel, 2),
-            ("Gaussian kernel (σ=%SIGMA%)", denoising.gaussian_xy_kernel, 2.5),
-            ("Gaussian kernel (σ=%SIGMA%)", denoising.gaussian_xy_kernel, 3),
-            ("Gaussian kernel (σ=%SIGMA%)", denoising.gaussian_xy_kernel, 4),
-            ("Gaussian kernel (σ=%SIGMA%)", denoising.gaussian_xy_kernel, 5),
-            ("Gaussian kernel (σ=%SIGMA%)", denoising.gaussian_xy_kernel, 7.5),
-            ("Gaussian kernel (σ=%SIGMA%)", denoising.gaussian_xy_kernel, 10),
+        self.menu_delta_filter.add_separator()
+        self.menu_delta_xy_filter = tk.Menu(self.menu_delta_filter, tearoff=0)
+        self.menu_trigger = tk.Menu(self.menu_delta_filter, tearoff=0)
+        self.menu_delta_filter.add_cascade(label="Denoising", menu=self.menu_delta_xy_filter)
+        self.menu_delta_filter.add_cascade(label="Trigger", menu=self.menu_trigger)
+        self.menu_delta_xy_filter.add_command(label="Disable denoising", command=lambda: self.set_img_diff_xy_function("", None))
+
+        self.denoise_xy_vars: dict[str, tuple[tk.BooleanVar, Callable|None, str]] = {}
+        for s in [0.5, 0.8, 1, 1.5, 2, 2.5, 3, 4, 5, 7.5, 10]:
+            self.denoise_xy_vars[f"Gaussian kernel (σ={s}{', recommended' if s == 2 else ''})"] = (tk.BooleanVar(value=False), denoising.XY_DIFF_FUNCTIONS.get_gaussian_xy_kernel(sigma=s), f"Gaussian XY (σ={s})")
+
+        self.denoise_t_vars: dict[str, tuple[tk.BooleanVar, Callable|None, bool, str]] = {lbl: (tk.BooleanVar(value=False), fn, invert, name) for lbl, fn, invert, name in [
+            ("Transient peak (default)", None, False, ""),
+            ("Transient drop", None, True, ""),
+            ("Fast peak", denoising.TRIGGER_FUNCTIONS.get_sliding_cumsum(n=3), False, "Sliding cumsum n=3"),
+            ("Fast drop", denoising.TRIGGER_FUNCTIONS.get_sliding_cumsum(n=3), True, "Sliding cumsum n=3"),
+            ("Slow peak", denoising.TRIGGER_FUNCTIONS.get_sliding_cumsum(n=6), False, "Sliding cumsum n=6"),
+            ("Slow drop", denoising.TRIGGER_FUNCTIONS.get_sliding_cumsum(n=6), True, "Sliding cumsum n=6"),
+            ("Very slow peak", denoising.TRIGGER_FUNCTIONS.get_sliding_cumsum(n=9), False, "Sliding cumsum n=9"),
+            ("Very slow drop", denoising.TRIGGER_FUNCTIONS.get_sliding_cumsum(n=9), True, "Sliding cumsum n=9"),
+            ("Brightness relative to mean", denoising.TRIGGER_FUNCTIONS.get_baseline_delta(), False, "Baseline delta"),
+            ("Darkness relative to mean", denoising.TRIGGER_FUNCTIONS.get_baseline_delta(), True, "Baseline delta"),
         ]}
 
-        self.denoise_t_vars: dict[str, tuple[tk.BooleanVar, Callable|None, dict]] = {lbl: (tk.BooleanVar(value=False), fn, args) for lbl, fn, args in [
-            ("Transient peak (default)", None, {}),
-            ("Transient drop", denoising.reverse_t_kernel, {}),
-            ("Fast peak", denoising.sliding_cumsum, {"frames": 3, "negate": False}),
-            ("Fast drop", denoising.sliding_cumsum, {"frames": 3, "negate": True}),
-            ("Slow peak", denoising.sliding_cumsum, {"frames": 6, "negate": False}),
-            ("Slow drop", denoising.sliding_cumsum, {"frames": 6, "negate": True}),
-            ("Very slow peak", denoising.sliding_cumsum, {"frames": 9, "negate": False}),
-            ("Very slow drop", denoising.sliding_cumsum, {"frames": 9, "negate": True}),
-            ("Cumulative peaks", denoising.cumsum, {"negate": False}),
-            ("Cumulative drops", denoising.cumsum, {"negate": True}),
-        ]}
+        for lbl, (var, fn, name) in self.denoise_xy_vars.items():
+            self.menu_delta_xy_filter.add_checkbutton(label=lbl, command=lambda name=name, fn=fn: self.set_img_diff_xy_function(name=name, trigger_fn=fn), variable=var)
 
-        for lbl, (var, fn, args) in self.denoise_xy_vars.items():
-            self.menu_denoise.add_checkbutton(label=lbl, command=lambda fn=fn, args=args: self.set_img_diff_convolution_xy(func=fn, args=args), variable=var)
-
-        for lbl, (var, fn, args) in self.denoise_t_vars.items():
-            self.menu_trigger.add_checkbutton(label=lbl, command=lambda fn=fn, args=args: self.set_img_diff_convolution_t(func=fn, args=args), variable=var)
+        for lbl, (var, fn, invert, name) in self.denoise_t_vars.items():
+            self.menu_trigger.add_checkbutton(label=lbl, command=lambda name=name, fn=fn, invert=invert: self.set_img_diff_trigger(name=name, trigger_fn=fn, invert=invert), variable=var)
 
         # Settings menu
 
@@ -220,48 +216,46 @@ class Neurotorch_GUI:
 
     def update_menu(self):
         """ Updates the menu """
-        def _clear_menu():
-            for lbl, (var, fn, args) in self.denoise_xy_vars.items():
-                if fn is None:
-                    var.set(True)
-                else:
-                    var.set(False)
-            for lbl, (var, fn, args) in self.denoise_t_vars.items():
-                if fn is None:
-                    var.set(True)
-                else:
-                    var.set(False) 
+        assert (max_index := self.menu_delta_filter.index("end")) is not None
+        for index in range(max_index + 1):
+            item = self.menu_delta_filter.entrycget(index, "label")
+            if item == "Separator":
+                break
+            self.menu_delta_filter.delete(0)
+
+        for lbl, (var, fn, name) in self.denoise_xy_vars.items():
+            var.set(False)
+        for lbl, (var, fn, invert, name) in self.denoise_t_vars.items():
+            var.set(False) 
             
         img_obj = self.session.active_image_object
 
-        if img_obj is None or img_obj._img_diff_conv_func != denoising.combined_diff_convolution or img_obj._img_diff_conv_args is None:
-            return _clear_menu()
+        if img_obj is None or len(img_obj.img_diff_functions) == 0:
+            self.menu_delta_filter.insert_command(index=0,label="No filters enabled", state="disabled")
+            return
         
-        conv_args = img_obj._img_diff_conv_args
-        
-        for a in ["xy_kernel_fn", "t_kernel_fn", "xy_kernel_args", "t_kernel_args"]:
-            if a not in conv_args:
-                return _clear_menu()
-            
-        for var, fn, args in self.denoise_xy_vars.values():
-            if conv_args["xy_kernel_fn"] == fn:
-                for k,v in args.items():
-                    if k not in conv_args["xy_kernel_args"] or conv_args["xy_kernel_args"][k] != v:
-                        break
-                else:
-                    var.set(True)
-                    continue
-            var.set(False)
+        for i, v in enumerate(img_obj.img_diff_functions[::-1]):
+            name, fn, cache, priority = v
+            m = tk.Menu(self.menu_delta_filter, tearoff=0)
+            def _move(v, delta: int):
+                i = img_obj.img_diff_functions.index(v)
+                img_obj.img_diff_functions.insert(min(max(i-delta, 0),len(img_obj.img_diff_functions)-1), img_obj.img_diff_functions.pop(i))
+                self.update_menu()
+                img_obj.precompute_image().add_callback(lambda: self.invoke_tab_update_event(ImageChangedEvent()))
+            img_obj.img_diff_functions.pop(img_obj.img_diff_functions.index(v))
+            m.add_command(label="Move up", command=lambda v=v, delta=-1: _move(v, delta))
+            m.add_command(label="Move down", command=lambda v=v, delta=1: _move(v, delta))
+            m.add_command(label="Remove", command=lambda v=v: img_obj.img_diff_functions.remove(v))
 
-        for var, fn, args in self.denoise_t_vars.values():
-            if conv_args["t_kernel_fn"] == fn:
-                for k,v in args.items():
-                    if k not in conv_args["t_kernel_args"] or conv_args["t_kernel_args"][k] != v:
-                        break
-                else:
-                    var.set(True)
-                    continue
-            var.set(False)
+            self.menu_delta_filter.insert_cascade(index=0,label=f"{len(img_obj.img_diff_functions)-i}: {name}", menu=m)
+
+        for lbl, (var, fn, name) in self.denoise_xy_vars.items():
+            if name in [name for name, fn, cache, priority in img_obj.img_diff_functions]:
+                var.set(True)
+
+        for lbl, (var, fn, invert, name) in self.denoise_t_vars.items():
+            if name in [name for name, fn, cache, priority in img_obj.img_diff_functions]:
+                var.set(True)
 
     # General GUI functions
 
@@ -390,81 +384,43 @@ class Neurotorch_GUI:
         else:
             messagebox.showinfo("Neurotorch: Export video", f"Successfully exported video '{path.name}'")
 
-    def set_img_diff_convolution_xy(self, func: Callable|None, args: dict = {}):
+    def set_img_diff_xy_function(self, name: str, trigger_fn: Callable[[AxisImage, AxisImage], AxisImage]|None, cache: bool = False, clear: bool = True):
         imgObj = self.session.active_image_object
         if imgObj is None or imgObj.img_diff is None:
             self.update_menu()
             self.root.bell()
             return
         
-        if not self.ask_ram_warning(8):
-            self.update_menu()
-            return
-        
-        if imgObj._img_diff_conv_func != denoising.combined_diff_convolution:
-            imgObj.set_diff_conv_func(denoising.combined_diff_convolution, 
-                                      func_args={"xy_kernel_fn": None, "xy_kernel_args": {}, 
-                                                 "t_kernel_fn": None, "t_kernel_args": {},
-                                                 "norm": False})
-            
-        imgObj.update_diff_conv_args(xy_kernel_fn = func, xy_kernel_args = args)
+        if clear or trigger_fn is None:
+            for fn_tuple in imgObj.img_diff_functions.copy():
+                if isinstance(fn_tuple[1].__class__, denoising.XY_DIFF_FUNCTIONS):
+                    imgObj.img_diff_functions.remove(fn_tuple)
 
-        assert imgObj._img_diff_conv_args is not None
-        if imgObj._img_diff_conv_args["xy_kernel_fn"] is None and imgObj._img_diff_conv_args["t_kernel_fn"] is None:
-            imgObj.set_diff_conv_func(None, None)
+        if trigger_fn is not None:
+            imgObj.img_diff_functions.append((name, trigger_fn, cache, denoising.XY_DIFF_FUNCTIONS.PRIORITY))
 
+        imgObj.sort_functions()
         self.update_menu()
         imgObj.precompute_image().add_callback(lambda: self.invoke_tab_update_event(ImageChangedEvent()))
 
-    def set_img_diff_convolution_t(self, func: Callable|None, args: dict = {}):
+    def set_img_diff_trigger(self, name: str, trigger_fn: Callable[[AxisImage, AxisImage], AxisImage]|None, invert: bool, cache: bool = False, clear: bool = True):
         imgObj = self.session.active_image_object
         if imgObj is None or imgObj.img_diff is None:
             self.update_menu()
             self.root.bell()
             return
         
-        if not self.ask_ram_warning(8):
-            self.update_menu()
-            return
-        
-        if imgObj._img_diff_conv_func != denoising.combined_diff_convolution:
-            imgObj.set_diff_conv_func(denoising.combined_diff_convolution, 
-                                      func_args={"xy_kernel_fn": None, "xy_kernel_args": {}, 
-                                                 "t_kernel_fn": None, "t_kernel_args": {},
-                                                 "norm": False})
-            
-        imgObj.update_diff_conv_args(t_kernel_fn = func, t_kernel_args = args)    
-            
-        assert imgObj._img_diff_conv_args is not None
-        if imgObj._img_diff_conv_args["xy_kernel_fn"] is None and imgObj._img_diff_conv_args["t_kernel_fn"] is None:
-            imgObj.set_diff_conv_func(None, None)
+        if clear or trigger_fn is None:
+            for fn_tuple in imgObj.img_diff_functions.copy():
+                if isinstance(fn_tuple[1].__class__, denoising.TRIGGER_FUNCTIONS):
+                    imgObj.img_diff_functions.remove(fn_tuple)
+                elif isinstance(fn_tuple[1].__class__, denoising.PRE_FUNCTIONS):
+                    imgObj.img_diff_functions.remove(fn_tuple)
 
-        self.update_menu()
-        imgObj.precompute_image().add_callback(lambda: self.invoke_tab_update_event(ImageChangedEvent()))
+        if trigger_fn is not None: 
+            imgObj.img_diff_functions.append((name, trigger_fn, cache, denoising.TRIGGER_FUNCTIONS.PRIORITY))
 
-    def set_img_diff_std_norm(self, std_norm: bool) -> None:
-        imgObj = self.session.active_image_object
-        if imgObj is None or imgObj.img_diff is None:
-            self.update_menu()
-            self.root.bell()
-            return
-        
-        if not self.ask_ram_warning(8):
-            self.update_menu()
-            return
-        
-        if imgObj._img_diff_conv_func != denoising.combined_diff_convolution:
-            imgObj.set_diff_conv_func(denoising.combined_diff_convolution, 
-                                      func_args={"xy_kernel_fn": None, "xy_kernel_args": {}, 
-                                                 "t_kernel_fn": None, "t_kernel_args": {},
-                                                 "norm": False})
-
-        imgObj.update_diff_conv_args(std_norm= std_norm)
-
-        assert imgObj._img_diff_conv_args is not None
-        if imgObj._img_diff_conv_args["xy_kernel_fn"] is None and imgObj._img_diff_conv_args["t_kernel_fn"] is None:
-            imgObj.set_diff_conv_func(None, None)
-
+        imgObj.sort_functions()
         self.update_menu()
         imgObj.precompute_image().add_callback(lambda: self.invoke_tab_update_event(ImageChangedEvent()))
 
@@ -480,20 +436,10 @@ class Neurotorch_GUI:
             self.root.bell()
             self.update_menu()
             return    
-        self.session.active_image_object.set_diff_conv_func(None, None)
+        self.session.active_image_object.img_functions.clear()
+        self.session.active_image_object.img_diff_functions.clear()
         self.update_menu()
         self.session.active_image_object.precompute_image().add_callback(lambda: self.invoke_tab_update_event(ImageChangedEvent()))
-        
-    def menu_image_denoise_image_click(self, enable: bool):
-        if self.session.active_image_object is None:
-            self.root.bell()
-            return
-        self.root.bell()
-        # if self.session.active_image_object._img_conv_func is None:
-        #     self.session.active_image_object.set_conv_func(denoising.cumsum_denoise, func_args=None)
-        # else:
-        #     self.session.active_image_object.set_conv_func(None, None)
-        # self.session.active_image_object.precompute_image().add_callback(lambda: self.invoke_tab_update_event(ImageChangedEvent()))
 
     def menu_neurotorch_about_click(self):
         messagebox.showinfo("Neurotorch", f"© Andreas Brilka 2025\nYou are running Neurotorch {__version__}")
