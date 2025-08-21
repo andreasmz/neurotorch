@@ -107,11 +107,11 @@ class AxisImage:
 
     @property
     def axis(self) -> tuple:
-        return self.axis
+        return self._axis
     
     @property
     def name(self) -> str|None:
-        return self.name
+        return self._name
 
     @property
     def mean_image(self) -> np.ndarray|None:
@@ -248,6 +248,14 @@ class AxisImage:
     def __del__(self):
         del self._img
 
+class FunctionType(Enum):
+    """ A simple wrapper to encode the type of a image function with an priority """
+
+    PRE_FUNCTION = 30
+    XY = 20
+    T = 10
+
+
 class ImageObject(Serializable):
     """
         A class for holding a) the image provided in form an three dimensional numpy array (time, y, x) and b) the derived images and properties, for example
@@ -273,11 +281,11 @@ class ImageObject(Serializable):
 
         self._img: np.ndarray|None = None
         self._img_views: dict[str, dict[ImageView|None, AxisImage]] = {"default" : {}}
-        self._img_functions: list[tuple[str, Callable[[AxisImage], AxisImage], bool, int]] = []
+        self._img_functions: list[tuple[str, Callable[[AxisImage], AxisImage], bool, FunctionType|int]] = []
 
         self._img_diff: np.ndarray|None = None
         self._img_diff_views: dict[str, dict[ImageView|None, AxisImage]] = {"default" : {}}
-        self._img_diff_functions: list[tuple[str, Callable[[AxisImage, AxisImage], AxisImage], bool, int]] = []
+        self._img_diff_functions: list[tuple[str, Callable[[AxisImage, AxisImage], AxisImage], bool, FunctionType|int]] = []
 
         self.img_size: int|None = None
 
@@ -470,7 +478,7 @@ class ImageObject(Serializable):
     
     # Image View
 
-    def img_view(self, mode: "ImageView", fn_list: list[tuple[str, Callable[[AxisImage], AxisImage], bool, int]]|Literal["default"]|None = None, cache: bool = True) -> AxisImage:
+    def img_view(self, mode: "ImageView", fn_list: list[tuple[str, Callable[[AxisImage], AxisImage], bool, FunctionType|int]]|Literal["default"]|None = None, cache: bool = True) -> AxisImage:
         """ Returns a view of the current image given an ImageView mode """
         if ImageView.DEFAULT not in self._img_views:
             self._img_views["default"][ImageView.DEFAULT] = AxisImage(self.img_raw, axis=ImageView.DEFAULT.value, name=f"{self.name}-img")
@@ -510,7 +518,7 @@ class ImageObject(Serializable):
         return axis_image
         
     
-    def img_diff_view(self, mode: "ImageView", fn_list: list[tuple[str, Callable[[AxisImage, AxisImage], AxisImage], bool, int]]|Literal["default"]|None = None, cache: bool = True) -> AxisImage:
+    def img_diff_view(self, mode: "ImageView", fn_list: list[tuple[str, Callable[[AxisImage, AxisImage], AxisImage], bool, FunctionType|int]]|Literal["default"]|None = None, cache: bool = True) -> AxisImage:
         """ Returns a view of the current image given an ImageView mode """
         if ImageView.DEFAULT not in self._img_diff_views:
             self._img_diff_views["default"][ImageView.DEFAULT] = AxisImage(self.img_diff_raw, axis=ImageView.DEFAULT.value, name=f"{self.name}-img_diff")
@@ -559,7 +567,7 @@ class ImageObject(Serializable):
     # Convolution functions
 
     @property
-    def img_functions(self) -> list[tuple[str, Callable[[AxisImage], AxisImage], bool, int]]:
+    def img_functions(self) -> list[tuple[str, Callable[[AxisImage], AxisImage], bool, FunctionType|int]]:
         """ 
         Returns the current list of image functions. An image function is intended to modify an image by accepting an AxisImage and returning a new axis image.
         The functions inside the list are called first to last with the result from the predecessor (first with self.img_raw).
@@ -569,7 +577,7 @@ class ImageObject(Serializable):
         return self._img_functions
 
     @property
-    def img_diff_functions(self) -> list[tuple[str, Callable[[AxisImage, AxisImage], AxisImage], bool, int]]:
+    def img_diff_functions(self) -> list[tuple[str, Callable[[AxisImage, AxisImage], AxisImage], bool, FunctionType|int]]:
         """ 
         Returns the current list of img_diff functions. An image function is intended to modify an image by accepting the image and image diff as parameters 
         (both as AxisImage) and returning a new axis image.
@@ -578,15 +586,19 @@ class ImageObject(Serializable):
         The priority is used to sort the entries and should be set to zero on default
         """
         return self._img_diff_functions
+    
+    def invalidate_functions(self) -> None:
+        """ This function should be called when changes to the underlying img_functions and img_diff_functions objects were performed """
+        self.signal_obj.clear()
 
-    def get_functions_identifier(self, functions: list[tuple[str, Callable[..., AxisImage], bool, int]]) -> str:
+    def get_functions_identifier(self, functions: list[tuple[str, Callable[..., AxisImage], bool, FunctionType|int]]) -> str:
         if len(functions) == 0:
             return "default"
         return "-".join([name for name, fn, cache, priority in functions]) + (hex(hash("".join([str(id(fn)) for name, fn, cache, priority in functions]))).replace("0x", "@") if len(functions) > 0 else "")
 
     def sort_functions(self) -> None:
-        self._img_functions.sort(key=lambda v: v[3], reverse=True)
-        self._img_diff_functions.sort(key=lambda v: v[3], reverse=True)
+        self._img_functions.sort(key=lambda v: v[3].value if isinstance(v[3], FunctionType) else v[3], reverse=True)
+        self._img_diff_functions.sort(key=lambda v: v[3].value if isinstance(v[3], FunctionType) else v[3], reverse=True)
 
     def clear_cache(self, full_clear: bool = False) -> None:
         """Clears caches of unsused convolutions """
@@ -823,3 +835,5 @@ class ImageShapeError(ImageObjectError):
     def __init__(self, shape: np.ndarray|None = None, *args):
         super().__init__(*args)
         self.shape = shape
+
+

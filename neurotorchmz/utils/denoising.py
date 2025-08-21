@@ -15,10 +15,9 @@ from scipy.ndimage import gaussian_filter as _gaussian_filter, convolve
 #     return kernel
 
 
-
 class PRE_FUNCTIONS:
 
-    PRIORITY = 30
+    FUNCTION_CLASS = FunctionType.PRE_FUNCTION
 
     @staticmethod
     def invert(axis_img: AxisImage, axis_img_diff: AxisImage) -> AxisImage:
@@ -27,14 +26,13 @@ class PRE_FUNCTIONS:
 
 class XY_DIFF_FUNCTIONS:
 
-    PRIORITY = 20
-
+    FUNCTION_CLASS = FunctionType.XY
 
     @staticmethod
     def gaussian_xy_kernel(img: np.ndarray, sigma: float) -> np.ndarray:
         _img_max, _img_min, _img_dtype = np.max(img), np.min(img), img.dtype
-        r = _gaussian_filter(img, sigma=sigma, axes=(1,2), output="float32")
-        r: np.ndarray = (r*(_img_max/r.max()).astype(r.dtype)).astype(_img_dtype)
+        r = _gaussian_filter(img, sigma=sigma, axes=(1,2), output="float32") # Peak 1 float32
+        r: np.ndarray = (r*(_img_max/r.max()).astype(r.dtype)).astype(_img_dtype) # Peak 2 float32
         #r = (_img_min.astype(r.dtype) + (r + r.min()) / (r.max() - r.min())*(_img_max-_img_min).astype(r.dtype)).astype(_img_dtype)
         return r
     
@@ -53,7 +51,7 @@ class XY_DIFF_FUNCTIONS:
 
 class TRIGGER_FUNCTIONS:
 
-    PRIORITY = 10
+    FUNCTION_CLASS = FunctionType.T
 
     
     @staticmethod
@@ -73,16 +71,21 @@ class TRIGGER_FUNCTIONS:
         return _wrapper
 
     @staticmethod
-    def baseline_delta(img_spatial_mean: np.ndarray, img: np.ndarray) -> np.ndarray:
-        return img - img_spatial_mean[None, :, :]
+    def baseline_delta(img_spatial_mean: np.ndarray, img: np.ndarray, invert: bool) -> np.ndarray:
+        if invert:
+            return img_spatial_mean[None, :, :] - img[1:, :, :]
+        return img[1:, :, :] - img_spatial_mean[None, :, :]
     
     @staticmethod
-    def get_baseline_delta() -> Callable[[AxisImage, AxisImage], AxisImage]:
+    def get_baseline_delta(invert: bool = False) -> Callable[[AxisImage, AxisImage], AxisImage]:
         def _wrapper(axis_img: AxisImage, axis_img_diff: AxisImage) -> AxisImage:
-            if axis_img.image is None or axis_img.mean_image is None:
+            if axis_img.image is None:
                 return axis_img_diff.copy()
             t0 = time.perf_counter()
-            r = TRIGGER_FUNCTIONS.baseline_delta(axis_img.mean_image, axis_img.image)
+            img_mean = AxisImage(axis_img.image, ImageView.SPATIAL.value, (axis_img.name if axis_img.name is not None else "")+"_tmp").mean_image
+            if img_mean is None:
+                return axis_img_diff.copy()
+            r = TRIGGER_FUNCTIONS.baseline_delta(img_mean, axis_img.image, invert=invert)
             logger.debug(f"Calculated baseline delta in {(time.perf_counter()-t0):1.3f} s")
             return AxisImage(r, axis=axis_img_diff.axis, name=axis_img_diff.name)
         return _wrapper
@@ -90,13 +93,12 @@ class TRIGGER_FUNCTIONS:
 
     @staticmethod
     def sliding_cumsum(img: np.ndarray, n: int) -> np.ndarray:
-        norm = 1/(n + 1)
-        a1 = np.full(shape=(n), fill_value=norm)
+        a1 = np.full(shape=(n), fill_value=1)
         a2 = np.full(shape=(n), fill_value=0)
-        c = np.concatenate([a2, np.array([norm]), a1])
+        c = np.concatenate([a2, np.array([1]), a1])
         c = c[:, None, None]
 
-        return convolve(img, c, output="float32").astype(img.dtype)
+        return np.floor_divide(convolve(img, c, output=img.dtype), n+1, dtype=img.dtype)
     
     @staticmethod
     def get_sliding_cumsum(n: int) -> Callable[[AxisImage, AxisImage], AxisImage]:
