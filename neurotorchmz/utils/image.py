@@ -5,7 +5,7 @@ from ..core.logs import logger
 import collections
 from dataclasses import asdict
 from enum import Enum
-from typing import Callable, Self, Any, cast
+from typing import Callable, Self, Any, cast, Literal
 import numpy as np
 import pims
 import tifffile
@@ -13,7 +13,6 @@ import nd2
 from pathlib import Path
 import gc
 import time
-import sys
 
 class ImageProperties:
     """
@@ -261,9 +260,10 @@ class ImageObject(Serializable):
         self._metdata: dict|None = None
 
         self._img: np.ndarray|None = None
-        self._img_views: dict[str, dict[ImageView|None, AxisImage]] = {"default" : {}}
-        self._img_conv_func: Callable[..., np.ndarray|None]|None = None
-        self._img_conv_args: dict[str, Any]|None = None
+        self._img_views: dict[str|Callable, dict[ImageView|None, AxisImage]] = {"default" : {}}
+        self._img_functions: list[Callable[[Self, Callable|None]]] = []
+        # self._img_conv_func: Callable[..., np.ndarray|None]|None = None
+        # self._img_conv_args: dict[str, Any]|None = None
 
         self._img_diff: np.ndarray|None = None
         self._img_diff_views: dict[str, dict[ImageView|None, AxisImage]] = {"default" : {}}
@@ -461,20 +461,38 @@ class ImageObject(Serializable):
     
     # Image View
 
-    def img_view(self, mode: "ImageView") -> AxisImage:
+    def img_view(self, mode: "ImageView", func: Callable[[Self, Callable|None], None]|Literal["default"]|None = None, cache: bool = True) -> AxisImage:
         """ Returns a view of the current image given an ImageView mode """
         if ImageView.DEFAULT not in self._img_views["default"].keys():
             self._img_views["default"][ImageView.DEFAULT] = AxisImage(self.img_raw, axis=ImageView.DEFAULT.value, name=f"{self.name}-img")
 
-        if self._img_conv_func is not None and self._conv_func_identifier not in self._img_views.keys():
-            if self._img_conv_args is None:
-                self._img_views[self._conv_func_identifier] = {ImageView.DEFAULT: AxisImage(self._img_conv_func(self), axis=ImageView.DEFAULT.value, name=f"{self.name}-{self._conv_func_identifier}-img")}
+        if func is None:
+            if len(self._img_functions) == 0:
+                func = "default"
             else:
-                self._img_views[self._conv_func_identifier] = {ImageView.DEFAULT: AxisImage(self._img_conv_func(self, **self._img_conv_args), axis=ImageView.DEFAULT.value, name=f"{self.name}-{self._conv_func_identifier}-img")}
+                func = self._img_functions[-1]
 
-        if mode not in self._img_views[self._conv_func_identifier].keys():
-            img = self._img_views[self._conv_func_identifier][ImageView.DEFAULT].image
-            self._img_views[self._conv_func_identifier][mode] = AxisImage(img, axis=mode.value, name=f"{self.name}-{self._conv_func_identifier}-img")
+        if func not in self._img_views.keys():
+            if func != "default":
+                self.img_view(mode=mode, func=func, cache=)
+            else:
+                self._img_views["default"][ImageView.DEFAULT] = AxisImage(self.img_raw, axis=ImageView.DEFAULT.value, name=f"{self.name}-img")
+
+
+        if func is not None and func_id not in self._img_views.keys():
+            if func_args is None:
+                self._img_views[func_id] = {ImageView.DEFAULT: AxisImage(func(self), axis=ImageView.DEFAULT.value, name=f"{self.name}-{func_id}-img")}
+            else:
+                self._img_views[func_id] = {ImageView.DEFAULT: AxisImage(func(self, **func_args), axis=ImageView.DEFAULT.value, name=f"{self.name}-{func_id}-img")}
+
+        if mode not in self._img_views[func].keys():
+            img = self._img_views[func][ImageView.DEFAULT].image
+            self._img_views[func][mode] = AxisImage(img, axis=mode.value, name=f"{self.name}-{self._conv_func_identifier}-img")
+
+        if not cache:
+            del self._img_views
+
+        self.clear_cache()
         
         return self._img_views[self._conv_func_identifier][mode]
     
@@ -522,17 +540,18 @@ class ImageObject(Serializable):
             self._img_diff_conv_args[k] = v
         self.signal_obj.clear()
 
-    @property
-    def _conv_func_identifier(self) -> str:
-        if self._img_conv_func is None:
+    def get_func_identifier(self, func: Callable[..., np.ndarray|None]|None = None, func_args: dict[str, Any]|None = None):
+        if func is None:
             return "default"
-        return self._img_conv_func.__name__ + repr(self._img_conv_args) # type: ignore
+        return func.__name__ + repr(func_args)
+
+    @property
+    def func_identier(self) -> str:
+        return self.get_func_identifier(self._img_conv_func, self._img_conv_args)
     
     @property
-    def _diff_conv_func_identifier(self) -> str:
-        if self._img_diff_conv_func is None:
-            return "default"
-        return self._img_diff_conv_func.__name__ + repr(self._img_diff_conv_args) # type: ignore
+    def diff_func_identier(self) -> str:
+        return self.get_func_identifier(self._img_diff_conv_func, self._img_diff_conv_args)
 
     def clear_cache(self, full_clear: bool = False) -> None:
         """Clears caches of unsused convolutions """
@@ -540,14 +559,14 @@ class ImageObject(Serializable):
         for k in list(self._img_views.keys()):
             if not full_clear and len(self._img_views) <= self.conv_cache_size:
                 break
-            if k != "default" and k != self._conv_func_identifier:
+            if k != "default" and k != self.func_identier:
                 del self._img_views[k]
                 gc_count += 1
                 
         for k in list(self._img_diff_views.keys()):
             if not full_clear and len(self._img_diff_views) <= self.diff_conv_cache_size:
                 break
-            if k != "default" and k != self._diff_conv_func_identifier:
+            if k != "default" and k != self.diff_func_identier:
                 del self._img_diff_views[k]
                 gc_count += 1
 

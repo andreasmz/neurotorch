@@ -3,7 +3,6 @@ from .components.treeview import SynapseTreeview
 from .components.general import ScrolledFrame, GridSetting
 from ..utils import synapse_detection_integration as detection
 
-import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -11,16 +10,6 @@ from matplotlib.backends._backend_tk import NavigationToolbar2Tk
 from matplotlib.ticker import MaxNLocator
 import numpy as np
 from scipy.stats import multivariate_normal
-# import tkinter as tk
-# from tkinter import ttk, messagebox, filedialog
-# import threading
-# import matplotlib.pyplot as plt
-# from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
-# import matplotlib.widgets as PltWidget
-# import matplotlib.patches as patches
-# from matplotlib.ticker import MaxNLocator
-# import numpy as np
-# 
 
 
 class TabAnalysis_InvalidateEvent(TabUpdateEvent):

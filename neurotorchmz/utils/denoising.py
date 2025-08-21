@@ -1,6 +1,6 @@
 """ Common convolution functions for denoising an image """
 
-from ..image import *
+from .image import *
 
 import numpy as np
 from scipy.ndimage import gaussian_filter as _gaussian_filter, convolve
@@ -55,9 +55,10 @@ def sliding_cumsum(img: np.ndarray, frames: int, negate: bool = False) -> np.nda
 
     return convolve(img, c, output="float32").astype(img.dtype)
 
-def cumsum(img: np.ndarray, negate: bool = False) -> np.ndarray:
+def cumsum(imgObj: ImageObject, img: np.ndarray, negate: bool = False) -> np.ndarray:
     if negate:
         img = -img
+    return imgObj.img_raw - imgObj.img_view(ImageView.DEFAULT, )
     return np.cumsum(img, axis=0, dtype=img.dtype)
 
 def combined_diff_convolution(img_obj: ImageObject, norm: bool, xy_kernel_fn: Callable[..., np.ndarray]|None, t_kernel_fn: Callable[..., np.ndarray]|None, xy_kernel_args: dict = {}, t_kernel_args: dict = {}) -> np.ndarray|None:
@@ -69,12 +70,12 @@ def combined_diff_convolution(img_obj: ImageObject, norm: bool, xy_kernel_fn: Ca
     img = img_obj.img_diff_raw
     
     if xy_kernel_fn is not None:
-        img = xy_kernel_fn(img, **xy_kernel_args)
+        img = xy_kernel_fn(img_obj, img, **xy_kernel_args)
 
     gc.collect()
 
     if t_kernel_fn is not None:
-        img = t_kernel_fn(img, **t_kernel_args)
+        img = t_kernel_fn(img_obj, img, **t_kernel_args)
 
     gc.collect()
 
