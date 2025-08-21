@@ -420,6 +420,9 @@ class Neurotorch_GUI:
         if trigger_fn is not None: 
             imgObj.img_diff_functions.append((name, trigger_fn, cache, denoising.TRIGGER_FUNCTIONS.PRIORITY))
 
+        if invert:
+            imgObj.img_diff_functions.append((name, denoising.PRE_FUNCTIONS.invert, False, denoising.PRE_FUNCTIONS.PRIORITY))
+
         imgObj.sort_functions()
         self.update_menu()
         imgObj.precompute_image().add_callback(lambda: self.invoke_tab_update_event(ImageChangedEvent()))
