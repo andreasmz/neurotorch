@@ -17,7 +17,7 @@ def load_plugins_from_dir(path: Path, prefix: str) -> None:
     if not path.is_dir() or not path.exists():
         raise FileExistsError(f"Invalid path {path} to import plugins from")
     for module_info in pkgutil.iter_modules(path=[path], prefix=prefix+"."):
-        module_spec = module_info.module_finder.find_spec(module_info.name, str(module_info.module_finder.path)) # type: ignore
+        module_spec = module_info.module_finder.find_spec(module_info.name, None)
         if module_spec is None or module_spec.loader is None:
             raise RuntimeError(f"Can't import plugin {module_info.name}")
         module_type = importlib.util.module_from_spec(module_spec)

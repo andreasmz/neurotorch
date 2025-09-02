@@ -11,11 +11,10 @@ import os
 import shutil
 
 # Initialize paths
-app_data_path = platformdirs.user_data_path(appname="NeurotorchMZ", appauthor="andreasmz", roaming=True, ensure_exists=True)
-app_data_local_path = platformdirs.user_data_path(appname="NeurotorchMZ", appauthor="andreasmz", roaming=False, ensure_exists=True)
+app_data_path = platformdirs.user_data_path(appname="NeurotorchMZ", appauthor="andreasmz", roaming=False, ensure_exists=True)
 log_path = app_data_path / "logs.txt"
-tmp_path = app_data_local_path / "tmp"
-environ_path = app_data_local_path / "environment"
+tmp_path = app_data_path / "tmp"
+environ_path = app_data_path / "environment"
 user_plugin_path = app_data_path / "plugins"
 preinstalled_plugin_path = Path(__file__).parent.parent / "plugins"
 resource_path = Path(__file__).parent.parent / "resources"
