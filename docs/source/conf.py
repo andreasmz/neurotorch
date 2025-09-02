@@ -6,6 +6,9 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
+import os
+
+os.environ.pop("DISPLAY", None)  # DISPLAY löschen
 
 import sys
 from pathlib import Path
@@ -14,6 +17,7 @@ from datetime import datetime
 sys.path.insert(1, str(_nt_path := Path("").resolve().parent.parent.resolve()))
 print(f"Importing NeurotorchMZ from {_nt_path}")
 import neurotorchmz
+from neurotorchmz.gui import window # Necessary as neurotorch window is not auto imported
 
 project = 'NeurotorchMZ'
 copyright = f'© 2024-{datetime.now().year}, Andreas Brilka'
@@ -38,10 +42,11 @@ extensions = [
 autosummary_generate = True
 
 autodoc_default_options = {
-    'members': True,                 # zeigt Methoden/Attribute
-    'undoc-members': True,          # zeigt auch Methoden ohne Docstring
+    'members': True,                 # shows methods/attributs
+    'undoc-members': True,          # shows also methods without docstring
+    'private-members': True,
     'show-inheritance': True,
-    'inherited-members': True,      # optional: zeigt geerbte Methoden
+    'inherited-members': False,     
 }
 
 print(f"Generating documentation for neurotorchmz version {neurotorchmz.__version__}")

@@ -6,8 +6,6 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from tktooltip import ToolTip
 import pickle
-import matplotlib
-matplotlib.use('TkAgg')
 from pathlib import Path
 import subprocess
 import os
@@ -36,10 +34,17 @@ class UpdateRoiFinderDetectionResultEvent(TabUpdateEvent):
     pass
 
 class Neurotorch_GUI:
+    _mpl_ini = False
+    """ Internal variable which is set to True the first time a Neurotorch_GUI instance is created and the matplotlib backend is adjusted """
+
     def __init__(self, session: Session):
         self.session = session
         self.tabs : dict[type, Tab] = {}
         self._pending_updates: deque[tuple[Tab, TabUpdateEvent]] = deque()
+        if not Neurotorch_GUI._mpl_ini:
+            Neurotorch_GUI._mpl_ini = True
+            import matplotlib
+            matplotlib.use('TkAgg')
 
     def launch(self, edition:Edition=Edition.NEUROTORCH):
         self.edition = edition

@@ -3,9 +3,7 @@ neurotorchmz
 
 
 .. automodule:: neurotorchmz
-    :members:
-    :undoc-members:
-    :show-inheritance:
+
 
 .. currentmodule:: neurotorchmz
 
@@ -15,5 +13,6 @@ neurotorchmz
 
     core
     gui
+    gui.components
     plugins
     utils

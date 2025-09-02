@@ -92,10 +92,13 @@ class SynapseTreeview(ttk.Treeview):
         self.sync_synapses()
 
     def pack(self, **kwargs):
+        """ Overload the parent pack() method """
         self.frame.pack(**kwargs)
 
-    def sync_synapses(self):
-        """ Display the given list of ISynapse in the treeview. Updates existing values to keep the scrolling position. """
+    def sync_synapses(self) -> None:
+        """ 
+        Display the given list of ISynapse in the treeview. Updates existing values to keep the scrolling position.
+        """
         self._not_in_sync = True
         self._sync_task.start()
 
@@ -523,3 +526,4 @@ class EntryPopup(ttk.Entry):
     def select_all(self, *val1):
         self.selection_range(0, 'end')
         return 'break'
+    
