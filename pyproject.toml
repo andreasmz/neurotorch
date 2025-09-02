@@ -5,8 +5,8 @@ authors = [
 ]
 dynamic = ["version"]
 
-[tool.hatch]
-version = { file = "neurotorchmz/__init__.py", attribute = "__version__" }
+[tool.hatch.version]
+path = "neurotorchmz/__init__.py"
 
 description = "Neurotorch is a tool designed to extract regions of synaptic activity in neurons tagges with iGluSnFR, but is in general capable to find any kind of local brightness increase due to synaptic activity"
 license = "MIT"

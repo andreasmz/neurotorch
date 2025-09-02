@@ -2,7 +2,7 @@
 Neurotorch is a tool designed to extract regions of synaptic activity in neurons tagges with iGluSnFR, but is in general capable to find any kind of local brightness increase 
 due to synaptic activity.
 """
-__version__ = "25.8.1"
+__version__ = "25.9.1"
 __author__ = "Andreas Brilka"
 
 from .core.session import Session, Edition
