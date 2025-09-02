@@ -36,6 +36,6 @@ jobs:
     - name: Deploy to GitHub Pages
       uses: JamesIves/github-pages-deploy-action@v4
       with:
-        branch: main  # The branch to deploy the built docs to.
+        branch: gh-pages  # The branch to deploy the built docs to.
         folder: docs/_build/html
         token: ${{ secrets.GITHUB_TOKEN }}
