@@ -1,2 +1,0 @@
-Fiji/ImageJ Integration
-===========================
