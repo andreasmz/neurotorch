@@ -22,7 +22,7 @@ class Edition(Enum):
     NEUROTORCH_DEBUG = 10
     """ Launches the developer version with (depending on your version) additional features and debugging output """
 
-class Session(Serializable):
+class Session:
     """ 
         A session is the main entry into Neurotorch. It stores the loaded data and provides update functions for the GUI
 

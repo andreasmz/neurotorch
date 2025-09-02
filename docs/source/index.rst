@@ -30,11 +30,13 @@ Neurotorch documentation
    algorithm/signal_algorithms
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 3
    :hidden:
    :caption: API 
 
-   api/api
+   api/introduction
+   api/neurotorchmz
+
 
 .. warning::
    You find here an early alpha version of the documentation currently beeing written

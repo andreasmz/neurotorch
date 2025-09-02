@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Starting Neurotorch and accessing the API &mdash; NeurotorchMZ 25.3.1_dev documentation</title>
+  <title>Starting Neurotorch and accessing the API &mdash; NeurotorchMZ 25.8.1 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
@@ -14,7 +14,7 @@
     <link rel="shortcut icon" href="../_static/neurotorch_logo.ico"/>
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../_static/documentation_options.js?v=dcb1c0c2"></script>
+      <script src="../_static/documentation_options.js?v=6b8d2784"></script>
       <script src="../_static/doctools.js?v=9bcbadda"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/js/theme.js"></script>
@@ -54,11 +54,13 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../gui/tab_image.html">Tab Image</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../gui/tab_signal.html">Tab Signal</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../gui/tab_roifinder.html">Tab ROI Finder</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../gui/imagej.html">Fiji/ImageJ Integration</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Algorithms</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../algorithm/detection_algorithms.html">Detection Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithm/signal_algorithms.html">Signal algorithms</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API</span></p>
 <ul class="current">
@@ -66,8 +68,6 @@
 <li class="toctree-l2 current"><a class="reference internal" href="api.html#neurotorch-module">Neurotorch module</a><ul class="current">
 <li class="toctree-l3 current"><a class="current reference internal" href="#">Starting Neurotorch and accessing the API</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#neurotorchmz.core.session.Edition"><code class="docutils literal notranslate"><span class="pre">Edition</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#neurotorchmz.Start"><code class="docutils literal notranslate"><span class="pre">Start()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#neurotorchmz.Start_Background"><code class="docutils literal notranslate"><span class="pre">Start_Background()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#neurotorchmz.core.session.Session"><code class="docutils literal notranslate"><span class="pre">Session</span></code></a></li>
 </ul>
 </li>
@@ -129,28 +129,6 @@
 
 </dd></dl>
 
-<dl class="py function">
-<dt class="sig sig-object py" id="neurotorchmz.Start">
-<span class="sig-prename descclassname"><span class="pre">neurotorchmz.</span></span><span class="sig-name descname"><span class="pre">Start</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">edition</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#neurotorchmz.core.session.Edition" title="neurotorchmz.core.session.Edition"><span class="pre">Edition</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">Edition.NEUROTORCH</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">headless</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">background</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#neurotorchmz.core.session.Session" title="neurotorchmz.core.session.Session"><span class="pre">Session</span></a></span></span><a class="headerlink" href="#neurotorchmz.Start" title="Link to this definition"></a></dt>
-<dd><p>Create a new session of Neurotorch. You can access it via the provided Session object returned by this function (only in background mode).</p>
-<p>In contrast to a session, use the API if you don’t want Neurotorch to manage your data and only want to access the detection functions.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>edition</strong> (<a class="reference internal" href="#neurotorchmz.core.session.Edition" title="neurotorchmz.core.session.Edition"><em>Edition</em></a>) – Choose which edition of Neurotorch you want to launch</p></li>
-<li><p><strong>headless</strong> (<em>bool</em>) – When set to true, the tkinter GUI is not opened. Some functions may not work in headless mode</p></li>
-<li><p><strong>background</strong> (<em>bool</em>) – Controls wether the GUI is running in a different thread. Note that tkinter may raise warnings, which can generally be ignored.</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="neurotorchmz.Start_Background">
-<span class="sig-prename descclassname"><span class="pre">neurotorchmz.</span></span><span class="sig-name descname"><span class="pre">Start_Background</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">edition</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#neurotorchmz.core.session.Edition" title="neurotorchmz.core.session.Edition"><span class="pre">Edition</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">Edition.NEUROTORCH</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">headless</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#neurotorchmz.core.session.Session" title="neurotorchmz.core.session.Session"><span class="pre">Session</span></a></span></span><a class="headerlink" href="#neurotorchmz.Start_Background" title="Link to this definition"></a></dt>
-<dd><p>Create a new session of NeurotorchMZ. The same as calling Start with background=True</p>
-</dd></dl>
-
 <dl class="py class">
 <dt class="sig sig-object py" id="neurotorchmz.core.session.Session">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">neurotorchmz.core.session.</span></span><span class="sig-name descname"><span class="pre">Session</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">edition</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#neurotorchmz.core.session.Edition" title="neurotorchmz.core.session.Edition"><span class="pre">Edition</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">Edition.NEUROTORCH</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#neurotorchmz.core.session.Session" title="Link to this definition"></a></dt>
@@ -160,24 +138,6 @@
 <dt class="sig sig-object py" id="neurotorchmz.core.session.Session.active_image_object">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">active_image_object</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ImageObject</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#neurotorchmz.core.session.Session.active_image_object" title="Link to this definition"></a></dt>
 <dd><p>Retreive or set the currently active ImageObject</p>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="neurotorchmz.core.session.Session.active_image_signal">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">active_image_signal</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">SignalObject</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#neurotorchmz.core.session.Session.active_image_signal" title="Link to this definition"></a></dt>
-<dd><p>Retreive the signal of the currently active ImageObject. The concept of a signal is the generalization of extrinsic synaptic stimulation</p>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="neurotorchmz.core.session.Session.ijH">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ijH</span></span><a class="headerlink" href="#neurotorchmz.core.session.Session.ijH" title="Link to this definition"></a></dt>
-<dd><p>Returns the ImageJHandler object or None if not yet imported</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="neurotorchmz.core.session.Session.import_ijh">
-<span class="sig-name descname"><span class="pre">import_ijh</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#neurotorchmz.core.session.Session.import_ijh" title="Link to this definition"></a></dt>
-<dd><p>Import the ImageJ helper (ijh)</p>
 </dd></dl>
 
 <dl class="py method">
@@ -205,7 +165,7 @@
 
 <dl class="py property">
 <dt class="sig sig-object py" id="neurotorchmz.core.session.Session.root">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">root</span></span><a class="headerlink" href="#neurotorchmz.core.session.Session.root" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">root</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">window.tk.Tk</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#neurotorchmz.core.session.Session.root" title="Link to this definition"></a></dt>
 <dd><p>Returns the current tkinter root. If in headless mode, return None</p>
 </dd></dl>
 
@@ -236,7 +196,7 @@
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright © 2025, Andreas Brilka.</p>
+    <p>&#169; Copyright © 2024-2025, Andreas Brilka.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a

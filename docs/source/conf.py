@@ -14,9 +14,10 @@ from datetime import datetime
 sys.path.insert(1, str(_nt_path := Path("").resolve().parent.parent.resolve()))
 print(f"Importing NeurotorchMZ from {_nt_path}")
 import neurotorchmz
+from neurotorchmz.gui import window
 
 project = 'NeurotorchMZ'
-copyright = f'© {datetime.now().year}, Andreas Brilka'
+copyright = f'© 2024-{datetime.now().year}, Andreas Brilka'
 author = neurotorchmz.__author__
 release = neurotorchmz.__version__
 
@@ -32,7 +33,17 @@ master_doc = "index"
 
 extensions = [
     'sphinx.ext.autodoc',
+    'sphinx.ext.autosummary',
 ]
+
+autosummary_generate = True
+
+autodoc_default_options = {
+    'members': True,                 # zeigt Methoden/Attribute
+    'undoc-members': True,          # zeigt auch Methoden ohne Docstring
+    'show-inheritance': True,
+    'inherited-members': True,      # optional: zeigt geerbte Methoden
+}
 
 print(f"Generating documentation for neurotorchmz version {neurotorchmz.__version__}")
 
