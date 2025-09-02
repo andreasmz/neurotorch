@@ -31,8 +31,7 @@ jobs:
 
     - name: Build Docs
       run: |
-        cd docs
-        sphinx-build -b dirhtml .docs/source . _build/html
+        sphinx-build -b dirhtml docs/source . docs/_build/html
 
     - name: Deploy to GitHub Pages
       uses: JamesIves/github-pages-deploy-action@v4
