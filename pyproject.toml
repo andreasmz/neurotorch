@@ -5,9 +5,6 @@ authors = [
 ]
 dynamic = ["version"]
 
-[tool.hatch.version]
-path = "neurotorchmz/__init__.py"
-
 description = "Neurotorch is a tool designed to extract regions of synaptic activity in neurons tagges with iGluSnFR, but is in general capable to find any kind of local brightness increase due to synaptic activity"
 license = "MIT"
 readme = "README.md"
@@ -40,6 +37,8 @@ dependencies = [
   "tkinter-tooltip>=3.1.2"
 ]
 
+[tool.hatch.version]
+path = "neurotorchmz/__init__.py"
 
 [project.urls]
 Homepage = "https://github.com/andreasmz/neurotorch"
