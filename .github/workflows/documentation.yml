@@ -27,12 +27,12 @@ jobs:
 
     - name: Install Sphinx and Dependencies
       run: |
-        pip install sphinx sphinx_rtd_theme   # Install Sphinx and the Read the Docs theme.
+        pip install sphinx sphinx-book-theme   # Install Sphinx and the theme.
 
     - name: Build Docs
       run: |
-        cd docs  # Wechsle ins Dokumentations-Verzeichnis
-        sphinx-build -b html . _build/html  # Baue die HTML-Dokumentation
+        cd docs
+        sphinx-build -b dirhtml .docs/source . _build/html
 
     - name: Deploy to GitHub Pages
       uses: JamesIves/github-pages-deploy-action@v4

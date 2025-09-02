@@ -50,6 +50,5 @@ print(f"Generating documentation for neurotorchmz version {neurotorchmz.__versio
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'sphinx_rtd_theme'
-html_static_path = ['_static']
+html_theme = 'sphinx_book_theme'
 html_favicon = '../media/neurotorch_logo.ico'
