@@ -50,7 +50,5 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build]
 exclude = [
-  "/build",
-  "/dist",
   "/docs",
 ]
