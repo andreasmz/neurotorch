@@ -14,7 +14,6 @@ from datetime import datetime
 sys.path.insert(1, str(_nt_path := Path("").resolve().parent.parent.resolve()))
 print(f"Importing NeurotorchMZ from {_nt_path}")
 import neurotorchmz
-from neurotorchmz.gui import window
 
 project = 'NeurotorchMZ'
 copyright = f'© 2024-{datetime.now().year}, Andreas Brilka'
