@@ -1,0 +1,49 @@
+name: Build package and upload to pip and GitHub
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install hatchling
+
+      - name: Install project dependencies
+        run: |
+          pip install .
+
+      - name: Build project with Hatchling
+        run: |
+          hatch build
+
+      - name: Publish to PyPI
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          python -m pip install twine
+          python -m twine upload dist/*  # Lädt das Paket auf PyPI hoch
+        env:
+          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+
+      - name: Upload release assets to GitHub
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG_NAME=$(echo ${GITHUB_REF} | sed 's/refs\/tags\///')  # Tag ohne refs/tags/
+          gh release create $TAG_NAME dist/* --title "Release $TAG_NAME" --notes "Automated release"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
