@@ -129,6 +129,7 @@ jobs:
             --add-data "neurotorchmz/resources;neurotorchmz/resources" `
             --add-data "neurotorchmz/plugins;neurotorchmz/plugins" `
             --hidden-import pyimagej `
+            --hidden-import trace_selector `
             neurotorch.py
           $zipName = "dist/neurotorchmz-${{ matrix.os }}-${{ matrix.arch }}.zip"
           Compress-Archive -Path "dist/neurotorchmz/*" -DestinationPath $zipName -Force
@@ -146,6 +147,7 @@ jobs:
             --add-data "neurotorchmz/resources:neurotorchmz/resources" \
             --add-data "neurotorchmz/plugins:neurotorchmz/plugins" \
             --hidden-import pyimagej \
+            --hidden-import trace_selector `
             neurotorch.py
           zip -r "dist/$APP_NAME.zip" "dist/$APP_NAME.app"
           rm -rf "dist/$APP_NAME"
@@ -160,6 +162,7 @@ jobs:
             --add-data "neurotorchmz/resources:neurotorchmz/resources" \
             --add-data "neurotorchmz/plugins:neurotorchmz/plugins" \
             --hidden-import pyimagej \
+            --hidden-import trace_selector `
             neurotorch.py
           zip -r "dist/$APP_NAME.zip" "dist/$APP_NAME"
           rm -rf "dist/$APP_NAME"
