@@ -76,29 +76,28 @@ jobs:
           pip install .
           pip install pyinstaller
 
-      - name: Build binary with PyInstaller
+      - name: Build Windows binary
+        if: runner.os == 'Windows'
         run: |
-          if [[ "${{ runner.os }}" == "Windows" ]]; then
-            pyinstaller --noconfirm --clean \
-              --name neurotorchmz \
-              --icon=docs/media/neurotorch_logo.ico \
-              --add-data "neurotorchmz/resources;neurotorchmz/resources" \
-              --add-data "neurotorchmz/plugins;neurotorchmz/plugins" \
-              --hidden-import pyimagej \
-              neurotorch_portable.py
-            mkdir dist/package
-            mv dist/neurotorchmz.exe dist/package/
-            powershell Compress-Archive -Path dist/package -DestinationPath dist/neurotorchmz-${{ matrix.arch }}.zip
-          else
-            pyinstaller --noconfirm --clean \
-              --name neurotorchmz \
-              --icon=docs/media/neurotorch_logo.icns \
-              --add-data "neurotorchmz/resources:neurotorchmz/resources" \
-              --add-data "neurotorchmz/plugins:neurotorchmz/plugins" \
-              --hidden-import pyimagej \
-              neurotorch_portable.py
-            mv dist/neurotorchmz.app dist/neurotorchmz-${{ matrix.arch }}.app
-          fi
+          pyinstaller --noconfirm --clean \
+            --name neurotorchmz \
+            --icon=docs/media/neurotorch_logo.ico \
+            --add-data "neurotorchmz/resources;neurotorchmz/resources" \
+            --add-data "neurotorchmz/plugins;neurotorchmz/plugins" \
+            --hidden-import pyimagej \
+            neurotorch_portable.py
+          zip -r dist/neurotorchmz-${{ matrix.arch }}.zip dist/neurotorchmz
+      - name: Build MacOs binary
+        if: runner.os == 'macOS'
+        run: |  
+          pyinstaller --noconfirm --clean \
+            --name neurotorchmz \
+            --icon=docs/media/neurotorch_logo.icns \
+            --add-data "neurotorchmz/resources:neurotorchmz/resources" \
+            --add-data "neurotorchmz/plugins:neurotorchmz/plugins" \
+            --hidden-import pyimagej \
+            neurotorch_portable.py
+          mv dist/neurotorchmz.app dist/neurotorchmz-${{ matrix.arch }}.app
 
       - name: Upload PyInstaller artifacts
         uses: actions/upload-artifact@v4
