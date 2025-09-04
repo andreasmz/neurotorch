@@ -61,11 +61,16 @@ jobs:
     outputs:
       version: ${{ steps.get_version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+
       - name: Determine version from wheel
         id: get_version
         run: |
-          WHEEL=$(ls dist/**/*.whl | head -n 1)
+          WHEEL=$(ls dist/*.whl | head -n 1)
           VERSION=$(echo "$WHEEL" | sed -E 's/.*-([0-9]+(\.[0-9]+)*).*/\1/')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
