@@ -11,7 +11,16 @@ import os
 import shutil
 
 # Initialize paths
-app_data_path = platformdirs.user_data_path(appname="NeurotorchMZ", appauthor="andreasmz", roaming=False, ensure_exists=True)
+if "NEUROTORCH_PORTABLE" in os.environ:
+    app_data_path = (Path(__file__).parent.parent / "AppData").resolve()
+    try:
+        app_data_path.mkdir(exist_ok=True)
+    except PermissionError:
+        print(f"Failed to create the AppData portable folder in '{app_data_path}' due to permission error")
+        print(f"Defaulting AppData to platform AppData (not portable)")
+        app_data_path = platformdirs.user_data_path(appname="NeurotorchMZ", appauthor="andreasmz", roaming=False, ensure_exists=True)
+else:
+    app_data_path = platformdirs.user_data_path(appname="NeurotorchMZ", appauthor="andreasmz", roaming=False, ensure_exists=True)
 log_path = app_data_path / "logs.txt"
 tmp_path = app_data_path / "tmp"
 environ_path = app_data_path / "environment"
