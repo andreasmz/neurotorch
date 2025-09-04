@@ -111,11 +111,12 @@ jobs:
           $zipName = "dist/neurotorchmz-${{ needs.determine-version.outputs.version }}-${{ matrix.os }}-${{ matrix.arch }}_portable.zip"
           Compress-Archive -Path "dist/neurotorchmz/*" -DestinationPath $zipName -Force
           Write-Host "Windows ZIP created: $zipName"
+          Remove-Item -Recurse -Force "dist/neurotorchmz"
 
       - name: Build MacOs binary
         if: runner.os == 'macOS'
         run: |  
-          APP_NAME="dist/neurotorchmz-${{ needs.determine-version.outputs.version }}-${{ matrix.os }}-${{ matrix.arch }}"
+          APP_NAME="neurotorchmz-${{ needs.determine-version.outputs.version }}-${{ matrix.os }}-${{ matrix.arch }}_portable"
           pyinstaller --noconfirm --clean \
             --name "$APP_NAME" \
             --icon=docs/media/neurotorch_logo.icns \
@@ -123,21 +124,14 @@ jobs:
             --add-data "neurotorchmz/plugins:neurotorchmz/plugins" \
             --hidden-import pyimagej \
             neurotorch_portable.py
-          mv dist/"$APP_NAME".app dist/"$APP_NAME".app
-          echo "macOS .app created: dist/$APP_NAME.app"
-          
-      - name: Upload PyInstaller artifacts
-        if: runner.os == 'macOS'
+          mv dist/"$APP_NAME" dist/"$APP_NAME".app
+
+      - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: pyinstaller-${{ needs.determine-version.outputs.version }}-${{ matrix.os }}-${{ matrix.arch }}
+          name: pyinstaller-${{ needs.determine-version.outputs.version }}
           path: dist/
-      - name: Upload Windows ZIP
-        if: runner.os == 'Windows'
-        uses: actions/upload-artifact@v4
-        with:
-          name: pyinstaller-${{ needs.determine-version.outputs.version }}-${{ matrix.os }}-${{ matrix.arch }}
-          path: dist/*.zip
+
 
   release:
     name: Publish GitHub Release
