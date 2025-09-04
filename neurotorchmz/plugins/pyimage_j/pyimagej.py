@@ -5,7 +5,6 @@ import numpy as np
 import xarray
 from pathlib import Path
 import shutil
-from scyjava import jimport
 import imagej
 
 plugin_module = plugin_manager.get_module()
@@ -74,6 +73,8 @@ class ImageJHandler:
     # ImageJ bridge
 
     def start_imageJ(self, headless: bool = False):
+        global jimport
+        from scyjava import jimport
         """ Starts pyImageJ and connects to the local installation. Before start, the installation is rudimentary checked"""
         if ImageJHandler.ij is not None:
             logger.warning(f"Failed to start Fiji/ImageJ: An instance is already running")

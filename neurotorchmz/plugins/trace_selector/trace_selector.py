@@ -7,6 +7,7 @@ import subprocess
 import pathlib
 import threading
 import importlib.util
+import sys
 
 
 class TraceSelectorBridge:
