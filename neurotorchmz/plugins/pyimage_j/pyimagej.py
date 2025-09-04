@@ -69,6 +69,7 @@ class ImageJHandler:
 
         e.session.window.menu_run.add_command(label="Start Fiji/ImageJ", command=self.menu_start_imageJ_click)
         self.menu_settings.add_command(label="Locate installation", command=self.menu_locate_installation_click)
+        self.menu_settings.add_command(label="Test installation", command=self.menu_locate_installation_click)
     
     # ImageJ bridge
 
@@ -361,6 +362,30 @@ class ImageJHandler:
         if not self.validate_imagej_path():
             if messagebox.askretrycancel("Neurotorch: Select Fiji/ImageJ path", "The provided path seems to be invalid. Do you want to retry?"):
                 self.menu_locate_installation_click()
+
+    def menu_test_installation_click(self) -> None:
+        self.ask_for_imagej_path()
+        if not self.validate_imagej_path():
+            return
+        java_installed = self.test_for_java()
+        maven_installed = self.test_for_maven()
+        missing_components = []
+        if not java_installed:
+            missing_components.append("open-jdk")
+        if not maven_installed:
+            missing_components.append("apache-maven")
+
+        if len(missing_components) > 0:
+            for mc in missing_components:
+                logger.warning(f"Failed to locate '{mc}'. Check if the binaries are included in PATH")
+            if self.root is not None:
+                messagebox.showwarning("Neurotorch: Fiji/ImageJ bridge", "To connect to Fiji/ImageJ, open-jdk and apache-maven are needed. "
+                                       + "But the following components are missing on your system:\n\n"
+                                       + '\n'.join(["\t- " + mc for mc in missing_components])
+                                       + "\n\nYou can install them for example from https://www.microsoft.com/openjdk and https://maven.apache.org/. "
+                                       + "For more details, refer to the documentation " + settings.documentation_url)
+        else:
+            messagebox.showinfo(f"Neurotorch: Fiji/ImageJ bridge", "Fiji/ImageJ, open-jdk and apacha maven are ready")
 
     # Synapse Treeview
 
