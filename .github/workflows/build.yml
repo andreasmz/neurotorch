@@ -120,7 +120,7 @@ jobs:
             --add-data "neurotorchmz/plugins;neurotorchmz/plugins" `
             --hidden-import pyimagej `
             neurotorch_portable.py
-          $zipName = "dist/neurotorchmz-${{ needs.determine-version.outputs.version }}-${{ matrix.os }}-${{ matrix.arch }}_portable.zip"
+          $zipName = "dist/neurotorchmz-${{ matrix.os }}-${{ matrix.arch }}_portable.zip"
           Compress-Archive -Path "dist/neurotorchmz/*" -DestinationPath $zipName -Force
           Write-Host "Windows ZIP created: $zipName"
           Remove-Item -Recurse -Force "dist/neurotorchmz"
@@ -128,7 +128,7 @@ jobs:
       - name: Build MacOs binary
         if: runner.os == 'macOS'
         run: |  
-          APP_NAME="neurotorchmz-${{ needs.determine-version.outputs.version }}-${{ matrix.os }}-${{ matrix.arch }}_portable"
+          APP_NAME="neurotorchmz-${{ matrix.os }}-${{ matrix.arch }}_portable"
           pyinstaller --noconfirm --clean \
             --name "$APP_NAME" \
             --icon=docs/media/neurotorch_logo.icns \

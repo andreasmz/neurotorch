@@ -16,6 +16,15 @@
 
 # Neurotorch
 
+<!-- Windows Button -->
+<a href="https://github.com/USERNAME/REPO/releases/latest/download/neurotorchmz-Windows-x64_portable.zip" target="_blank">
+  <img src="https://img.shields.io/badge/Download-Windows-blue?style=for-the-badge&logoColor=white" alt="Download Windows">
+</a>
+<!-- macOS Button -->
+<a href="https://github.com/USERNAME/REPO/releases/latest/download/neurotorchmz-macos-x64_portable.zip" target="_blank">
+  <img src="https://img.shields.io/badge/Download-macOS-blue?style=for-the-badge&logo=apple&logoColor=white" alt="Download macOS">
+</a>
+
 Neurotorch is a tool designed to extract regions of synaptic activity in neurons tagges with iGluSnFR, but is in general capable to find any kind of local brightness increase due to synaptic activity. It works with microscopic image series / videos and is able to open an variety of formats (for details see below)
 - **Fiji/ImageJ**: Full connectivity provided. Open files in ImageJ and send them to Neurotorch and vice versa.
 - **Stimulation extraction**: Find the frames where stimulation was applied
