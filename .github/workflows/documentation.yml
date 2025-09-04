@@ -2,8 +2,8 @@ name: Build and Deploy Sphinx Docs
 
 on:
   push:
-    branches:
-      - docs 
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 permissions:
@@ -22,7 +22,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.13'
+        python-version: '3.x'
 
     - name: Install dependencies
       run: |
