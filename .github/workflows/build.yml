@@ -136,7 +136,6 @@ jobs:
             --add-data "neurotorchmz/plugins:neurotorchmz/plugins" \
             --hidden-import pyimagej \
             neurotorch_portable.py
-          mv dist/"$APP_NAME" dist/"$APP_NAME".app
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
@@ -150,6 +149,8 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/') || github.event.inputs.publish-release == 'true'
     needs: [build, pyinstaller, determine-version]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Download build artifacts
         uses: actions/download-artifact@v4
