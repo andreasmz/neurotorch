@@ -8,7 +8,8 @@
 ![License from PyPI package](https://img.shields.io/pypi/l/neurotorchmz?style=flat&logo=creativecommons&color=fc030f&link=https%3A%2F%2Fgithub.com%2Fandreasmz%2Fneurotorch%2Fblob%2Fmain%2FLICENSE
 )
 
-![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/andreasmz/neurotorch/documentation.yml?style=flat&label=build%20(docs)&link=https%3A%2F%2Fgithub.com%2Fandreasmz%2Fneurotorch%2Factions%2Fworkflows%2Fdocumentation.yml)
+![GitHub Actions build.yml Status](https://img.shields.io/github/actions/workflow/status/andreasmz/neurotorch/build.yml?style=flat&label=build&link=https%3A%2F%2Fgithub.com%2Fandreasmz%2Fneurotorch%2Factions%2Fworkflows%2Fbuild.yml)
+![GitHub Actions documentation.yml Status](https://img.shields.io/github/actions/workflow/status/andreasmz/neurotorch/documentation.yml?style=flat&label=build%20(docs)&link=https%3A%2F%2Fgithub.com%2Fandreasmz%2Fneurotorch%2Factions%2Fworkflows%2Fdocumentation.yml)
 
 
 <span style="color:red;">Please note</span>: There is another project called neurotorch on GitHub/PyPI not related to this project. To avoid mix-up, the package is named _neurotorchmz_ with the _mz_ as a refrence to Mainz where the software was developed.

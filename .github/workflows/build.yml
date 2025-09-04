@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 jobs:
   build:
@@ -11,39 +12,123 @@ jobs:
     
     steps:
       - name: Check out repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install hatchling
+          python-version: '3.x'
 
       - name: Install project dependencies
         run: |
           pip install .
+          pip install build
 
       - name: Build project with Hatchling
         run: |
-          hatch build
+          python -m build
 
-      - name: Publish to PyPI
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: |
-          python -m pip install twine
-          python -m twine upload dist/*  # Lädt das Paket auf PyPI hoch
-        env:
-          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+      - name: Store the distribution packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
 
-      - name: Upload release assets to GitHub
-        if: startsWith(github.ref, 'refs/tags/v')
+  publish-to-pypi:
+    name: Publish to PyPi
+    if: startsWith(github.ref, 'refs/tags/')  # only publish to PyPI on tag pushes
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/neurotorchmz
+    permissions:
+      id-token: write  # IMPORTANT: mandatory for trusted publishing
+
+    steps:
+    - name: Download all the dists
+      uses: actions/download-artifact@v4
+      with:
+        name: python-package-distributions
+        path: dist/
+    - name: Publish distribution to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+
+
+  pyinstaller:
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+        arch: [x64, arm64]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+          architecture: ${{ matrix.arch }}
+
+      - name: Install dependencies
         run: |
-          TAG_NAME=$(echo ${GITHUB_REF} | sed 's/refs\/tags\///')  # Tag ohne refs/tags/
-          gh release create $TAG_NAME dist/* --title "Release $TAG_NAME" --notes "Automated release"
+          pip install .
+          pip install pyinstaller
+
+      - name: Build binary with PyInstaller
+        run: |
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            pyinstaller --noconfirm --clean \
+              --name neurotorchmz \
+              --icon=docs/media/neurotorch_logo.ico \
+              --add-data "neurotorchmz/resources;neurotorchmz/resources" \
+              --add-data "neurotorchmz/plugins;neurotorchmz/plugins" \
+              --hidden-import pyimagej \
+              neurotorch_portable.py
+            mkdir dist/package
+            mv dist/neurotorchmz.exe dist/package/
+            powershell Compress-Archive -Path dist/package -DestinationPath dist/neurotorchmz-${{ matrix.arch }}.zip
+          else
+            pyinstaller --noconfirm --clean \
+              --name neurotorchmz \
+              --icon=docs/media/neurotorch_logo.icns \
+              --add-data "neurotorchmz/resources:neurotorchmz/resources" \
+              --add-data "neurotorchmz/plugins:neurotorchmz/plugins" \
+              --hidden-import pyimagej \
+              neurotorch_portable.py
+            mv dist/neurotorchmz.app dist/neurotorchmz-${{ matrix.arch }}.app
+          fi
+
+      - name: Upload PyInstaller artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pyinstaller-${{ matrix.os }}-${{ matrix.arch }}
+          path: dist/
+
+  release:
+    name: Publish GitHub Release
+    if: startsWith(github.ref, 'refs/tags/')  # only publish release on tag pushes
+    needs: [build, pyinstaller]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/
+
+      - name: Determine version from wheel
+        id: get_version
+        run: |
+          WHEEL=$(ls dist/**/*.whl | head -n 1)
+          VERSION=$(echo "$WHEEL" | sed -E 's/.*-([0-9]+(\.[0-9]+)*).*/\1/')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.get_version.outputs.version }}
+          name: Release v${{ steps.get_version.outputs.version }}
+          files: dist/**
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
