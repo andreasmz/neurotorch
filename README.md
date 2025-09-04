@@ -25,10 +25,10 @@ Neurotorch is a tool designed to extract regions of synaptic activity in neurons
 
 ### Installation
 
-<a href="https://github.com/andreasmz/neurotorch/releases/latest/download/neurotorchmz-Windows-x64.zip" target="_blank">
+<a href="https://github.com/andreasmz/neurotorch/releases/latest/download/neurotorchmz-windows-latest-x64.zip" target="_blank">
   <img src="https://img.shields.io/badge/Download-Windows-blue?style=for-the-badge&logoColor=white" alt="Download Windows">
 </a>
-<a href="https://github.com/andreasmz/neurotorch/releases/latest/download/neurotorchmz-macos-x64.zip" target="_blank">
+<a href="https://github.com/andreasmz/neurotorch/releases/latest/download/neurotorchmz-macos-latest-x64.zip" target="_blank">
   <img src="https://img.shields.io/badge/Download-macOS-blue?style=for-the-badge&logo=apple&logoColor=white" alt="Download macOS">
 </a>
 
