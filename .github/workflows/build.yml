@@ -54,6 +54,21 @@ jobs:
     - name: Publish distribution to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
 
+  determine-version:
+    name: Determine version from wheel
+    needs: build
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Determine version from wheel
+        id: get_version
+        run: |
+          WHEEL=$(ls dist/**/*.whl | head -n 1)
+          VERSION=$(echo "$WHEEL" | sed -E 's/.*-([0-9]+(\.[0-9]+)*).*/\1/')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
 
   pyinstaller:
     strategy:
@@ -61,6 +76,7 @@ jobs:
         os: [windows-latest, macos-latest]
         arch: [x64]
     runs-on: ${{ matrix.os }}
+    needs: determine-version
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -78,6 +94,7 @@ jobs:
 
       - name: Build Windows binary
         if: runner.os == 'Windows'
+        shell: bash
         run: |
           pyinstaller --noconfirm --clean \
             --name neurotorchmz \
@@ -86,7 +103,7 @@ jobs:
             --add-data "neurotorchmz/plugins;neurotorchmz/plugins" \
             --hidden-import pyimagej \
             neurotorch_portable.py
-          zip -r dist/neurotorchmz-${{ matrix.arch }}.zip dist/neurotorchmz
+          zip -r dist/neurotorchmz-${{ needs.determine-version.outputs.version }}-${{ matrix.os }}-${{ matrix.arch }}_portable.zip dist/neurotorchmz
       - name: Build MacOs binary
         if: runner.os == 'macOS'
         run: |  
@@ -97,7 +114,7 @@ jobs:
             --add-data "neurotorchmz/plugins:neurotorchmz/plugins" \
             --hidden-import pyimagej \
             neurotorch_portable.py
-          mv dist/neurotorchmz.app dist/neurotorchmz-${{ matrix.arch }}.app
+          mv dist/neurotorchmz.app dist/neurotorchmz-${{ needs.determine-version.outputs.version }}-${{ matrix.os }}-${{ matrix.arch }}_portable.app
 
       - name: Upload PyInstaller artifacts
         uses: actions/upload-artifact@v4
@@ -108,7 +125,7 @@ jobs:
   release:
     name: Publish GitHub Release
     if: startsWith(github.ref, 'refs/tags/')  # only publish release on tag pushes
-    needs: [build, pyinstaller]
+    needs: [build, pyinstaller, determine-version]
     runs-on: ubuntu-latest
     steps:
       - name: Download build artifacts
@@ -116,18 +133,11 @@ jobs:
         with:
           path: dist/
 
-      - name: Determine version from wheel
-        id: get_version
-        run: |
-          WHEEL=$(ls dist/**/*.whl | head -n 1)
-          VERSION=$(echo "$WHEEL" | sed -E 's/.*-([0-9]+(\.[0-9]+)*).*/\1/')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.get_version.outputs.version }}
-          name: Release v${{ steps.get_version.outputs.version }}
+          tag_name: v${{ needs.determine-version.outputs.version }}
+          name: Release v${{ needs.determine-version.outputs.version }}
           files: dist/**
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
