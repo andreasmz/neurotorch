@@ -10,6 +10,10 @@ on:
         description: 'Publish to PyPI/Release?'
         default: false
         type: boolean
+      build-pyinstaller:
+        description: 'Build pyinstaller?'
+        default: true
+        type: boolean
       publish-release:
         description: 'Upload to GitHub releases'
         default: false
@@ -88,6 +92,7 @@ jobs:
 
 
   pyinstaller:
+    if: github.event.inputs.build-pyinstaller == 'true'
     strategy:
       matrix:
         os: [windows-latest, macos-latest]
