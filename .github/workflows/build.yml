@@ -10,8 +10,8 @@ on:
         description: 'Publish to PyPI/Release?'
         default: false
         type: boolean
-      skip-pyinstaller:
-        description: 'Skip pyinstaller?'
+      publish-pyinstaller:
+        description: 'Publish pyinstaller builds?'
         default: true
         type: boolean
       publish-release:
@@ -92,7 +92,7 @@ jobs:
 
 
   pyinstaller:
-    if: github.event.inputs.skip-pyinstaller != 'true'
+    if: github.event.inputs.publish-pyinstaller != 'false'
     strategy:
       matrix:
         os: [windows-latest, macos-latest, ubuntu-latest]
