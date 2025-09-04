@@ -24,7 +24,7 @@ jobs:
           pip install .
           pip install build
 
-      - name: Build project with Hatchling
+      - name: Build project
         run: |
           python -m build
 
