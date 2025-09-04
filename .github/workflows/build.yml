@@ -5,6 +5,15 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      publish-pypi:
+        description: 'Publish to PyPI/Release?'
+        required: true
+        default: 'false'
+      publish-release:
+        description: 'Upload to GitHub releases'
+        required: true
+        default: 'false'
 
 jobs:
   build:
@@ -34,9 +43,10 @@ jobs:
           name: python-package-distributions
           path: dist/
 
+
   publish-to-pypi:
     name: Publish to PyPi
-    if: startsWith(github.ref, 'refs/tags/')  # only publish to PyPI on tag pushes
+    if: startsWith(github.ref, 'refs/tags/') || github.event.inputs.publish-pypi == 'true'
     needs: build
     runs-on: ubuntu-latest
     environment:
@@ -53,6 +63,7 @@ jobs:
         path: dist/
     - name: Publish distribution to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
+
 
   determine-version:
     name: Determine version from wheel
@@ -73,6 +84,7 @@ jobs:
           WHEEL=$(ls dist/*.whl | head -n 1)
           VERSION=$(echo "$WHEEL" | sed -E 's/.*-([0-9]+(\.[0-9]+)*).*/\1/')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Determined version: $VERSION"
 
 
   pyinstaller:
@@ -129,13 +141,13 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: pyinstaller-${{ needs.determine-version.outputs.version }}
+          name: pyinstaller-${{ matrix.os }}-${{ matrix.arch }}
           path: dist/
 
 
   release:
     name: Publish GitHub Release
-    if: startsWith(github.ref, 'refs/tags/')  # only publish release on tag pushes
+    if: startsWith(github.ref, 'refs/tags/') || github.event.inputs.publish-release == 'true'
     needs: [build, pyinstaller, determine-version]
     runs-on: ubuntu-latest
     steps:
