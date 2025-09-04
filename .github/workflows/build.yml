@@ -95,8 +95,11 @@ jobs:
     if: github.event.inputs.build-pyinstaller == 'true'
     strategy:
       matrix:
-        os: [windows-latest, macos-latest]
-        arch: [x64]
+        os: [windows-latest, macos-latest, ubuntu-latest]
+        arch: [x64, arm64]
+        exclude:
+        - os: windows-latest
+          arch: arm64   # Python installation crashes
     runs-on: ${{ matrix.os }}
     needs: determine-version
     steps:
@@ -145,6 +148,19 @@ jobs:
           zip -r "dist/$APP_NAME.zip" "dist/$APP_NAME.app"
           rm -rf "dist/$APP_NAME"
           rm -rf "dist/$APP_NAME.app"
+
+      - name: Build Linux binary
+        if: runner.os == 'Linux'
+        run: |
+          APP_NAME="neurotorchmz-${{ matrix.os }}-${{ matrix.arch }}"
+          pyinstaller --noconfirm --clean \
+            --name "$APP_NAME" \
+            --add-data "neurotorchmz/resources:neurotorchmz/resources" \
+            --add-data "neurotorchmz/plugins:neurotorchmz/plugins" \
+            --hidden-import pyimagej \
+            neurotorch.py
+          zip -r "dist/$APP_NAME.zip" "dist/$APP_NAME"
+          rm -rf "dist/$APP_NAME"
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
