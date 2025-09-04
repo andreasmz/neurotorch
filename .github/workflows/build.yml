@@ -137,6 +137,7 @@ jobs:
             --add-data "neurotorchmz/plugins:neurotorchmz/plugins" \
             --hidden-import pyimagej \
             neurotorch.py
+          rm -rf "dist/$APP_NAME"
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
