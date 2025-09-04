@@ -43,11 +43,11 @@ for p in environ_path.iterdir():
         continue
     if ("jdk" in p.name) and (p / "bin").exists():
         if shutil.which("javac") is None:
-            os.environ["JAVA_HOME"] = str(p)
-            os.environ["PATH"] += os.pathsep + str(p / "bin")
             logger.debug(f"Found '{p.name}' in the AppData folder, created JAVA_HOME and added '{p / 'bin'}' temporarily to PATH")
         else:
-            logger.debug(f"Found '{p.name}' in the AppData folder, but javac seems already to be installed.")
+            logger.debug(f"Found '{p.name}' in the AppData folder, but javac seems already to be installed. Adding it nevertheless")
+        os.environ["JAVA_HOME"] = str(p)
+        os.environ["PATH"] += os.pathsep + str(p / "bin")
     if ("maven" in p.name) and (p / "bin").exists():
         os.environ["PATH"] += os.pathsep + str(p / "bin")
         logger.debug(f"Found '{p.name}' in the AppData folder and added '{p / 'bin'}' temporarily to PATH")
