@@ -31,6 +31,9 @@ Neurotorch is a tool designed to extract regions of synaptic activity in neurons
 <a href="https://github.com/andreasmz/neurotorch/releases/latest/download/neurotorchmz-macos-latest-x64.zip" target="_blank">
   <img src="https://img.shields.io/badge/Download-macOS-blue?style=for-the-badge&logo=apple&logoColor=white" alt="Download macOS">
 </a>
+<a href="https://github.com/andreasmz/neurotorch/releases/latest/download/neurotorchmz-ubuntu-latest-x64.zip" target="_blank">
+  <img src="https://img.shields.io/badge/Download-Linux%20x86--64-blue?style=for-the-badge&logo=linux&logoColor=white" alt="Download Linux (64bit)">
+</a>
 
 Neurotorch can be downloaded in a standalone, portable version for Windows and MacOS. The download comes with a compatible Python environment containing all necessary dependencies. Please note that Fiji/ImageJ as well as TraceSelector are not included in the build. However Neurotorch is able to automatically install them once you want to use them.
 
