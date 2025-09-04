@@ -16,15 +16,6 @@
 
 # Neurotorch
 
-<!-- Windows Button -->
-<a href="https://github.com/USERNAME/REPO/releases/latest/download/neurotorchmz-Windows-x64_portable.zip" target="_blank">
-  <img src="https://img.shields.io/badge/Download-Windows-blue?style=for-the-badge&logoColor=white" alt="Download Windows">
-</a>
-<!-- macOS Button -->
-<a href="https://github.com/USERNAME/REPO/releases/latest/download/neurotorchmz-macos-x64_portable.zip" target="_blank">
-  <img src="https://img.shields.io/badge/Download-macOS-blue?style=for-the-badge&logo=apple&logoColor=white" alt="Download macOS">
-</a>
-
 Neurotorch is a tool designed to extract regions of synaptic activity in neurons tagges with iGluSnFR, but is in general capable to find any kind of local brightness increase due to synaptic activity. It works with microscopic image series / videos and is able to open an variety of formats (for details see below)
 - **Fiji/ImageJ**: Full connectivity provided. Open files in ImageJ and send them to Neurotorch and vice versa.
 - **Stimulation extraction**: Find the frames where stimulation was applied
@@ -34,21 +25,37 @@ Neurotorch is a tool designed to extract regions of synaptic activity in neurons
 
 ### Installation
 
-You need Python to run Neurotorch. Also it is recommended to create a virtual enviorenment to not mess up with your other python packages, for example using [miniconda](https://docs.anaconda.com/miniconda/). When inside your virtual enviorenment, simply type
+<!-- Windows Button -->
+<a href="https://github.com/USERNAME/REPO/releases/latest/download/neurotorchmz-Windows-x64_portable.zip" target="_blank">
+  <img src="https://img.shields.io/badge/Download-Windows-blue?style=for-the-badge&logoColor=white" alt="Download Windows">
+</a>
+<!-- macOS Button -->
+<a href="https://github.com/USERNAME/REPO/releases/latest/download/neurotorchmz-macos-x64_portable.zip" target="_blank">
+  <img src="https://img.shields.io/badge/Download-macOS-blue?style=for-the-badge&logo=apple&logoColor=white" alt="Download macOS">
+</a>
+
+Neurotorch can be downloaded in a standalone, portable version for Windows and MacOS. The download comes with a compatible Python environment containing all necessary dependencies. Please note that Fiji/ImageJ as well as TraceSelector are not included in the build. However Neurotorch is able to automatically install them once you want to use them.
+
+### Installation for advanced users 
+
+If you already have Python installed, you can also install it via pip as a very small (~ 1 MB) package:
 ```bash
 pip install neurotorchmz
 ```
-Also, you need to install OpenJDK and Apache Maven to run PyImageJ. An easy solution is to use the bundled Build from Microsoft you can find [here](https://www.microsoft.com/openjdk)
+This approach is the recommended way if you are familiar with Python as it minimizes the overhead of downloading and storing Python multiple times. It is recommened to use a virtual environment manager like [miniconda](https://docs.anaconda.com/miniconda/). Please refer to the [documentation](https://andreasmz.github.io/neurotorch/introduction/installation/) for more details.
+
+If you want to use the Fiji/ImageJ bridge you will need to install OpenJDK and Apacha maven and add them to your system PATH. While Neurotorch is able to install those for you into your AppData folder, you can also install them manually from [openjdk.org](https://openjdk.org/) and [maven.apache.org](https://maven.apache.org/download.cgi)
 
 To run Neurotorch, type
 ```bash
 python -m neurotorchmz
 ```
-I recommend to create a shortcut on your Desktop where you replace the command python with the path to your python executable. You can also import it as an module to use it's API
+You can create a shortcut on your Desktop where you replace the command python with the path to your python executable.
+
+If you want to interact with Neurotorch you can import it as an module
 ```python
 import neurotorchmz
-print(neurotorchmz.__version__)
-neurotorchmz.Start_Background()
+session = neurotorchmz.start_background(headless=False)
 ```
 
 To update your installation, type
@@ -57,6 +64,10 @@ pip install neurotorchmz --upgrade
 ```
 
 ### Documentation
+
+<a href="https://andreasmz.github.io/neurotorch/" target="_blank">
+  <img src="https://img.shields.io/badge/Documentation-blue?style=for-the-badge&logo=read-the-docs&logoColor=white" alt="Documentation">
+</a>
 
 You can find the full documentation under [andreasmz.github.io/neurotorch](https://andreasmz.github.io/neurotorch/).
 
