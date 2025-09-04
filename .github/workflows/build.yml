@@ -37,7 +37,7 @@ jobs:
         run: |
           python -m build
 
-      - name: Store the distribution packages
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: python-package-distributions
@@ -91,7 +91,7 @@ jobs:
     strategy:
       matrix:
         os: [windows-latest, macos-latest]
-        arch: [x64]
+        arch: [x64, arm64]
     runs-on: ${{ matrix.os }}
     needs: determine-version
     steps:
@@ -119,8 +119,8 @@ jobs:
             --add-data "neurotorchmz/resources;neurotorchmz/resources" `
             --add-data "neurotorchmz/plugins;neurotorchmz/plugins" `
             --hidden-import pyimagej `
-            neurotorch_portable.py
-          $zipName = "dist/neurotorchmz-${{ matrix.os }}-${{ matrix.arch }}_portable.zip"
+            neurotorch.py
+          $zipName = "dist/neurotorchmz-${{ matrix.os }}-${{ matrix.arch }}.zip"
           Compress-Archive -Path "dist/neurotorchmz/*" -DestinationPath $zipName -Force
           Write-Host "Windows ZIP created: $zipName"
           Remove-Item -Recurse -Force "dist/neurotorchmz"
@@ -128,14 +128,15 @@ jobs:
       - name: Build MacOs binary
         if: runner.os == 'macOS'
         run: |  
-          APP_NAME="neurotorchmz-${{ matrix.os }}-${{ matrix.arch }}_portable"
+          APP_NAME="neurotorchmz-${{ matrix.os }}-${{ matrix.arch }}"
           pyinstaller --noconfirm --clean \
             --name "$APP_NAME" \
+            --windowed \
             --icon=docs/media/neurotorch_logo.icns \
             --add-data "neurotorchmz/resources:neurotorchmz/resources" \
             --add-data "neurotorchmz/plugins:neurotorchmz/plugins" \
             --hidden-import pyimagej \
-            neurotorch_portable.py
+            neurotorch.py
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
