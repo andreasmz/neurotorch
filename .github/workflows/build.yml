@@ -8,12 +8,12 @@ on:
     inputs:
       publish-pypi:
         description: 'Publish to PyPI/Release?'
-        required: true
-        default: 'false'
+        default: false
+        type: boolean
       publish-release:
         description: 'Upload to GitHub releases'
-        required: true
-        default: 'false'
+        default: false
+        type: boolean
 
 jobs:
   build:
@@ -46,7 +46,7 @@ jobs:
 
   publish-to-pypi:
     name: Publish to PyPi
-    if: startsWith(github.ref, 'refs/tags/') || github.event.inputs.publish-pypi == 'true'
+    if: startsWith(github.ref, 'refs/tags/') || github.event.inputs.publish-pypi
     needs: build
     runs-on: ubuntu-latest
     environment:
@@ -147,7 +147,7 @@ jobs:
 
   release:
     name: Publish GitHub Release
-    if: startsWith(github.ref, 'refs/tags/') || github.event.inputs.publish-release == 'true'
+    if: startsWith(github.ref, 'refs/tags/') || github.event.inputs.publish-release
     needs: [build, pyinstaller, determine-version]
     runs-on: ubuntu-latest
     steps:
