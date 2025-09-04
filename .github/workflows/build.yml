@@ -99,16 +99,19 @@ jobs:
 
       - name: Build Windows binary
         if: runner.os == 'Windows'
-        shell: bash
+        shell: pwsh
         run: |
-          pyinstaller --noconfirm --clean \
-            --name neurotorchmz \
-            --icon=docs/media/neurotorch_logo.ico \
-            --add-data "neurotorchmz/resources;neurotorchmz/resources" \
-            --add-data "neurotorchmz/plugins;neurotorchmz/plugins" \
-            --hidden-import pyimagej \
+          pyinstaller --noconfirm --clean `
+            --name neurotorchmz `
+            --icon=docs/media/neurotorch_logo.ico `
+            --add-data "neurotorchmz/resources;neurotorchmz/resources" `
+            --add-data "neurotorchmz/plugins;neurotorchmz/plugins" `
+            --hidden-import pyimagej `
             neurotorch_portable.py
-          zip -r dist/neurotorchmz-${{ needs.determine-version.outputs.version }}-${{ matrix.os }}-${{ matrix.arch }}_portable.zip dist/neurotorchmz
+          $zipName = "dist/neurotorchmz-${{ needs.determine-version.outputs.version }}-${{ matrix.os }}-${{ matrix.arch }}_portable.zip"
+          Compress-Archive -Path "dist/neurotorchmz/*" -DestinationPath $zipName -Force
+          Write-Host "Windows ZIP created: $zipName"
+
       - name: Build MacOs binary
         if: runner.os == 'macOS'
         run: |  
