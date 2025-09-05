@@ -18,6 +18,7 @@ class ImageJHandler:
     OvalRoi = None # jimport('ij.gui.OvalRoi')
     PolygonRoi = None # jimport('ij.gui.PolygonRoi')
     Roi = None # ImageJHandler.Roi = jimport('ij.gui.Roi')
+    RoiManager = None # ImageJHandler.RoiManager = jimport('ij.plugin.frame.RoiManager')
     RM = None # Roi Manager
     IJ_Plugin_Duplicator = None
     headless: bool = False
@@ -124,6 +125,7 @@ class ImageJHandler:
                 ImageJHandler.OvalRoi = jimport('ij.gui.OvalRoi')
                 ImageJHandler.PolygonRoi = jimport('ij.gui.PolygonRoi')
                 ImageJHandler.Roi = jimport('ij.gui.Roi')
+                ImageJHandler.RoiManager = jimport('ij.plugin.frame.RoiManager')
                 ImageJHandler.IJ_Plugin_Duplicator = jimport('ij.plugin.Duplicator')
                 if not headless:
                     ImageJHandler.ij.ui().showUI() # type: ignore
@@ -295,6 +297,7 @@ class ImageJHandler:
                 if roi.radius is None: continue
                 roi = ImageJHandler.OvalRoi(roi.location[1]-roi.radius, roi.location[0]-roi.radius, 2*roi.radius+1, 2*roi.radius+1) # type: ignore
                 roi.setName(name)
+                roi.setPosition(0)
                 ImageJHandler.RM.addRoi(roi) # type: ignore
                 roi_count += 1
             elif isinstance(roi, PolygonalSynapseROI):
@@ -302,6 +305,7 @@ class ImageJHandler:
                 roi.polygon
                 roi = roi = ImageJHandler.PolygonRoi(roi.polygon[:, 1]+0.5, roi.polygon[:, 0]+0.5, ImageJHandler.Roi.POLYGON) # type: ignore
                 roi.setName(name)
+                roi.setPosition(0)
                 ImageJHandler.RM.addRoi(roi) # type: ignore
                 roi_count += 1
             else:
@@ -323,14 +327,15 @@ class ImageJHandler:
 
     def open_roi_manager(self) -> None:
         """ Opens the ROI Manager """
-        if ImageJHandler.ij is None:
+        if ImageJHandler.ij is None or ImageJHandler.RoiManager is None:
             logger.warning(f"Fiji/ImageJ bridge: Attempted to open the ROI manager before ij was initialized. Run start_imageJ() first")
             if self.root is not None:
                 messagebox.showerror("Neurotorch", "Fiji/ImageJ must first be started before it can be used")
             return None
         if not ImageJHandler.headless:
             ImageJHandler.ij.py.run_macro("roiManager('show all');")
-        ImageJHandler.RM = ImageJHandler.ij.RoiManager.getRoiManager()
+        ImageJHandler.RM = ImageJHandler.RoiManager.getInstance()
+        #ImageJHandler.RM = ImageJHandler.ij.RoiManager.getRoiManager()
 
     # GUI functions
 
