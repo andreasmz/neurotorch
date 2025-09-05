@@ -242,7 +242,7 @@ class LocalMax_Integration(LocalMax, IDetectionAlgorithmIntegration):
         self.setting_polygonal_ROIS.var.int_var.trace_add("write", lambda _1,_2,_3:self.setting_radius.set_visibility(not self.setting_polygonal_ROIS.get()))
         self.setting_polygonal_ROIS.var.set_callback(lambda: self.setting_radius.set_visibility(not self.setting_polygonal_ROIS.get()))
 
-        self.setting_radius = GridSetting(self.optionsFrame, row=11, text="Radius", unit="px", default=6, min_=1, max_=1000, scale_min=-1, scale_max=30, tooltip=resources.get_string("algorithms/localMax/params/radius"))
+        self.setting_radius = GridSetting(self.optionsFrame, row=11, text="Radius", unit="px", default=6, min_=1, max_=1000, scale_min=1, scale_max=30, tooltip=resources.get_string("algorithms/localMax/params/radius"))
         self.setting_radius.set_visibility(not self.setting_polygonal_ROIS.get())
         self.setting_lowerTh = GridSetting(self.optionsFrame, row=12, text="Lower threshold", unit="", default=50, min_=0, max_=2**15-1, scale_min=1, scale_max=400, tooltip=resources.get_string("algorithms/localMax/params/lowerThreshold"))
         self.setting_upperTh = GridSetting(self.optionsFrame, row=13, text="Upper threshold", unit="", default=70, min_=0, max_=2**15-1, scale_min=1, scale_max=400, tooltip=resources.get_string("algorithms/localMax/params/upperThreshold"))
