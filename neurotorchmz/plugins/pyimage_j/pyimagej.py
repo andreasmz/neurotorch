@@ -293,7 +293,7 @@ class ImageJHandler:
             
             if isinstance(roi, CircularSynapseROI):
                 if roi.radius is None: continue
-                roi = ImageJHandler.OvalRoi(roi.location[0]-roi.radius, roi.location[1]-roi.radius, 2*roi.radius+1, 2*roi.radius+1) # type: ignore
+                roi = ImageJHandler.OvalRoi(roi.location[1]-roi.radius, roi.location[0]-roi.radius, 2*roi.radius+1, 2*roi.radius+1) # type: ignore
                 roi.setName(name)
                 ImageJHandler.RM.addRoi(roi) # type: ignore
                 roi_count += 1
