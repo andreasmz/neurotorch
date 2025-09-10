@@ -277,7 +277,7 @@ class ImageObject(Serializable):
         self._name: str|None = None
         self._name_without_extension: str|None = None
         self._path: Path|None = None
-        self._metdata: dict|None = None
+        self._metadata: dict|None = None
 
         self._img: np.ndarray|None = None
         self._img_views: dict[str, dict[ImageView|None, AxisImage]] = {"default" : {}}
@@ -340,7 +340,7 @@ class ImageObject(Serializable):
     
     @property
     def metadata(self) -> dict[str, Any]|None:
-        return self._metdata
+        return self._metadata
     
     # Img and ImageDiff properties
 
@@ -358,23 +358,23 @@ class ImageObject(Serializable):
         if not ImageObject._is_valid_image_stack(image): raise UnsupportedImageError()
         self.clear()
         _max = np.max(image)
-        if not np.issubdtype(image.dtype, np.integer):
+        if _max <= 1:
+            image = 255*image
+            _max = 255*_max
+        if not (np.issubdtype(image.dtype, np.integer) or np.issubdtype(image.dtype, np.floating)):
             raise UnsupportedImageError(f"The image dtype ({image.dtype}) is not supported")
-        elif np.issubdtype(image.dtype, np.floating):
-            if _max <= 1:
-                image = 255*image
-                _max = 255*_max
             
-        if _max < 2**8:
-            image = image.astype(np.uint8) if image.dtype != np.uint8 else image
-        elif _max < 2**16:
-            image = image.astype(np.uint16) if image.dtype != np.uint16 else image
-        elif _max < 2**32:
-            image = image.astype(np.uint32) if image.dtype != np.uint32 else image
-        elif _max < 2**63: # Here 2**63 to support also the signed datatype
-            image = image.astype(np.uint64) if image.dtype != np.uint64 else image
-        else:
-            raise UnsupportedImageError(f"The image dtype ({image.dtype}) is not supported")
+        if np.issubdtype(image.dtype, np.integer):
+            if _max < 2**8:
+                image = image.astype(np.uint8) if image.dtype != np.uint8 else image
+            elif _max < 2**16:
+                image = image.astype(np.uint16) if image.dtype != np.uint16 else image
+            elif _max < 2**32:
+                image = image.astype(np.uint32) if image.dtype != np.uint32 else image
+            elif _max < 2**63: # Here 2**63 to support also the signed datatype
+                image = image.astype(np.uint64) if image.dtype != np.uint64 else image
+            else:
+                raise UnsupportedImageError(f"The image dtype ({image.dtype}) is not supported")
 
         self._img = image
         self.img_size = self._img.nbytes
@@ -402,23 +402,23 @@ class ImageObject(Serializable):
         if not ImageObject._is_valid_image_stack(image): raise UnsupportedImageError()
         self.clear()
         _max = np.max(image)
-        if not np.issubdtype(image.dtype, np.integer):
+        if _max <= 1:
+            image = 255*image
+            _max = 255*_max
+        if not (np.issubdtype(image.dtype, np.integer) or np.issubdtype(image.dtype, np.floating)):
             raise UnsupportedImageError(f"The image dtype ({image.dtype}) is not supported")
-        elif np.issubdtype(image.dtype, np.floating):
-            if _max <= 1:
-                image = 255*image
-                _max = 255*_max
             
-        if _max < 2**7:
-            image = image.astype(np.int8)
-        elif _max < 2**15:
-            image = image.astype(np.int16)
-        elif _max < 2**31:
-            image = image.astype(np.int32)
-        elif _max < 2**63:
-            image = image.astype(np.int64)
-        else:
-            raise UnsupportedImageError(f"The image dtype ({image.dtype}) is not supported")
+        if np.issubdtype(image.dtype, np.integer):
+            if _max < 2**7:
+                image = image.astype(np.int8)
+            elif _max < 2**15:
+                image = image.astype(np.int16)
+            elif _max < 2**31:
+                image = image.astype(np.int32)
+            elif _max < 2**63:
+                image = image.astype(np.int64)
+            else:
+                raise UnsupportedImageError(f"The image dtype ({image.dtype}) is not supported")
         
         self._img_diff = image
         
@@ -442,6 +442,8 @@ class ImageObject(Serializable):
         """
         if self._img is None or (_max := self.img_props.max) is None:
             return None
+        if self._img.dtype.kind in ("i", "f"):
+            return self._img
         if _max < 2**7:
             return self._img.view("int8") if self._img.dtype == np.uint8 else self._img.astype("int8")
         elif _max < 2**15:
@@ -712,23 +714,24 @@ class ImageObject(Serializable):
         def _Load(task: Task):
             t0 = time.perf_counter()
             task.set_step_progress(0, "reading File")
+            _metadata = None
             if path.suffix.lower() in [".tif", ".tiff"]:
                 logger.debug(f"Opening '{path.name}' with the tifffile lib")
                 with tifffile.TiffFile(path) as tif:
-                    self.img = tif.asarray()
+                    img = tif.asarray()
                     if tif.shaped_metadata is not None:      
                         if len(tif.shaped_metadata) >= 2:
-                            self._metdata = {i: d for i, d in enumerate(tif.shaped_metadata)}
+                            _metadata = {i: d for i, d in enumerate(tif.shaped_metadata)}
                         elif len(tif.shaped_metadata) == 1:
-                            self._metdata = tif.shaped_metadata[0]
+                            _metadata = tif.shaped_metadata[0]
             elif nd2.is_supported_file(path):
                 logger.debug(f"Opening '{path.name}' with the nd2 lib")
                 with nd2.ND2File(path) as nd2file:
-                    self.img = nd2file.asarray()
+                    img = nd2file.asarray()
                     if isinstance(nd2file.metadata, dict):
-                        self._metdata = nd2file.metadata
+                        _metadata = nd2file.metadata
                     else:
-                        self._metdata = asdict(nd2file.metadata)
+                        _metadata = asdict(nd2file.metadata)
             else:
                 logger.debug(f"Opening '{path.name}' with PIMS")
                 try:
@@ -737,14 +740,21 @@ class ImageObject(Serializable):
                     raise FileNotFoundError()
                 except Exception as ex:
                     raise UnsupportedImageError(path.name)
-                if len(_pimsImg.shape) != 3:
-                    raise ImageShapeError(_pimsImg.shape)
                 task.set_step_progress(1, "converting")
                 imgNP = np.zeros(shape=_pimsImg.shape, dtype=_pimsImg.dtype)
                 imgNP = [_pimsImg[i] for i in range(_pimsImg.shape[0])]
-                self.img = np.array(imgNP)
+                img = np.array(imgNP)
                 if getattr(_pimsImg, "get_metadata_raw", None) != None: 
-                    self._metdata = collections.OrderedDict(sorted(_pimsImg.get_metadata_raw().items()))
+                    _metadata = collections.OrderedDict(sorted(_pimsImg.get_metadata_raw().items()))
+            if len(img.shape) not in [3,4]:
+                raise ImageShapeError(img.shape)
+            if len(img.shape) == 4 and img.shape[3] == 1:
+                img = np.squeeze(img, axis=3)
+            elif len(img.shape) == 4 and img.shape[3] == 3:
+                logger.warning(f"Image '{path.name}' is a colored image, but will be opened as a grey scaled image")
+                img = np.dot(img[..., :3], [0.2989, 0.5870, 0.1140]).astype(img.dtype)
+            self.img = img
+            self._metadata = _metadata
             self._path = path
             self.name = path.name
             self.name_without_extension = path.stem
@@ -832,7 +842,7 @@ class UnsupportedImageError(ImageObjectError):
 class ImageShapeError(ImageObjectError):
     """ The image has an invalid shape """
 
-    def __init__(self, shape: np.ndarray|None = None, *args):
+    def __init__(self, shape: tuple|None = None, *args):
         super().__init__(*args)
         self.shape = shape
 
