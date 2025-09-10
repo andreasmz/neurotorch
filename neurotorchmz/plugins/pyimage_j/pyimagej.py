@@ -266,7 +266,7 @@ class ImageJHandler:
                     return None
             else:
                 logger.warning(f"Importing ROIs from ImageJ raised the following warnings:\n{flag_str}")
-        logger.info(f"Imported {len(rois)} from ImageJ")
+        logger.info(f"Imported {len(rois)} ROIs from ImageJ")
         return rois
 
     def export_synapses(self, synapses: list[ISynapse]):
@@ -310,6 +310,7 @@ class ImageJHandler:
                 roi_count += 1
             else:
                 continue
+        ImageJHandler.ij.py.run_macro("roiManager('Remove Slice Info');")
         logger.info(f"Exported {roi_count} ROIs to Fiji/ImageJ")
 
     def import_rois_into_roifinder(self):
