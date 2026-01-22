@@ -121,7 +121,7 @@ class SynapseTreeview(ttk.Treeview):
             match self.varSortBy.get():
                 case "Strength":
                     _sort_fn = lambda v: (not v[1].staged, 
-                                          max([r.signal_strength for r in v[1].rois]) if len(v[1].rois) != 0 else 0,
+                                          -max([r.signal_strength for r in v[1].rois]) if len(v[1].rois) != 0 else 0,
                                           v[1].location_y if v[1].location_y is not None else 0, 
                                           v[1].location_x if v[1].location_x is not None else 0)
                 case "Location (left to right)":
