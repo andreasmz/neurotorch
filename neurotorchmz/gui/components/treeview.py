@@ -41,6 +41,8 @@ class SynapseTreeview(ttk.Treeview):
         self.option_allowAddingSingleframeSynapses = allow_singleframe
         self.option_allowAddingMultiframeSynapses = allow_multiframe
         self.frame = ttk.Frame(self.master)
+        self.sortByFrame = tk.Frame(self.frame)
+        self.sortByFrame.pack()
         self.frametv = ttk.Frame(self.frame)
         self.frametv.pack(fill="both")
 
@@ -57,9 +59,17 @@ class SynapseTreeview(ttk.Treeview):
         self.scrollbarx = ttk.Scrollbar(self.frametv, orient="horizontal", command=self.xview)
         self.scrollbarx.pack(side=tk.BOTTOM, fill="x")
 
+        _btn_padx = 5
+
+        tk.Label(self.sortByFrame, text="Sort by").pack(side=tk.LEFT)
+        self.varSortBy = tk.StringVar(value="Location (top to down)")
+        self.varSortBy.trace_add("write", lambda _1,_2,_3: self.sync_synapses())
+        self.comboSortBy = ttk.Combobox(self.sortByFrame, textvariable=self.varSortBy)
+        self.comboSortBy['values'] = ["Location (top to down)", "Location (left to right)", "Strength"]
+        self.comboSortBy.pack(side=tk.LEFT, padx=_btn_padx)
+
         self.frameButtons = tk.Frame(self.frame)
         self.frameButtons.pack()
-        _btn_padx = 5
         if self.option_allowAddingSingleframeSynapses:
             self.btnAdd = tk.Button(self.frameButtons, text="+ Add", command = lambda: self._on_context_menu_add("Singleframe_CircularROI"))
             self.btnAdd.pack(side=tk.LEFT, padx=_btn_padx)
@@ -106,7 +116,25 @@ class SynapseTreeview(ttk.Treeview):
         task.set_indeterminate()
         while self._not_in_sync:
             self._not_in_sync = False
-            synapses = dict(sorted(self.detection_result.as_dict().items(), key=lambda v: (not v[1].staged, v[1].location_y if v[1].location_y is not None else 0, v[1].location_x if v[1].location_x is not None else 0)))
+            # Set _sort_fn per default to Location to default invalid values to Location Sorting
+            _sort_fn = lambda v: (not v[1].staged)
+            match self.varSortBy.get():
+                case "Strength":
+                    _sort_fn = lambda v: (not v[1].staged, 
+                                          max([r.signal_strength for r in v[1].rois]) if len(v[1].rois) != 0 else 0,
+                                          v[1].location_y if v[1].location_y is not None else 0, 
+                                          v[1].location_x if v[1].location_x is not None else 0)
+                case "Location (left to right)":
+                    _sort_fn = lambda v: (not v[1].staged,  
+                                          v[1].location_x if v[1].location_x is not None else 0, 
+                                          v[1].location_y if v[1].location_y is not None else 0)
+                case "Location (top to down)":
+                    _sort_fn = lambda v: (not v[1].staged, 
+                                          v[1].location_y if v[1].location_y is not None else 0, 
+                                          v[1].location_x if v[1].location_x is not None else 0)
+                case _:
+                    logger.warning(f"Invalid value '{self.varSortBy.get()}' for SortBy paramter in SnypaseTreeview")
+            synapses = dict(sorted(self.detection_result.as_dict().items(), key=_sort_fn))
 
             for _uuid in ((uuidsOld := set(self.get_children(''))) - (uuidsNew := set(synapses.keys()))):
                 self.delete(_uuid) # Delete removed entries
