@@ -479,8 +479,7 @@ class Neurotorch_GUI:
         if not path.exists() or not path.is_file():
             if self.root is not None:
                 self.root.bell()
-            else:
-                logger.warning(f"Failed to load '{path.name}': The path does not exist")
+            logger.warning(f"Failed to load '{path.name}': The path does not exist")
             return
         
         with open(path, 'rb') as f:
@@ -495,8 +494,7 @@ class Neurotorch_GUI:
         if self.session.active_image_object is None:
             if self.root is not None:
                 self.root.bell()
-            else:
-                logger.warning(f"Can't save the current dump as no video is opened")
+            logger.warning(f"Can't save the current dump as no video is opened")
             return
         _img = self.session.active_image_object.signal_obj.img_props_only_signal.img
         if _img is None:
