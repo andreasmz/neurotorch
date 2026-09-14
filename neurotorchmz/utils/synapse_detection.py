@@ -968,7 +968,7 @@ class LocalMax(IDetectionAlgorithm):
         self.imgThresholded_labeled = measure.label(self.imgThresholded, connectivity=1)
         if not isinstance(self.imgThresholded_labeled, np.ndarray):
             raise RuntimeError(f"skimage.measure.label returned an unexpected result of type '{type(self.imgThresholded_labeled)}'")
-        self.maxima = peak_local_max(img, min_distance=minDistance, threshold_abs=upperThreshold) # ((Y, X), ..)
+        self.maxima = peak_local_max(img, min_distance=minDistance, threshold_abs=upperThreshold, exclude_border=False) # ((Y, X), ..)
         self.maxima_labeled = np.zeros(shape=img.shape, dtype=int)
         for i in range(self.maxima.shape[0]):
             y,x = self.maxima[i, 0], self.maxima[i, 1]
