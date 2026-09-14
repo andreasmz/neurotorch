@@ -262,7 +262,7 @@ class ImageJHandler:
         if len(_warningFlags) > 0:
             flag_str = '\n'.join(['- ' + x for x in _warningFlags])
             if self.root is not None:
-                if messagebox.askyesnocancel("Neurotorch", f"Please note the following before import the ROIs:\n\n {flag_str}\n\nDo you want to proceed?"):
+                if not messagebox.askyesnocancel("Neurotorch", f"Please note the following before import the ROIs:\n\n {flag_str}\n\nDo you want to proceed?"):
                     return None
             else:
                 logger.warning(f"Importing ROIs from ImageJ raised the following warnings:\n{flag_str}")
