@@ -64,7 +64,6 @@ def _load_plugin(plugin: ModuleType) -> None:
         return
 
     plugins[name] = plugin
-    plugins_inactive.append(name)
     logger.debug(f"Loaded plugin {name}")
 
 
