@@ -138,7 +138,7 @@ class Neurotorch_GUI:
         self.plugin_menus: dict[str, tk.Menu] = {}
         for p_name, p in plugin_manager.plugins.items():
             plugin_menu = tk.Menu(self.menu_plugins, tearoff=0)
-            self.menu_plugins.add_cascade(label=p_name, menu=plugin_menu)
+            self.menu_plugins.add_cascade(label=p.__plugin_name__, menu=plugin_menu)
             if not p.__package__:
                 logger.error(f"It seems like '{p.__plugin_name__}' is not a package")
             self.plugin_menus[p_name] = plugin_menu
