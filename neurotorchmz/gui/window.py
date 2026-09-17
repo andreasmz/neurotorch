@@ -135,22 +135,26 @@ class Neurotorch_GUI:
         # Settings menu
 
         # Plugins menu
-        self.plugin_menus: dict[ModuleType, tk.Menu] = {}
-        for p in plugin_manager.plugins:
-            name = str(p.__plugin_name__)
+        self.plugin_menus: dict[str, tk.Menu] = {}
+        for p_name, p in plugin_manager.plugins.items():
             plugin_menu = tk.Menu(self.menu_plugins, tearoff=0)
-            self.menu_plugins.add_cascade(label=name, menu=plugin_menu)
+            self.menu_plugins.add_cascade(label=p_name, menu=plugin_menu)
             if not p.__package__:
                 logger.error(f"It seems like '{p.__plugin_name__}' is not a package")
-            self.plugin_menus[p] = plugin_menu
+            self.plugin_menus[p_name] = plugin_menu
 
             menu_about = tk.Menu(plugin_menu,tearoff=0)
             plugin_menu.add_cascade(label="About", menu=menu_about)
             menu_about.add_command(label=f"Author: {p.__author__}")
             menu_about.add_command(label=f"Version: {p.__version__}")
             menu_about.add_command(label=f"Description: {p.__plugin_desc__}")
-            
+            menu_about.add_separator()
+            menu_about.add_command(label="Disable", command=lambda name=p_name: self.disable_plugin(name))
 
+        for p_name in plugin_manager.plugins_inactive:
+            plugin_menu = tk.Menu(self.menu_plugins, tearoff=0)
+            self.menu_plugins.add_cascade(label=p_name, menu=plugin_menu)
+            plugin_menu.add_command(label="Enable", command=lambda name=p_name: self.enable_plugin(name))
 
         # About menu
         self.menu_about.add_command(label="About", command=self.menu_neurotorch_about_click)
@@ -462,6 +466,20 @@ class Neurotorch_GUI:
         self.session.active_image_object.invalidate_functions()
         self.update_menu()
         self.session.active_image_object.precompute_image().add_callback(lambda: self.invoke_tab_update_event(ImageChangedEvent()))
+
+    # Plugins
+    
+    def enable_plugin(self, plugin_name: str) -> None:
+        if messagebox.askyesnocancel("NeuroTorch", f"Do you want to enable plugin {plugin_name}? This will take effect after restarting NeuroTorch", icon="question"):
+            plugin_manager.enable_plugin(plugin_name)
+        else:
+            self.root.bell()
+
+    def disable_plugin(self, plugin_name: str) -> None:
+        if messagebox.askyesnocancel("NeuroTorch", f"Do you want to disable plugin {plugin_name}? This will take effect after restarting NeuroTorch", icon="question"):
+            plugin_manager.disable_plugin(plugin_name)
+        else:
+            self.root.bell()
 
     def menu_neurotorch_about_click(self):
         messagebox.showinfo("Neurotorch", f"© Andreas Brilka 2025\nYou are running Neurotorch {__version__}")

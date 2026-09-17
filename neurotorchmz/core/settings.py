@@ -24,15 +24,12 @@ else:
 log_path = app_data_path / "logs.txt"
 tmp_path = app_data_path / "tmp"
 environ_path = app_data_path / "environment"
-user_plugin_path = app_data_path / "plugins"
-preinstalled_plugin_path = Path(__file__).parent.parent / "plugins"
 resource_path = Path(__file__).parent.parent / "resources"
 
 # Create the appdata folder if not exist
 app_data_path.mkdir(parents=True, exist_ok=True)
 tmp_path.mkdir(exist_ok=True, parents=False)
 environ_path.mkdir(exist_ok=True, parents=False)
-user_plugin_path.mkdir(exist_ok=True, parents=False)
 
 # Logging
 logs.init_file_handler(log_path)
@@ -162,6 +159,9 @@ class UserSettings(Config):
     class SIGNAL_DETECTION(Section):
         peak_width_left = IntOption(1)
         peak_width_right = IntOption(6)
+
+    class PLUGINS(Section):
+        pass
 
 # Temp files
 def clear_temp_files():

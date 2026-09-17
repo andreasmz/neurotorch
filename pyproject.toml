@@ -20,6 +20,7 @@ classifiers = [
 keywords = ["neurotorch", "neurons", "glutamate", "synapses", "python", "iGluSnFR"]
 
 dependencies = [
+  "nt_fiji_imagej_plugin>=1.0.0",
   "numpy>=2.1.3",
   "pandas>=2.2.3",
   "scipy>=1.14.1",

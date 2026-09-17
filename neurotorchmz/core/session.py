@@ -143,5 +143,4 @@ class SessionCreateEvent(events.Event):
     def __init__(self, session: Session) -> None:
         self.session = session
 
-plugin_manager.load_plugins_from_dir(path=Path(str(__file__)).parent.parent / "plugins", prefix="neurotorchmz.plugins")
-plugin_manager.load_plugins_from_dir(path=settings.user_plugin_path, prefix="neurotorchmz.user.plugins")
+plugin_manager.load_plugins()

@@ -22,19 +22,10 @@ class WindowLoadedEvent(Event):
         assert self.session.window is not None
         return self.session.window.menu_settings
     
-    def menu_plugins(self, plugin_module) -> tk.Menu:
+    def menu_plugins(self, plugin_name) -> tk.Menu:
         """ Get the menu for the corosponding plugin"""
-        global plugins
-
         assert self.session.window is not None
-        for p in plugins:
-            if p.__name__ in plugin_module.__name__:
-                plugin = p
-                break
-        else:
-            raise RuntimeError(f"Called menu_plugin from a non plugin")
-        return self.session.window.plugin_menus[plugin]
-
+        return self.session.window.plugin_menus[plugin_name]
 class WindowTKReadyEvent(WindowLoadedEvent):
     """ Triggers after the GUI has loaded and tkinter is in main loop """
 
