@@ -14,5 +14,4 @@ neurotorchmz
     core
     gui
     gui.components
-    plugins
     utils

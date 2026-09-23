@@ -91,6 +91,11 @@ jobs:
       matrix:
         os: [windows-latest, macos-latest, ubuntu-latest]
         arch: [x64, arm64]
+        exclude:
+        - os: windows-latest
+          arch: arm64   # Python installation crashes
+        - os: ubuntu-latest
+          arch: arm64   # Python installation crashes
     runs-on: ${{ matrix.os }}
     needs: determine-version
     steps:
