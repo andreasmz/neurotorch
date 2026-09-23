@@ -22,25 +22,20 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.x'
-
       - name: Install project dependencies
         run: |
           pip install .
           pip install build
-
       - name: Build project
         run: |
           python -m build
-
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -57,8 +52,7 @@ jobs:
       name: pypi
       url: https://pypi.org/p/neurotorchmz
     permissions:
-      id-token: write  # IMPORTANT: mandatory for trusted publishing
-
+      id-token: write
     steps:
     - name: Download all the dists
       uses: actions/download-artifact@v4
@@ -97,19 +91,14 @@ jobs:
       matrix:
         os: [windows-latest, macos-latest, ubuntu-latest]
         arch: [x64, arm64]
-        exclude:
-        - os: windows-latest
-          arch: arm64   # Python installation crashes
-        - os: ubuntu-latest
-          arch: arm64   # Python installation crashes
     runs-on: ${{ matrix.os }}
     needs: determine-version
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.x'
           architecture: ${{ matrix.arch }}
@@ -153,6 +142,7 @@ jobs:
           APP_NAME="neurotorchmz-${{ matrix.os }}-${{ matrix.arch }}"
           pyinstaller --noconfirm --clean \
             --name "$APP_NAME" \
+            --icon docs/media/neurotorch_logo.png \
             --add-data "neurotorchmz/resources:neurotorchmz/resources" \
             neurotorch.py
           zip -r "dist/$APP_NAME.zip" "dist/$APP_NAME"
@@ -163,7 +153,6 @@ jobs:
         with:
           name: pyinstaller-${{ matrix.os }}-${{ matrix.arch }}
           path: dist/
-
 
   release:
     name: Publish GitHub Release
@@ -177,7 +166,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: dist/
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:

@@ -3,7 +3,6 @@
 # © Andreas Brilka 2024-2025
 #
 
-
 import os
 os.environ["NEUROTORCH_PORTABLE"] = "True"
 

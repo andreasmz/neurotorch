@@ -1,4 +1,4 @@
-# This file is the main entry point into NeurotorchMZ
+# This file is intended to be used with pyinstaller to bundle the project.
 #
 # © Andreas Brilka 2024-2025
 #
